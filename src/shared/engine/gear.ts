@@ -41,7 +41,7 @@ export const HERO_PERKS: Record<HeroClass, HeroPerk> = {
     blockX100: 130,
     healX100: 100,
     startBlock: 10,
-    img: 'https://files.anomalygames.ai/NeuraKnights/Characters/Hero_Avatar.png',
+    img: '/art/NeuraKnights/Characters/Hero_Avatar.png',
     line: '+30% block, start with 10 block',
   },
   Archer: {
@@ -50,7 +50,7 @@ export const HERO_PERKS: Record<HeroClass, HeroPerk> = {
     blockX100: 100,
     healX100: 100,
     startBlock: 0,
-    img: 'https://files.anomalygames.ai/NeuraKnights/Characters/Archer_Avatar.png',
+    img: '/art/NeuraKnights/Characters/Archer_Avatar.png',
     line: '+25% attack damage',
   },
   Mage: {
@@ -59,7 +59,7 @@ export const HERO_PERKS: Record<HeroClass, HeroPerk> = {
     blockX100: 100,
     healX100: 150,
     startBlock: 0,
-    img: 'https://files.anomalygames.ai/NeuraKnights/Characters/Mage_Avatar.png',
+    img: '/art/NeuraKnights/Characters/Mage_Avatar.png',
     line: '+50% healing',
   },
 };
@@ -93,7 +93,7 @@ export const RIDERS: Record<
     label: 'BURN',
     color: '#FF8A3D',
     on: 'monster',
-    icon: 'https://files.anomalygames.ai/PocketKnights/Battle/Effects/Burn.png',
+    icon: '/art/PocketKnights/Battle/Effects/Burn.png',
     verb: (v) => 'Apply ' + v + ' Burn',
     blurb:
       'Burn ticks that much damage at the end of every turn, then decays by 1.',
@@ -103,7 +103,7 @@ export const RIDERS: Record<
     label: 'MARK',
     color: '#FF6BD6',
     on: 'monster',
-    icon: 'https://files.anomalygames.ai/PocketKnights/Battle/Effects/Mark.png',
+    icon: '/art/PocketKnights/Battle/Effects/Mark.png',
     verb: (v) => 'Apply ' + v + ' Mark',
     blurb:
       'Your next attack link consumes a Mark: x1.5 at one stack, x1.75 at two, x2.25 at three.',
@@ -113,7 +113,7 @@ export const RIDERS: Record<
     label: 'FROST',
     color: '#7FD8FF',
     on: 'monster',
-    icon: 'https://files.anomalygames.ai/PocketKnights/Battle/Effects/Frost.png',
+    icon: '/art/PocketKnights/Battle/Effects/Frost.png',
     verb: (v) => 'Apply ' + v + ' Frost',
     blurb:
       'Each stack stalls the charge meter for one turn, delaying the swing.',
@@ -123,7 +123,7 @@ export const RIDERS: Record<
     label: 'STR',
     color: '#FFC24B',
     on: 'hero',
-    icon: 'https://files.anomalygames.ai/PocketKnights/Battle/Effects/Strength.png',
+    icon: '/art/PocketKnights/Battle/Effects/Strength.png',
     verb: (v) => 'Gain ' + v + ' Strength',
     blurb: 'Permanent for the run: every attack link hits for that much more.',
   },
@@ -132,7 +132,7 @@ export const RIDERS: Record<
     label: 'GRIT',
     color: '#8FE3A2',
     on: 'hero',
-    icon: 'https://files.anomalygames.ai/PocketKnights/Battle/Effects/Grit.png',
+    icon: '/art/PocketKnights/Battle/Effects/Grit.png',
     verb: (v) => 'Gain ' + v + ' Grit',
     blurb:
       'Permanent for the run: every block link gives that much more block.',
@@ -163,10 +163,10 @@ export const getGearImageUrl = (cardId: string): string => {
   const key = gearImageKey(cardId);
   if (!key) return '';
   if (key.indexOf('_Starter_') >= 0)
-    return 'https://files.anomalygames.ai/NeuraKnights/Gear/' + key + '.png';
+    return '/art/NeuraKnights/Gear/' + key + '.png';
   const folder = GEAR_FOLDER[key.split('_')[0]!];
   return folder
-    ? 'https://files.anomalygames.ai/NeuraKnights/Gear/' +
+    ? '/art/NeuraKnights/Gear/' +
         folder +
         '/' +
         key +

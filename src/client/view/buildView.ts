@@ -448,7 +448,7 @@ export const buildView = (app: GearLinkApp): View => {
              stroked count as Strength and Grit, no boxed counter. */
         const BLOCK_STATUS = {
           label: 'BLOCK',
-          icon: 'https://files.anomalygames.ai/PocketKnights/Battle/Effects/Shield.png',
+          icon: '/art/PocketKnights/Battle/Effects/Shield.png',
           blurb:
             "Soaks the enemy's next swing, then is spent on it. Block also resets when a wave dies.",
         };
@@ -1545,9 +1545,9 @@ export const buildView = (app: GearLinkApp): View => {
 
     isSplash: st.phase === 'splash',
     isHome: st.phase === 'home',
-    pagePad: st.phase === 'splash' ? '0' : '16px',
-    shellW: '100%',
-    shellH: 'min(884px,calc(100vh - 32px))',
+    /* The shell's size and bezel are CSS (.gl-page / .gl-frame / .gl-shell), so
+       a phone-sized viewport can drop the frame without the view model or the
+       board measurement knowing anything about it. */
     frameDisplay: st.phase === 'splash' ? 'none' : 'flex',
     splashActions: [
       {

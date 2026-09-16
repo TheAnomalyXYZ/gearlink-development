@@ -18,18 +18,17 @@ import type { View } from './buildView.js';
 
 export const Screen = ({ v }: { v: View }) => (
   <div
+    className="gl-page"
     style={{
       minHeight: '100vh',
       backgroundColor: '#0B1020',
-      backgroundImage:
-        'url(https://files.anomalygames.ai/PocketKnights/sky_v3.png)',
+      backgroundImage: 'url(/art/PocketKnights/sky_v3.png)',
       backgroundSize: 'cover',
       backgroundPosition: 'center bottom',
       backgroundRepeat: 'no-repeat',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: v.pagePad,
       fontFamily: 'Volter,ui-monospace,monospace',
     }}
   >
@@ -45,8 +44,7 @@ export const Screen = ({ v }: { v: View }) => (
             justifyContent: 'flex-end',
             padding: '0',
             backgroundColor: '#101528',
-            backgroundImage:
-              'url(https://files.anomalygames.ai/PocketKnights/sky_v3.png)',
+            backgroundImage: 'url(/art/PocketKnights/sky_v3.png)',
             backgroundSize: 'cover',
             backgroundPosition: 'center bottom',
             backgroundRepeat: 'no-repeat',
@@ -149,28 +147,14 @@ export const Screen = ({ v }: { v: View }) => (
       </>
     ) : null}
 
-    <div
-      style={{
-        display: v.frameDisplay,
-        width: v.shellW,
-        height: v.shellH,
-        maxWidth: '425px',
-        maxHeight: '884px',
-        padding: '16px',
-        border: '1px solid rgba(0,0,0,.5)',
-        borderRadius: '32px',
-        background: 'linear-gradient(135deg,rgba(84,95,249,.6),rgba(0,0,0,.6))',
-        boxShadow: '0 4px 12px 0 rgba(0,0,0,.3)',
-      }}
-    >
+    <div className="gl-frame" style={{ display: v.frameDisplay }}>
       <div
         ref={v.setFtueRoot}
+        className="gl-shell"
         style={{
           width: '100%',
           height: '100%',
           position: 'relative',
-          border: '1px solid #FFF2B0',
-          borderRadius: '16px',
           overflow: 'hidden',
           background: '#1C2134',
           display: 'flex',
@@ -187,8 +171,7 @@ export const Screen = ({ v }: { v: View }) => (
                 display: 'flex',
                 flexDirection: 'column',
                 backgroundColor: '#141D2E',
-                backgroundImage:
-                  'url(https://files.anomalygames.ai/PocketKnights/Map/Base.png)',
+                backgroundImage: 'url(/art/PocketKnights/Map/Base.png)',
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
                 padding: '20px',
@@ -565,7 +548,7 @@ export const Screen = ({ v }: { v: View }) => (
                               inset: '0',
                               borderRadius: '6px',
                               backgroundImage:
-                                'url(https://files.anomalygames.ai/PocketKnights/Pattern/MenuButtonPatten.svg)',
+                                'url(/art/PocketKnights/Pattern/MenuButtonPatten.svg)',
                               backgroundSize: 'cover',
                               backgroundPosition: 'center',
                               display: n.patternDisplay,
@@ -2203,6 +2186,12 @@ export const Screen = ({ v }: { v: View }) => (
                   alignItems: 'center',
                   gap: '10px',
                   borderTop: '1px solid #213854',
+                  /* This strip is fixed-height content and must not shrink.
+                     Saying so also fixes the board measurement: measureBoard
+                     charges a shrinkable sibling its min-height, and this one
+                     had none, so it was charged nothing and the board was sized
+                     ~46px too tall before trimBoard clawed it back. */
+                  flexShrink: 0,
                 }}
               >
                 <div
@@ -2539,6 +2528,16 @@ export const Screen = ({ v }: { v: View }) => (
                 <div
                   style={{
                     flexShrink: '0',
+                    /* Fixed two-line box. This line's text changes with the
+                       wave's affix, and a one-line vs two-line wrap would move
+                       the panel's chrome height - which is what measureBoard
+                       subtracts to size the grid. Letting it wrap resized the
+                       board every time an affixed wave walked in. */
+                    height: '29px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
                     textAlign: 'center',
                     fontSize: '9px',
                     color: '#9DB4D4',

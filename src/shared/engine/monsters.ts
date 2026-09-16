@@ -1,3 +1,14 @@
+/**
+ * ART PATHS
+ *
+ * Every image and font is served from this app's own `/art` (bundled from
+ * `public/art`), not hotlinked from the asset CDN. A Devvit web view runs under
+ * a Content Security Policy that blocks third-party `img-src` and `font-src`,
+ * so a remote URL renders as nothing at all. `tools/sync-art.mjs` refreshes the
+ * local copies from the CDN, and a unit test fails the build if any path the
+ * code builds has no file behind it.
+ */
+
 /** Roster ordered by the monster table's base_hp ascending, so each wave is a
  *  bigger pool than the last. Past the roster the last entry keeps compounding,
  *  which is what makes the gauntlet endless. */
@@ -67,12 +78,12 @@ const BG_FOR: Record<string, string> = {
 };
 
 export const monsterUrlFor = (name: string): string =>
-  'https://files.anomalygames.ai/NeuraKnights/Monsters/' +
+  '/art/NeuraKnights/Monsters/' +
   (MONSTER_IMG[name] ?? 'TrainingDummy_v002') +
   '.png';
 
 export const backgroundUrlFor = (region: string): string =>
-  'https://files.anomalygames.ai/PocketKnights/Background/' +
+  '/art/PocketKnights/Background/' +
   (BG_FOR[region] ?? 'Forest') +
   '.png';
 
@@ -90,18 +101,18 @@ export const enemyDisplayForWave = (wave: number) => {
 
 export const INTENT_ICON: Record<string, string> = {
   attack:
-    'https://files.anomalygames.ai/PocketKnights/Battle/Intent/Attack.png',
+    '/art/PocketKnights/Battle/Intent/Attack.png',
   heavy:
-    'https://files.anomalygames.ai/PocketKnights/Battle/Intent/Special.png',
+    '/art/PocketKnights/Battle/Intent/Special.png',
   charge:
-    'https://files.anomalygames.ai/PocketKnights/Battle/Intent/Defense.png',
+    '/art/PocketKnights/Battle/Intent/Defense.png',
 };
 
 export const EFFECT_ICON: Record<string, string> = {
   attack:
-    'https://files.anomalygames.ai/PocketKnights/Battle/Intent/Attack.png',
+    '/art/PocketKnights/Battle/Intent/Attack.png',
   block:
-    'https://files.anomalygames.ai/PocketKnights/Battle/Effects/Shield.png',
+    '/art/PocketKnights/Battle/Effects/Shield.png',
   effect:
-    'https://files.anomalygames.ai/PocketKnights/Item/RegularHealthPotion_v1.png',
+    '/art/PocketKnights/Item/RegularHealthPotion_v1.png',
 };

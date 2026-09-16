@@ -21,16 +21,16 @@ export const DUPE_COINS: Record<Rarity, number> = {
 
 /** Real pack art from utils/package.ts, so the shop sells the game's own tiers. */
 const PACK_ART = (n: string) =>
-  'https://files.anomalygames.ai/PocketKnights/Item/' + n + 'Pack_V2.png';
+  '/art/PocketKnights/Item/' + n + 'Pack_V2.png';
 const PACK_GLOW = (n: string) =>
-  'https://files.anomalygames.ai/PocketKnights/Packs/CardPack_' +
+  '/art/PocketKnights/Packs/CardPack_' +
   n +
   '_glow_2x.png';
 
 export const COIN_ICON =
-  'https://files.anomalygames.ai/NeuraKnights/Item/Gold_V2.png';
+  '/art/NeuraKnights/Item/Gold_V2.png';
 export const GEM_ICON =
-  'https://files.anomalygames.ai/PocketKnights/Item/Gem_V2.png';
+  '/art/PocketKnights/Item/Gem_V2.png';
 
 export type Currency = 'coins' | 'gems';
 

@@ -72,7 +72,7 @@ export const DUEL_STACK_MIN_H = 576;
 /** Junk reuses the library's Ignore sprite - there is no junk art in the
  *  collection, and "ignore" is the right read for a tile you cannot link. */
 export const JUNK_ICON =
-  'https://files.anomalygames.ai/PocketKnights/Battle/Effects/Ignore.png';
+  '/art/PocketKnights/Battle/Effects/Ignore.png';
 
 /** Junk is ARMOURED: a clear beside it only cracks it, and only an orthogonal
  *  clear counts. Two passes to break one cell, or a bomb through it. The value

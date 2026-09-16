@@ -12,6 +12,6 @@ export const NAV_ICON = {
   duel: '/icons/BattlePassIcon.svg',
   forge: '/icons/BossSiegeIcon.svg',
   fight: '/icons/NameChangeIcon.svg',
-  shop: 'https://files.anomalygames.ai/NeuraKnights/gui/Shop_V2.png',
-  bag: 'https://files.anomalygames.ai/NeuraKnights/gui/Bag_V2.png',
+  shop: '/art/NeuraKnights/gui/Shop_V2.png',
+  bag: '/art/NeuraKnights/gui/Bag_V2.png',
 };

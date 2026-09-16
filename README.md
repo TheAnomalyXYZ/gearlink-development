@@ -77,6 +77,29 @@ to replay. It is bounded instead: the trophy delta is fixed, and a result that
 arrives faster than a duel can physically be played scores zero. Every account
 opens on 1000 trophies.
 
+## Art and fonts
+
+Every image and font is bundled into `public/art` and served from this app's own
+origin as `/art/...`. A Devvit web view runs under a CSP that blocks third-party
+`img-src` and `font-src`, so hotlinking the asset CDN renders blank squares and
+falls back to a system font, with nothing in the console to say why.
+
+`node tools/sync-art.mjs` re-pulls the art from the CDN when it changes. Unit
+tests fail the build if a path points off-origin or has no file behind it.
+
+One manual step: `public/art/PocketKnights/sky_v3.png` is downscaled to 1600px
+wide (the CDN original is 4858px / 4.3MB). Re-run the `sips` line the sync
+script prints if that file is ever refreshed.
+
+## Layout on phones
+
+The design draws the app inside a phone-shaped bezel, which is right on a
+desktop canvas and wrong on an actual phone. The bezel lives in `game.css`
+(`.gl-page` / `.gl-frame` / `.gl-shell`) and a `max-width: 520px` or
+`max-height: 720px` viewport drops it and goes full-bleed. It is CSS rather than
+JS state so rotation reflows instantly and never feeds back into the board
+measurement.
+
 ## Payments
 
 Gems are the one thing bought with real money, through Devvit payments.

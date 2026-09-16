@@ -244,6 +244,10 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   private aro: ResizeObserver | null = null;
   private cardObs: ResizeObserver | null = null;
   private trim = 0;
+  /** Standing correction to the height budget, in px, learned by trimBoard. */
+  private trimPx = 0;
+  /** The column height trimPx was learned against; a change invalidates it. */
+  private measuredColumnH = 0;
   private prevPhase: Phase | null = null;
 
   private ftueRoot: HTMLElement | null = null;
@@ -501,13 +505,19 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     for (const c of Array.from(column.children)) {
       if (c === panel) continue;
       const cs = getComputedStyle(c);
-      const floor = px(cs.minHeight);
-      // A sibling that can shrink is charged its floor; one that cannot is
-      // charged what it occupies, since that height IS its floor.
+      // `min-height: auto` parses to NaN, which is the important case: it means
+      // the sibling never declared a floor, NOT that it can collapse to zero.
+      const declared = parseFloat(cs.minHeight);
+      const floor = Number.isFinite(declared) ? declared : null;
+      const rendered = c.getBoundingClientRect().height;
+      // A sibling that can shrink is charged the floor it declared, since the
+      // board is what it shrinks to make room for. One that cannot shrink - or
+      // never declared a floor - is charged what it occupies, because that
+      // height IS its floor. Charging an undeclared floor as zero was what made
+      // the board size itself too tall and then get trimmed back every resize.
+      const shrinkable = parseFloat(cs.flexShrink) > 0;
       used +=
-        parseFloat(cs.flexShrink) > 0
-          ? floor
-          : Math.max(floor, c.getBoundingClientRect().height);
+        shrinkable && floor !== null ? floor : Math.max(floor ?? 0, rendered);
     }
     const pcs = getComputedStyle(panel);
     let chrome =
@@ -516,7 +526,17 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       px(pcs.rowGap) * Math.max(0, panel.children.length - 1);
     for (const c of Array.from(panel.children))
       if (c !== el) chrome += c.getBoundingClientRect().height;
-    const avail = column.clientHeight - used - chrome;
+    /* A correction learned against a different column height is stale - a
+       rotation or a resize gets a fresh budget. Otherwise the correction is
+       kept, which is what makes this converge: without it, trimBoard shrinks
+       the board, the wrapper's resize re-runs this, this recomputes the same
+       too-tall number and undoes the trim, and the board pulses forever. */
+    if (Math.abs(this.measuredColumnH - column.clientHeight) > 1) {
+      this.measuredColumnH = column.clientHeight;
+      this.trimPx = 0;
+      this.trim = 0;
+    }
+    const avail = column.clientHeight - used - chrome - this.trimPx;
     // Capped: past this the orbs stop reading better and only strand the stage.
     const cell = Math.max(
       18,
@@ -528,20 +548,20 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       Math.abs(this.state.boardW - bw) > 1 ||
       Math.abs(this.state.boardH - bh) > 1
     ) {
-      this.setState({ boardW: bw, boardH: bh }, () => {
-        this.trim = 0;
-        requestAnimationFrame(this.trimBoard);
-      });
+      this.setState({ boardW: bw, boardH: bh }, () =>
+        requestAnimationFrame(this.trimBoard)
+      );
     } else {
-      this.trim = 0;
       requestAnimationFrame(this.trimBoard);
     }
   };
 
   /* The budget above is a prediction, and a prediction can be wrong by a row.
-     This is the ground truth: if the panel actually hangs past the column, give
-     back whole cells until it does not. The stage is flex-shrinkable down to its
-     floor, so shrinking the board is what the stage absorbs - it converges. */
+     This is the ground truth: if the panel actually hangs past the column, book
+     the overflow as a standing correction and measure again. The stage is
+     flex-shrinkable down to its floor, so shrinking the board is what the stage
+     absorbs. The iteration cap is a stop, not the mechanism - the correction
+     persisting across measurements is what makes it settle. */
   trimBoard = (): void => {
     const el = this.wrap;
     if (!el || this.state.phase !== 'battle') return;
@@ -553,6 +573,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         column.getBoundingClientRect().bottom
     );
     if (over <= 0 || (this.trim = this.trim + 1) > 4) return;
+    this.trimPx += over;
     const cell = Math.max(
       18,
       Math.floor((this.state.boardH - 16) / 5) - Math.ceil(over / 5)

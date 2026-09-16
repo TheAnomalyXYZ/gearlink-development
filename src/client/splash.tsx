@@ -15,7 +15,7 @@ export const Splash = () => (
     style={{
       backgroundColor: '#101528',
       backgroundImage:
-        'url(https://files.anomalygames.ai/PocketKnights/sky_v3.png)',
+        'url(/art/PocketKnights/sky_v3.png)',
       backgroundSize: 'cover',
       backgroundPosition: 'center bottom',
       fontFamily: 'Volter,ui-monospace,monospace',
