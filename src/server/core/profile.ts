@@ -1,0 +1,142 @@
+/**
+ * Player state, in Redis, keyed by Reddit user id.
+ *
+ * The id rather than the name: a rename must not orphan someone's collection.
+ * The profile is app-wide, not per-post - a player's gear follows them to every
+ * GearLink post in the subreddit. Only the ladder is per-post.
+ */
+import { redis } from '@devvit/web/server';
+import type { BestRun, Profile } from '../../shared/api.js';
+import { STARTER_GEAR } from '../../shared/engine/gear.js';
+import { PACKS } from '../../shared/engine/economy.js';
+import type { HeroClass } from '../../shared/engine/types.js';
+
+const profileKey = (userId: string) => `profile:${userId}`;
+
+/** A fresh account starts with enough coins for the entry pack, so the shop
+ *  ladder reads cheap-first rather than leaving the premium crate as the only
+ *  affordable buy. */
+const STARTING_COINS = 250;
+const STARTING_GEMS = 60;
+/** Every duellist opens on the same number, so a rating is only ever what the
+ *  player did with it. The lobby's foes sit above this on purpose - the weakest
+ *  is +120 - so the ladder always has somewhere to climb. */
+const STARTING_TROPHIES = 1000;
+
+const num = (raw: string | undefined, fallback: number): number => {
+  const n = raw === undefined ? NaN : Number(raw);
+  return Number.isFinite(n) ? n : fallback;
+};
+
+const obj = (raw: string | undefined): Record<string, number> => {
+  if (!raw) return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+      return {};
+    const out: Record<string, number> = {};
+    for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+      const n = Number(v);
+      if (Number.isFinite(n) && n > 0) out[k] = Math.floor(n);
+    }
+    return out;
+  } catch {
+    return {};
+  }
+};
+
+const parseBest = (raw: string | undefined): BestRun | null => {
+  if (!raw) return null;
+  try {
+    const p = JSON.parse(raw) as Partial<BestRun>;
+    if (!Number.isFinite(p.score)) return null;
+    return {
+      score: Number(p.score),
+      waves: Number(p.waves) || 0,
+      chain: Number(p.chain) || 0,
+      hero: (p.hero ?? 'Hero') as HeroClass,
+    };
+  } catch {
+    return null;
+  }
+};
+
+/** Packs are stored by id, so a renamed tier would silently strand a paid-for
+ *  pack. Fold anything unrecognised onto the entry tier rather than dropping it. */
+const PACK_ALIAS: Record<string, string> = {
+  apprentice: 'base',
+  journeyman: 'bronze',
+  artificer: 'gold',
+};
+const normalisePacks = (
+  raw: Record<string, number>
+): Record<string, number> => {
+  const live = PACKS.map((p) => p.id);
+  const out: Record<string, number> = {};
+  for (const [k, n] of Object.entries(raw)) {
+    if (!(n > 0)) continue;
+    const to = live.includes(k) ? k : (PACK_ALIAS[k] ?? live[0]!);
+    out[to] = (out[to] ?? 0) + n;
+  }
+  return out;
+};
+
+export const loadProfile = async (
+  userId: string,
+  username: string
+): Promise<Profile> => {
+  const h = await redis.hGetAll(profileKey(userId));
+  const gear = Object.keys(h).length ? obj(h['gear']) : STARTER_GEAR();
+  // Migration: a save written against a smaller card table can leave the picker
+  // holding gear the collection says is unowned. Top the starters back up.
+  for (const [id, n] of Object.entries(STARTER_GEAR()))
+    if (!(gear[id]! > 0)) gear[id] = n;
+
+  return {
+    username,
+    coins: num(h['coins'], STARTING_COINS),
+    gems: num(h['gems'], STARTING_GEMS),
+    trophies: num(h['trophies'], STARTING_TROPHIES),
+    gear,
+    packs: normalisePacks(obj(h['packs'])),
+    best: parseBest(h['best']),
+    seenFtue: h['seenFtue'] === '1',
+    seenDuelFtue: h['seenDuelFtue'] === '1',
+  };
+};
+
+export type ProfilePatch = Partial<
+  Pick<
+    Profile,
+    | 'coins'
+    | 'gems'
+    | 'trophies'
+    | 'gear'
+    | 'packs'
+    | 'best'
+    | 'seenFtue'
+    | 'seenDuelFtue'
+  >
+>;
+
+export const saveProfile = async (
+  userId: string,
+  patch: ProfilePatch
+): Promise<void> => {
+  const fields: Record<string, string> = {};
+  if (patch.coins !== undefined)
+    fields['coins'] = String(Math.max(0, Math.floor(patch.coins)));
+  if (patch.gems !== undefined)
+    fields['gems'] = String(Math.max(0, Math.floor(patch.gems)));
+  if (patch.trophies !== undefined)
+    fields['trophies'] = String(Math.max(0, Math.floor(patch.trophies)));
+  if (patch.gear !== undefined) fields['gear'] = JSON.stringify(patch.gear);
+  if (patch.packs !== undefined) fields['packs'] = JSON.stringify(patch.packs);
+  if (patch.best !== undefined) fields['best'] = JSON.stringify(patch.best);
+  if (patch.seenFtue !== undefined)
+    fields['seenFtue'] = patch.seenFtue ? '1' : '0';
+  if (patch.seenDuelFtue !== undefined)
+    fields['seenDuelFtue'] = patch.seenDuelFtue ? '1' : '0';
+  if (!Object.keys(fields).length) return;
+  await redis.hSet(profileKey(userId), fields);
+};

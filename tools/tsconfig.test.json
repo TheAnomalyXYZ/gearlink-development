@@ -1,0 +1,29 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": [
+      "DOM",
+      "ES2023"
+    ],
+    "types": [
+      "node"
+    ],
+    "outDir": "../dist/test",
+    "tsBuildInfoFile": "../dist/test/tsconfig.tsbuildinfo",
+    "rootDir": "../src",
+    "composite": false,
+    "declaration": false,
+    "jsx": "react-jsx",
+    "customConditions": [
+      "browser"
+    ]
+  },
+  "include": [
+    "../src/shared/**/*",
+    "../src/client/**/*"
+  ],
+  "exclude": [
+    "../src/client/game.tsx",
+    "../src/client/splash.tsx"
+  ]
+}

@@ -1,0 +1,61 @@
+/**
+ * Thin typed wrapper over the app's own endpoints.
+ *
+ * Every call that changes anything returns the profile the SERVER now holds, so
+ * the client never has to guess what a purchase or a run did to the wallet - it
+ * adopts what came back.
+ */
+import type {
+  CollectPackRequest,
+  DuelResultRequest,
+  InitResponse,
+  LeaderboardResponse,
+  OpenPackResponse,
+  ProfileResponse,
+  SubmitRunRequest,
+  SubmitRunResponse,
+} from '../shared/api.js';
+
+class ApiError extends Error {}
+
+const call = async <T>(path: string, body?: unknown): Promise<T> => {
+  const init: RequestInit =
+    body === undefined
+      ? { method: 'GET' }
+      : {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        };
+  const res = await fetch('/api' + path, init);
+  const json: unknown = await res.json().catch(() => null);
+  if (!res.ok) {
+    const msg =
+      json && typeof json === 'object' && 'message' in json
+        ? String((json as { message: unknown }).message)
+        : 'Request failed (' + res.status + ')';
+    throw new ApiError(msg);
+  }
+  return json as T;
+};
+
+export const api = {
+  init: () => call<InitResponse>('/init'),
+  /** Re-read the wallet after a purchase Reddit fulfilled out of band. */
+  profile: () => call<InitResponse>('/init'),
+  leaderboard: () => call<LeaderboardResponse>('/leaderboard'),
+  submitRun: (run: SubmitRunRequest) => call<SubmitRunResponse>('/run', run),
+  buyPack: (packId: string) => call<ProfileResponse>('/shop/pack', { packId }),
+  buyCoins: (bundleId: string) =>
+    call<ProfileResponse>('/shop/coins', { bundleId }),
+  openPack: (packId: string) =>
+    call<OpenPackResponse>('/shop/open', { packId }),
+  collectPack: (req: CollectPackRequest) =>
+    call<ProfileResponse>('/shop/collect', req),
+  duelResult: (req: DuelResultRequest) =>
+    call<ProfileResponse>('/duel/result', req),
+  ftueSeen: (which: 'run' | 'duel') =>
+    call<ProfileResponse>('/ftue/seen', { which }),
+};
+
+export { ApiError };

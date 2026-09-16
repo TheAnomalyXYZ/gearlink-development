@@ -1,0 +1,53 @@
+/* Animation keyframes and page chrome for the GearLink UI, lifted from the
+   design's own stylesheet. Every name here is referenced from buildView as an
+   `animation` string, so a rename must happen in both places. */
+html, body { margin:0; padding:0; background:#0B1020; }
+  * { box-sizing:border-box; }
+  @font-face { font-family:"Yoster Island"; src:url("https://files.anomalygames.ai/NeuraKnights/Fonts/yosterislandreg.ttf") format("truetype"); font-display:swap; }
+  @font-face { font-family:"Volter"; src:url("https://files.anomalygames.ai/NeuraKnights/Fonts/Volter__28Goldfish_29.ttf") format("truetype"); font-display:swap; }
+  a { color:#FFF2B0; text-decoration:none; }
+  a:hover { color:#FFD76B; }
+  @keyframes glClear { 0%{transform:scale(1);filter:brightness(1)} 35%{transform:scale(1.14);filter:brightness(1.9)} 60%{transform:scale(1.05);filter:brightness(1.5)} 100%{transform:scale(.25);filter:brightness(2.4);opacity:0} }
+  @keyframes glBlast { 0%{transform:scale(1);filter:brightness(1)} 25%{transform:scale(1.22);filter:brightness(2.6) saturate(.6)} 100%{transform:scale(.3) rotate(-18deg);filter:brightness(2.8);opacity:0} }
+  @keyframes glArm { 0%{box-shadow:inset 0 0 0 2px #FFD9A0, inset 0 0 10px 3px rgba(255,92,46,.8);filter:brightness(1.1);transform:scale(1) rotate(0deg)} 25%{transform:scale(1.06) rotate(-3deg)} 50%{box-shadow:inset 0 0 0 4px #FFF3D0, inset 0 0 18px 8px rgba(255,60,20,1);filter:brightness(1.7);transform:scale(1.1) rotate(3deg)} 75%{transform:scale(1.06) rotate(-2deg)} 100%{box-shadow:inset 0 0 0 4px #FFFFFF, inset 0 0 22px 10px rgba(255,40,10,1);filter:brightness(2);transform:scale(1.14) rotate(0deg)} }
+  @keyframes glDetonate { 0%{transform:scale(1.14);filter:brightness(2)} 30%{transform:scale(1.5);filter:brightness(3.2) saturate(.4)} 100%{transform:scale(.2) rotate(25deg);filter:brightness(3.5);opacity:0} }
+  @keyframes glShock { 0%{transform:scale(.4);opacity:1} 70%{opacity:.55} 100%{transform:scale(3.2);opacity:0} }
+  @keyframes glKick { 0%,100%{transform:translate(0,0)} 20%{transform:translate(-4px,3px)} 45%{transform:translate(4px,-3px)} 70%{transform:translate(-2px,2px)} }
+  @keyframes glReject { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-4px) rotate(-3deg)} 40%{transform:translateX(4px) rotate(3deg)} 60%{transform:translateX(-3px) rotate(-2deg)} 80%{transform:translateX(3px) rotate(2deg)} }
+  @keyframes glDropA1 { 0%{transform:translateY(calc(-1.00 * (100% + 4px)))} 40%{transform:translateY(calc(-0.84 * (100% + 4px)))} 70%{transform:translateY(calc(-0.51 * (100% + 4px)))} 88%{transform:translateY(calc(-0.23 * (100% + 4px)))} 96%{transform:translateY(2%) scaleY(.9) scaleX(1.06)} 100%{transform:translateY(0) scaleY(1) scaleX(1)} }
+  @keyframes glDropA2 { 0%{transform:translateY(calc(-2.00 * (100% + 4px)))} 40%{transform:translateY(calc(-1.68 * (100% + 4px)))} 70%{transform:translateY(calc(-1.02 * (100% + 4px)))} 88%{transform:translateY(calc(-0.46 * (100% + 4px)))} 96%{transform:translateY(2%) scaleY(.9) scaleX(1.06)} 100%{transform:translateY(0) scaleY(1) scaleX(1)} }
+  @keyframes glDropA3 { 0%{transform:translateY(calc(-3.00 * (100% + 4px)))} 40%{transform:translateY(calc(-2.52 * (100% + 4px)))} 70%{transform:translateY(calc(-1.53 * (100% + 4px)))} 88%{transform:translateY(calc(-0.69 * (100% + 4px)))} 96%{transform:translateY(2%) scaleY(.9) scaleX(1.06)} 100%{transform:translateY(0) scaleY(1) scaleX(1)} }
+  @keyframes glDropA4 { 0%{transform:translateY(calc(-4.00 * (100% + 4px)))} 40%{transform:translateY(calc(-3.36 * (100% + 4px)))} 70%{transform:translateY(calc(-2.04 * (100% + 4px)))} 88%{transform:translateY(calc(-0.92 * (100% + 4px)))} 96%{transform:translateY(2%) scaleY(.9) scaleX(1.06)} 100%{transform:translateY(0) scaleY(1) scaleX(1)} }
+  @keyframes glDropA5 { 0%{transform:translateY(calc(-5.00 * (100% + 4px)))} 40%{transform:translateY(calc(-4.20 * (100% + 4px)))} 70%{transform:translateY(calc(-2.55 * (100% + 4px)))} 88%{transform:translateY(calc(-1.15 * (100% + 4px)))} 96%{transform:translateY(2%) scaleY(.9) scaleX(1.06)} 100%{transform:translateY(0) scaleY(1) scaleX(1)} }
+  @keyframes glDropB1 { 0%{transform:translateY(calc(-1.00 * (100% + 4px)))} 40%{transform:translateY(calc(-0.84 * (100% + 4px)))} 70%{transform:translateY(calc(-0.51 * (100% + 4px)))} 88%{transform:translateY(calc(-0.23 * (100% + 4px)))} 96%{transform:translateY(2%) scaleY(.9) scaleX(1.06)} 100%{transform:translateY(0) scaleY(1) scaleX(1)} }
+  @keyframes glDropB2 { 0%{transform:translateY(calc(-2.00 * (100% + 4px)))} 40%{transform:translateY(calc(-1.68 * (100% + 4px)))} 70%{transform:translateY(calc(-1.02 * (100% + 4px)))} 88%{transform:translateY(calc(-0.46 * (100% + 4px)))} 96%{transform:translateY(2%) scaleY(.9) scaleX(1.06)} 100%{transform:translateY(0) scaleY(1) scaleX(1)} }
+  @keyframes glDropB3 { 0%{transform:translateY(calc(-3.00 * (100% + 4px)))} 40%{transform:translateY(calc(-2.52 * (100% + 4px)))} 70%{transform:translateY(calc(-1.53 * (100% + 4px)))} 88%{transform:translateY(calc(-0.69 * (100% + 4px)))} 96%{transform:translateY(2%) scaleY(.9) scaleX(1.06)} 100%{transform:translateY(0) scaleY(1) scaleX(1)} }
+  @keyframes glDropB4 { 0%{transform:translateY(calc(-4.00 * (100% + 4px)))} 40%{transform:translateY(calc(-3.36 * (100% + 4px)))} 70%{transform:translateY(calc(-2.04 * (100% + 4px)))} 88%{transform:translateY(calc(-0.92 * (100% + 4px)))} 96%{transform:translateY(2%) scaleY(.9) scaleX(1.06)} 100%{transform:translateY(0) scaleY(1) scaleX(1)} }
+  @keyframes glDropB5 { 0%{transform:translateY(calc(-5.00 * (100% + 4px)))} 40%{transform:translateY(calc(-4.20 * (100% + 4px)))} 70%{transform:translateY(calc(-2.55 * (100% + 4px)))} 88%{transform:translateY(calc(-1.15 * (100% + 4px)))} 96%{transform:translateY(2%) scaleY(.9) scaleX(1.06)} 100%{transform:translateY(0) scaleY(1) scaleX(1)} }
+  @keyframes glSpawnA { 0%{transform:scale(1)} 40%{transform:scale(1.35) rotate(-8deg)} 70%{transform:scale(1.1) rotate(6deg)} 100%{transform:scale(1) rotate(0deg)} }
+  @keyframes glSpawnB { 0%{transform:scale(1)} 40%{transform:scale(1.35) rotate(-8deg)} 70%{transform:scale(1.1) rotate(6deg)} 100%{transform:scale(1) rotate(0deg)} }
+  @keyframes glSlashA { 0%{opacity:0;transform:translate(-60%,-60%) rotate(-38deg) scaleX(.2)} 18%{opacity:1} 55%{opacity:1;transform:translate(0,0) rotate(-38deg) scaleX(1)} 100%{opacity:0;transform:translate(45%,45%) rotate(-38deg) scaleX(1)} }
+  @keyframes glSlashB { 0%{opacity:0;transform:translate(60%,-55%) rotate(34deg) scaleX(.2)} 22%{opacity:1} 58%{opacity:1;transform:translate(0,0) rotate(34deg) scaleX(1)} 100%{opacity:0;transform:translate(-45%,45%) rotate(34deg) scaleX(1)} }
+  @keyframes glHpFlash { 0%,100%{color:#9DB4D4} 25%{color:#FF9EA1} }
+  @keyframes glBarHit { 0%,100%{box-shadow:none} 30%{box-shadow:0 0 10px 3px rgba(255,120,120,.85)} }
+  @keyframes glReveal { 0%{transform:scale(.45) rotate(-10deg);opacity:0} 55%{transform:scale(1.1) rotate(3deg);opacity:1} 80%{transform:scale(.97) rotate(-1deg)} 100%{transform:scale(1) rotate(0)} }
+  @keyframes glShine { 0%{transform:translateX(-140%) skewX(-18deg)} 100%{transform:translateX(240%) skewX(-18deg)} }
+  @keyframes glTear { 0%{transform:scale(1) rotate(0)} 35%{transform:scale(1.08) rotate(-3deg)} 60%{transform:scale(1.04) rotate(3deg)} 100%{transform:scale(1) rotate(0)} }
+  @keyframes glBob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-7px)} }
+  @keyframes glHint { 0%,100%{opacity:.55;transform:scale(1)} 50%{opacity:1;transform:scale(1.06)} }
+  @keyframes glBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+  @keyframes glSuper { 0%,100%{box-shadow:inset 0 0 0 2px #FFF6C2, inset 0 0 8px 2px rgba(255,184,77,.75);filter:brightness(1.05)} 50%{box-shadow:inset 0 0 0 3px #FFFBE0, inset 0 0 14px 5px rgba(255,184,77,.95);filter:brightness(1.25)} }
+  @keyframes glPop { 0%{opacity:0;transform:translateY(8px) scale(.9)} 60%{transform:translateY(0) scale(1.08)} 100%{opacity:1;transform:translateY(0) scale(1)} }
+  @keyframes glDie { 0%{opacity:1;transform:translateY(0) scale(1) rotate(0deg);filter:brightness(1)} 25%{filter:brightness(2.6)} 100%{opacity:0;transform:translateY(26px) scale(.72) rotate(-12deg);filter:brightness(.4)} }
+  @keyframes glSpawnIn { 0%{opacity:0;transform:translateY(-18px) scale(.7)} 65%{opacity:1;transform:translateY(0) scale(1.08)} 100%{opacity:1;transform:translateY(0) scale(1)} }
+  @keyframes glLoom { 0%,100%{transform:scale(1)} 50%{transform:scale(1.12)} }
+  @keyframes glWindUp { 0%{transform:translateY(0) scale(1)} 100%{transform:translateY(-7px) scale(1.1)} }
+  @keyframes glStrike { 0%{transform:translateY(-7px) scale(1.1)} 30%{transform:translateY(10px) scale(1.14)} 100%{transform:translateY(0) scale(1)} }
+  @keyframes glBanner { 0%{opacity:0;transform:translateY(6px) scale(.94)} 18%{opacity:1;transform:translateY(0) scale(1)} 82%{opacity:1} 100%{opacity:0} }
+  @keyframes glTelegraph { 0%,100%{opacity:.4} 50%{opacity:.85} }
+  @keyframes glIntentPulse { 0%,100%{transform:scale(1);opacity:.75} 50%{transform:scale(1.15);opacity:1} }
+  @keyframes glHit { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-7px)} 75%{transform:translateX(7px)} }
+  @keyframes glPop { from{opacity:0;transform:translateY(8px) scale(.96)} to{opacity:1;transform:translateY(0) scale(1)} }
+  @keyframes glFloat { 0%{opacity:0;transform:translateY(0)} 20%{opacity:1} 100%{opacity:0;transform:translateY(-38px)} }
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-thumb { background:#213854; border-radius:6px; }

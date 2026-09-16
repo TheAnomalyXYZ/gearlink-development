@@ -1,0 +1,74 @@
+{
+  "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
+  "name": "gearlink-dev",
+  "post": {
+    "dir": "dist/client",
+    "entrypoints": {
+      "default": {
+        "inline": true,
+        "entry": "splash.html"
+      },
+      "game": {
+        "entry": "game.html"
+      }
+    }
+  },
+  "server": {
+    "dir": "dist/server",
+    "entry": "index.cjs"
+  },
+  "menu": {
+    "items": [
+      {
+        "label": "Create a GearLink Battle post",
+        "description": "Post a new GearLink gauntlet with its own ladder",
+        "location": "subreddit",
+        "forUserType": "moderator",
+        "endpoint": "/internal/menu/post-create"
+      }
+    ]
+  },
+  "triggers": {
+    "onAppInstall": "/internal/triggers/on-app-install"
+  },
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "vite build"
+  },
+  "payments": {
+    "endpoints": {
+      "fulfillOrder": "/internal/payments/fulfill",
+      "refundOrder": "/internal/payments/refund"
+    },
+    "products": [
+      {
+        "sku": "gems_40",
+        "displayName": "40 Gems",
+        "description": "A pouch of gems. Spend them on gold packs or trade them for coins.",
+        "price": 25,
+        "accountingType": "INSTANT"
+      },
+      {
+        "sku": "gems_220",
+        "displayName": "220 Gems",
+        "description": "A satchel of gems, with a 10% bonus over the pouch.",
+        "price": 100,
+        "accountingType": "INSTANT"
+      },
+      {
+        "sku": "gems_500",
+        "displayName": "500 Gems",
+        "description": "A chest of gems, with a 25% bonus.",
+        "price": 250,
+        "accountingType": "INSTANT"
+      },
+      {
+        "sku": "gems_1300",
+        "displayName": "1300 Gems",
+        "description": "A hoard of gems, with a 40% bonus - the best rate in the shop.",
+        "price": 500,
+        "accountingType": "INSTANT"
+      }
+    ]
+  }
+}
