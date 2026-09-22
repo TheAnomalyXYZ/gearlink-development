@@ -156,22 +156,27 @@ export const Challenge = ({
         >
           THEIR LOADOUT
         </div>
+        {/* Square tiles, so the row reads as five equal slots at any width,
+            with the sprite inset rather than bleeding to the tile's edge. */}
         <div className="flex gap-1.5">
           {card.gear.map((g, i) => (
             <div
               key={i}
               title={g.name}
-              className="h-[38px] flex-1 bg-center bg-no-repeat"
+              className="flex flex-1 items-center justify-center p-1.5"
               style={{
+                aspectRatio: '1 / 1',
                 borderRadius: '6px 0 6px 0',
                 background: g.tint,
-                backgroundImage: `url(${g.icon})`,
-                backgroundSize: '78%',
-                backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'center',
-                imageRendering: 'pixelated',
               }}
-            />
+            >
+              <img
+                src={g.icon}
+                alt={g.name}
+                className="h-full w-full object-contain"
+                style={{ imageRendering: 'pixelated' }}
+              />
+            </div>
           ))}
         </div>
       </div>
