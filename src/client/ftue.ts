@@ -13,7 +13,6 @@ export type FtueStep =
   'fight' | 'location' | 'hero' | 'gear' | 'orbs' | 'drag' | 'damage' | 'waves';
 
 export const FTUE_ORDER: FtueStep[] = [
-  'fight',
   'location',
   'hero',
   'gear',
@@ -26,15 +25,14 @@ export const FTUE_ORDER: FtueStep[] = [
 /** Which phase each pre-battle step belongs to, so back-navigation re-points
  *  the card instead of stranding it on a screen that is no longer showing. */
 export const FTUE_PHASE_STEP: Record<string, FtueStep> = {
-  home: 'fight',
-  map: 'location',
+  // Home IS the map, so the first thing taught is which location to take.
+  home: 'location',
   hero: 'hero',
   gear: 'gear',
 };
 
 /** Steps the player completes by acting. These never raise a scrim. */
 export const FTUE_DOING: Record<string, boolean> = {
-  fight: true,
   location: true,
   hero: true,
   gear: true,
@@ -45,7 +43,6 @@ export const FTUE_TARGET: Record<
   string,
   { target: string; place: 'above' | 'below' }
 > = {
-  fight: { target: 'fight', place: 'above' },
   location: { target: 'map', place: 'below' },
   hero: { target: 'hero', place: 'below' },
   gear: { target: 'slots', place: 'above' },
@@ -56,13 +53,9 @@ export const FTUE_TARGET: Record<
 };
 
 export const FTUE_COPY: Record<string, { title: string; body: string }> = {
-  fight: {
-    title: 'Pick a battle',
-    body: 'Tap FIGHT to open the map. Pick a location, then your hero and the five you take in.',
-  },
   location: {
     title: 'Choose where to fight',
-    body: 'Each location is one battle of 3 to 5 waves, and the last wave is the elite guarding it. Start at Greenwood - the rest of the map opens as you take them.',
+    body: 'Tap a place on the map. Each one is a battle of 3 to 5 waves, and the last wave is the elite guarding it. Start at Greenwood - the rest opens as you take them.',
   },
   hero: {
     title: 'Pick your hero',

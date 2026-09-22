@@ -49,8 +49,9 @@ import {
   nextLeague,
   toNextLeague,
   LOCATIONS,
+  MAP_ART,
   MAP_LENGTH,
-  backgroundUrlFor,
+  mapPinUrlFor,
   getGearImageUrl,
   isJunk,
   isSuper,
@@ -899,7 +900,6 @@ export const buildView = (app: GearLinkApp): View => {
     setFtueEnemy: app.setFtueEnemy,
     setFtueTrack: app.setFtueTrack,
     setFtueCard: app.setFtueCard,
-    setFtueFight: app.setFtueFight,
     setFtueMap: app.setFtueMap,
     setFtueHero: app.setFtueHero,
     setFtueGear: app.setFtueGear,
@@ -907,31 +907,6 @@ export const buildView = (app: GearLinkApp): View => {
     advanceFtue: app.advanceFtue,
     endFtue: app.endFtue,
     gearlinkIcon: GEARLINK_ICON,
-    bestStats: (() => {
-      const b: any = st.profile.best;
-      return [
-        { label: 'WAVES', value: b ? b.waves : 0, color: '#3C63FF' },
-        { label: 'BEST LINK', value: b ? b.chain : 0, color: '#1D2956' },
-        {
-          label: 'SCORE',
-          value: b ? b.score.toLocaleString() : '0',
-          color: '#2E8B57',
-        },
-      ];
-    })(),
-    /* The home strip is the road itself: one boss per location, lit as far as
-       this ascension has got. */
-    ladder: LOCATIONS.map((loc, i) => ({
-      url: monsterUrlFor(loc.boss),
-      tag: loc.name.split(' ')[0],
-      color:
-        i < st.profile.progress
-          ? '#8FE3A2'
-          : i === st.profile.progress
-            ? '#FFC24B'
-            : '#9DB4D4',
-      opacity: i <= st.profile.progress ? 1 : 0.4,
-    })),
     /* ---------- DUEL ---------- */
     isDuelLobby: st.phase === 'duelLobby',
     isDuel: st.phase === 'duel',
@@ -1798,10 +1773,26 @@ export const buildView = (app: GearLinkApp): View => {
       { label: 'BLACKSMITHS', run: app.openBoardFromMenu },
       { label: 'HOW TO PLAY', run: app.openHowFromMenu },
     ],
-    /* ---------- the map ---------- */
-    isMap: st.phase === 'map',
-    goMap: app.goMap,
-    mapTitle: 'CHOOSE YOUR BATTLE',
+    /* ---------- the map ---------- *
+
+       HOME IS THE MAP, the way Neura Knights' home is: the artwork fills the
+       screen, the locations are pins on it, and tapping one opens a panel with
+       the way in. No title card and no best-run panel - the road itself is the
+       screen, and the ladder moved into the header menu. */
+    mapArt: MAP_ART.url,
+    mapWrapRef: app.mapWrapRef,
+    onMapDown: app.onMapDown,
+    onMapMove: app.onMapMove,
+    onMapUp: app.onMapUp,
+    onMapClickCapture: app.onMapClickCapture,
+    mapFrame: (() => {
+      const f = app.mapFrame();
+      return {
+        w: f.w + 'px',
+        h: f.h + 'px',
+        transform: 'translate3d(' + f.x + 'px,' + f.y + 'px,0)',
+      };
+    })(),
     /* The ascension badge is the only place the run's difficulty tier is
        stated, so it shows even at zero rather than appearing from nowhere on
        the first King kill. */
@@ -1810,41 +1801,65 @@ export const buildView = (app: GearLinkApp): View => {
         ? 'ASCENSION ' + st.profile.ascension
         : 'FIRST CLIMB',
     ascensionColor: st.profile.ascension > 0 ? '#FFC24B' : '#9DB4D4',
-    ascensionNote:
-      st.profile.ascension > 0
-        ? 'Every monster on the map is harder, and every battle pays more.'
-        : 'Beat The King in the Castle to ascend. The map starts again, harder.',
     mapProgress:
       Math.min(st.profile.progress, MAP_LENGTH) + '/' + MAP_LENGTH + ' TAKEN',
-    mapNodes: LOCATIONS.map((loc, i) => {
+    mapPins: LOCATIONS.map((loc, i) => {
       const cleared = i < st.profile.progress;
       const open = i <= st.profile.progress;
       const next = i === st.profile.progress;
+      const isOpen = st.openLocation === loc.id;
       return {
         id: loc.id,
+        // Percentages against the artwork, so a pin stays put at any scale.
+        top: loc.at.top ?? 'auto',
+        bottom: loc.at.bottom ?? 'auto',
+        left: loc.at.left ?? 'auto',
+        right: loc.at.right ?? 'auto',
+        url: mapPinUrlFor(
+          loc.pin,
+          !open ? 'Locked' : isOpen ? 'Active' : 'Default'
+        ),
+        tap: app.tapLocation(loc.id),
+        // The open pin and its panel sit above the others, or a neighbour's
+        // sprite would overlap the panel that just opened.
+        z: isOpen ? 6 : 4,
+        // A pin that is next up pulses, so the road reads at a glance.
+        anim: next && !isOpen ? 'glLoom 1800ms ease-in-out infinite' : 'none',
+        newDisplay: next && !isOpen ? 'block' : 'none',
+        panelDisplay: isOpen ? 'flex' : 'none',
+        // Panels on the right-hand pins open leftwards, and vice versa, so one
+        // never runs off the edge of the shell.
+        panelSide: loc.at.right !== undefined ? 'right' : 'left',
+        panelOffset: '64px',
         name: loc.name,
         blurb: open
           ? loc.blurb
           : 'Take the location before this one to open the road.',
-        bg: backgroundUrlFor(loc.region),
         bossUrl: monsterUrlFor(loc.boss),
         bossName: loc.boss.toUpperCase(),
         waves:
           loc.minWaves === loc.maxWaves
             ? loc.minWaves + ' WAVES'
             : loc.minWaves + '-' + loc.maxWaves + ' WAVES',
-        // A locked card has no handler at all, so a stray tap cannot start a
-        // run the server would refuse anyway.
-        run: open ? app.pickLocation(loc.id) : null,
-        opacity: open ? 1 : 0.45,
-        bd: next ? '#FFF2B0' : cleared ? '#8FE3A2' : '#213854',
         tag: cleared ? 'CLEARED' : next ? 'NEXT' : 'LOCKED',
         tagBg: cleared ? '#2E8B57' : next ? '#FCE370' : '#3A4C74',
         tagFg: next ? '#1D2956' : '#FFFFFF',
-        cursor: open ? 'pointer' : 'default',
+        // A locked pin opens a panel that explains itself, but has no way in.
+        enter: open ? app.pickLocation(loc.id) : null,
+        enterLabel: open ? 'ENTER' : 'LOCKED',
+        enterBg: open ? BTN.primary.bg : BTN.disabled.bg,
+        enterShadow: open ? BTN.primary.shadow : BTN.disabled.shadow,
+        enterCursor: open ? 'pointer' : 'default',
         kingDisplay: loc.king ? 'flex' : 'none',
       };
     }),
+    homeWallet: [
+      { icon: COIN_ICON, value: st.profile.coins.toLocaleString() },
+      { icon: GEM_ICON, value: String(st.profile.gems) },
+      { icon: HEART_PIECE_ICON, value: String(st.profile.heartPieces) },
+    ],
+    closeLocation: app.closeLocation,
+    scrimDisplay: st.openLocation ? 'block' : 'none',
     /* ---------- heart pieces ---------- */
     heartIcon: HEART_PIECE_ICON,
     heartPieces: pieces,

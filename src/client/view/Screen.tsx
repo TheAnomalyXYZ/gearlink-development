@@ -168,78 +168,344 @@ export const Screen = ({ v }: { v: View }) => (
                 flex: '1',
                 minHeight: '0',
                 position: 'relative',
-                display: 'flex',
-                flexDirection: 'column',
-                backgroundColor: '#141D2E',
-                backgroundImage: 'url(/art/PocketKnights/Map/Base.png)',
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                padding: '20px',
-                gap: '14px',
-                overflowY: 'auto',
+                overflow: 'hidden',
+                background: '#141D2E',
               }}
             >
+              {/* The map itself: cover-scaled artwork the player can drag. */}
               <div
+                ref={v.mapWrapRef}
+                onPointerDown={v.onMapDown}
+                onPointerMove={v.onMapMove}
+                onPointerUp={v.onMapUp}
+                onPointerCancel={v.onMapUp}
+                onClickCapture={v.onMapClickCapture}
                 style={{
                   position: 'absolute',
                   inset: '0',
-                  background:
-                    'linear-gradient(180deg,rgba(20,29,46,.55),rgba(20,29,46,.94))',
+                  overflow: 'hidden',
+                  touchAction: 'none',
+                  userSelect: 'none',
+                  cursor: 'grab',
                 }}
-              ></div>
+              >
+                <div
+                  ref={v.setFtueMap}
+                  style={{
+                    position: 'absolute',
+                    top: '0',
+                    left: '0',
+                    width: v.mapFrame.w,
+                    height: v.mapFrame.h,
+                    transform: v.mapFrame.transform,
+                  }}
+                >
+                  <img
+                    src={v.mapArt}
+                    alt=""
+                    draggable={false}
+                    style={{
+                      position: 'absolute',
+                      inset: '0',
+                      width: '100%',
+                      height: '100%',
+                      imageRendering: 'pixelated',
+                      pointerEvents: 'none',
+                      userSelect: 'none',
+                    }}
+                  />
 
+                  {/* Tapping anywhere off a pin closes the open panel. */}
+                  <div
+                    onClick={v.closeLocation}
+                    style={{
+                      position: 'absolute',
+                      inset: '0',
+                      zIndex: '3',
+                      display: v.scrimDisplay,
+                    }}
+                  ></div>
+
+                  {(v.mapPins || []).map((p: any) => (
+                    <Fragment key={p.id}>
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: p.top,
+                          bottom: p.bottom,
+                          left: p.left,
+                          right: p.right,
+                          zIndex: p.z,
+                        }}
+                      >
+                        <div style={{ position: 'relative', display: 'flex' }}>
+                          <img
+                            onClick={p.tap}
+                            src={p.url}
+                            alt={p.name}
+                            draggable={false}
+                            style={{
+                              position: 'relative',
+                              zIndex: '2',
+                              width: '96px',
+                              height: 'auto',
+                              cursor: 'pointer',
+                              imageRendering: 'pixelated',
+                              animation: p.anim,
+                            }}
+                          />
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: '6px',
+                              right: '6px',
+                              zIndex: '3',
+                              display: p.newDisplay,
+                              width: '10px',
+                              height: '10px',
+                              borderRadius: '9999px',
+                              border: '2px solid #141D2E',
+                              background: '#FCE370',
+                            }}
+                          ></div>
+
+                          {/* The detail panel, opening away from the edge the
+                              pin sits on so it never runs off the shell. */}
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: '50%',
+                              transform: 'translateY(-50%)',
+                              [p.panelSide]: p.panelOffset,
+                              zIndex: '1',
+                              display: p.panelDisplay,
+                              width: '190px',
+                              flexDirection: 'column',
+                              gap: '6px',
+                              padding: '9px 10px',
+                              border: '2px solid #FFF2B0',
+                              borderRadius: '8px 2px 8px 2px',
+                              background: 'rgba(20,29,46,.96)',
+                              boxShadow: '0 4px 0 0 rgba(0,0,0,.4)',
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '7px',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: '30px',
+                                  height: '30px',
+                                  flexShrink: '0',
+                                  backgroundImage: `url(${p.bossUrl})`,
+                                  backgroundSize: 'contain',
+                                  backgroundRepeat: 'no-repeat',
+                                  backgroundPosition: 'center',
+                                  imageRendering: 'pixelated',
+                                }}
+                              ></div>
+                              <div
+                                style={{
+                                  flex: '1',
+                                  minWidth: '0',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '2px',
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    fontFamily:
+                                      "'Yoster Island',Volter,monospace",
+                                    fontSize: '11px',
+                                    color: '#FFF2B0',
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                  }}
+                                >
+                                  {p.name}
+                                </div>
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '5px',
+                                    fontSize: '8px',
+                                    letterSpacing: '.08em',
+                                  }}
+                                >
+                                  <span style={{ color: '#CBD9EC' }}>
+                                    {p.waves}
+                                  </span>
+                                  <span style={{ color: '#FFC24B' }}>
+                                    {p.bossName}
+                                  </span>
+                                </div>
+                              </div>
+                              <div
+                                style={{
+                                  flexShrink: '0',
+                                  alignSelf: 'flex-start',
+                                  padding: '1px 4px',
+                                  borderRadius: '3px',
+                                  background: p.tagBg,
+                                  color: p.tagFg,
+                                  fontSize: '7px',
+                                  letterSpacing: '.1em',
+                                }}
+                              >
+                                {p.tag}
+                              </div>
+                            </div>
+                            <div
+                              style={{
+                                fontSize: '8px',
+                                color: '#9DB4D4',
+                                lineHeight: '1.6',
+                              }}
+                            >
+                              {p.blurb}
+                            </div>
+                            <div
+                              onClick={p.enter || undefined}
+                              style={{
+                                cursor: p.enterCursor,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '6px',
+                                height: '30px',
+                                border: '3px solid #000000',
+                                borderRadius: '6px 2px 6px 2px',
+                                background: p.enterBg,
+                                boxShadow: p.enterShadow,
+                                color: '#000000',
+                                fontFamily: "'Yoster Island',Volter,monospace",
+                                fontSize: '11px',
+                              }}
+                            >
+                              <span>{p.enterLabel}</span>
+                              <span
+                                style={{
+                                  display: p.kingDisplay,
+                                  alignItems: 'center',
+                                  padding: '1px 4px',
+                                  borderRadius: '3px',
+                                  background: '#7A3038',
+                                  color: '#FFD9DC',
+                                  fontSize: '7px',
+                                  letterSpacing: '.1em',
+                                }}
+                              >
+                                ASCEND
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </Fragment>
+                  ))}
+                </div>
+              </div>
+
+              {/* Top HUD, floating over the map rather than pushing it down. */}
               <div
                 style={{
-                  position: 'relative',
+                  position: 'absolute',
+                  top: '0',
+                  left: '0',
+                  right: '0',
+                  zIndex: '14',
                   display: 'flex',
                   alignItems: 'flex-start',
                   justifyContent: 'space-between',
                   gap: '8px',
-                  marginTop: '6px',
+                  padding: '10px 12px',
+                  pointerEvents: 'none',
+                  background:
+                    'linear-gradient(180deg,rgba(20,29,46,.92),rgba(20,29,46,0))',
                 }}
               >
-                <div style={{ width: '52px' }}></div>
                 <div
                   style={{
-                    flex: '1',
                     display: 'flex',
                     flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '6px',
+                    gap: '5px',
+                    pointerEvents: 'auto',
                   }}
                 >
                   <div
                     style={{
-                      width: '52px',
-                      height: '54px',
-                      backgroundImage: `url(${v.gearlinkIcon})`,
-                      backgroundSize: 'contain',
-                      backgroundRepeat: 'no-repeat',
-                      backgroundPosition: 'center',
-                    }}
-                  ></div>
-                  <div
-                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '3px 7px',
+                      border: '1px solid #3A4C74',
+                      borderRadius: '4px',
+                      background: 'rgba(20,29,46,.85)',
                       fontFamily: "'Yoster Island',Volter,monospace",
-                      fontSize: '21px',
-                      color: '#FFF2B0',
-                      textAlign: 'center',
-                      textShadow: '0 3px 0 #141D2E',
+                      fontSize: '10px',
+                      color: v.ascensionColor,
                     }}
                   >
-                    GEARLINK BATTLE
+                    {v.ascensionLabel}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: '8px',
+                      letterSpacing: '.12em',
+                      color: '#9DB4D4',
+                      textShadow: '0 2px 0 #141D2E',
+                    }}
+                  >
+                    {v.mapProgress}
                   </div>
                 </div>
+
                 <div
                   style={{
-                    width: '52px',
                     display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'flex-end',
-                    gap: '5px',
-                    flexShrink: '0',
+                    alignItems: 'center',
+                    gap: '6px',
+                    pointerEvents: 'auto',
                   }}
                 >
+                  {(v.homeWallet || []).map((c: any, cI: number) => (
+                    <Fragment key={cI}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          height: '22px',
+                          padding: '0 7px 0 5px',
+                          border: '1px solid #3A4C74',
+                          borderRadius: '4px',
+                          background: 'rgba(20,29,46,.85)',
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: '13px',
+                            height: '13px',
+                            backgroundImage: `url(${c.icon})`,
+                            backgroundSize: 'contain',
+                            backgroundRepeat: 'no-repeat',
+                            backgroundPosition: 'center',
+                            imageRendering: 'pixelated',
+                          }}
+                        ></div>
+                        <div style={{ fontSize: '10px', color: '#FFF2B0' }}>
+                          {c.value}
+                        </div>
+                      </div>
+                    </Fragment>
+                  ))}
                   <div
                     onClick={v.openHow}
                     style={{
@@ -251,7 +517,7 @@ export const Screen = ({ v }: { v: View }) => (
                       justifyContent: 'center',
                       border: '1px solid #3A4C74',
                       borderRadius: '9999px',
-                      background: 'rgba(20,29,46,.8)',
+                      background: 'rgba(20,29,46,.85)',
                       fontFamily: "'Yoster Island',Volter,monospace",
                       fontSize: '11px',
                       color: '#9DB4D4',
@@ -272,7 +538,7 @@ export const Screen = ({ v }: { v: View }) => (
                       gap: '2px',
                       border: '1px solid #3A4C74',
                       borderRadius: '4px',
-                      background: 'rgba(20,29,46,.8)',
+                      background: 'rgba(20,29,46,.85)',
                     }}
                   >
                     <div
@@ -296,195 +562,46 @@ export const Screen = ({ v }: { v: View }) => (
                         background: '#9DB4D4',
                       }}
                     ></div>
-                  </div>
-                  <div
-                    style={{ position: 'relative', width: '0', height: '0' }}
-                  >
-                    <div
-                      style={{
-                        position: 'absolute',
-                        right: '0',
-                        top: '2px',
-                        zIndex: '20',
-                        width: '132px',
-                        display: v.homeMenuDisplay,
-                        flexDirection: 'column',
-                        background: '#1D2956',
-                        border: '1px solid #3A4C74',
-                        borderRadius: '6px 0 6px 0',
-                        overflow: 'hidden',
-                        boxShadow: '0 4px 0 0 rgba(0,0,0,.35)',
-                      }}
-                    >
-                      {(v.homeMenuItems || []).map((m: any, mI: number) => (
-                        <Fragment key={mI}>
-                          <div
-                            onClick={m.run}
-                            style={{
-                              cursor: 'pointer',
-                              padding: '8px 10px',
-                              borderBottom: '1px solid #2A3A63',
-                              fontSize: '10px',
-                              color: '#CBD9EC',
-                              textAlign: 'left',
-                            }}
-                          >
-                            {m.label}
-                          </div>
-                        </Fragment>
-                      ))}
-                    </div>
                   </div>
                 </div>
               </div>
 
               <div
                 style={{
-                  position: 'relative',
-                  flex: '0 1 auto',
-                  minHeight: '0',
-                  display: 'flex',
+                  position: 'absolute',
+                  top: '38px',
+                  right: '12px',
+                  zIndex: '20',
+                  width: '132px',
+                  display: v.homeMenuDisplay,
                   flexDirection: 'column',
-                  justifyContent: 'flex-start',
-                  gap: '12px',
-                  marginTop: '4px',
-                  paddingBottom: '84px',
-                  overflowY: 'auto',
+                  background: '#1D2956',
+                  border: '1px solid #3A4C74',
+                  borderRadius: '6px 0 6px 0',
+                  overflow: 'hidden',
+                  boxShadow: '0 4px 0 0 rgba(0,0,0,.35)',
                 }}
               >
-                <div
-                  style={{
-                    flexShrink: '0',
-                    background: '#CDD6F6',
-                    borderRadius: '8px',
-                    padding: '5px',
-                  }}
-                >
-                  <div
-                    style={{
-                      background: '#F0F0F0',
-                      border: '2px solid #F7F7F5',
-                      borderRadius: '4px',
-                      padding: '12px 14px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '9px',
-                    }}
-                  >
+                {(v.homeMenuItems || []).map((m: any, mI: number) => (
+                  <Fragment key={mI}>
                     <div
+                      onClick={m.run}
                       style={{
-                        fontFamily: "'Yoster Island',Volter,monospace",
-                        fontSize: '12px',
-                        color: '#3C63FF',
+                        cursor: 'pointer',
+                        padding: '8px 10px',
+                        borderBottom: '1px solid #2A3A63',
+                        fontSize: '10px',
+                        color: '#CBD9EC',
+                        textAlign: 'left',
                       }}
                     >
-                      YOUR BEST RUN
+                      {m.label}
                     </div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'flex-end',
-                        justifyContent: 'space-between',
-                        gap: '10px',
-                      }}
-                    >
-                      {(v.bestStats || []).map((b: any, bI: number) => (
-                        <Fragment key={bI}>
-                          <div
-                            style={{
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: '2px',
-                            }}
-                          >
-                            <div
-                              style={{
-                                fontSize: '8px',
-                                color: '#8B7355',
-                                letterSpacing: '.12em',
-                              }}
-                            >
-                              {b.label}
-                            </div>
-                            <div
-                              style={{
-                                fontFamily: "'Yoster Island',Volter,monospace",
-                                fontSize: '18px',
-                                color: b.color,
-                              }}
-                            >
-                              {b.value}
-                            </div>
-                          </div>
-                        </Fragment>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    flexShrink: '0',
-                    background: 'rgba(33,56,84,.85)',
-                    border: '1px solid #213854',
-                    borderRadius: '4px',
-                    padding: '10px 12px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px',
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: '9px',
-                      color: '#9DB4D4',
-                      letterSpacing: '.14em',
-                    }}
-                  >
-                    THE LADDER
-                  </div>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'flex-end',
-                      justifyContent: 'space-between',
-                      gap: '2px',
-                    }}
-                  >
-                    {(v.ladder || []).map((l: any, lI: number) => (
-                      <Fragment key={lI}>
-                        <div
-                          style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            gap: '3px',
-                            opacity: l.opacity,
-                          }}
-                        >
-                          <div
-                            style={{
-                              width: '34px',
-                              height: '34px',
-                              backgroundImage: `url(${l.url})`,
-                              backgroundSize: 'contain',
-                              backgroundRepeat: 'no-repeat',
-                              backgroundPosition: 'center bottom',
-                              imageRendering: 'pixelated',
-                            }}
-                          ></div>
-                          <div style={{ fontSize: '8px', color: l.color }}>
-                            {l.tag}
-                          </div>
-                        </div>
-                      </Fragment>
-                    ))}
-                  </div>
-                </div>
+                  </Fragment>
+                ))}
               </div>
 
               <div
-                ref={v.setFtueFight}
                 style={{
                   position: 'absolute',
                   left: '0',
@@ -611,245 +728,6 @@ export const Screen = ({ v }: { v: View }) => (
                     </Fragment>
                   ))}
                 </div>
-              </div>
-            </div>
-          </>
-        ) : null}
-
-        {v.isMap ? (
-          <>
-            <div
-              style={{
-                flex: '1',
-                minHeight: '0',
-                display: 'flex',
-                flexDirection: 'column',
-                background: '#141D2E',
-                backgroundImage: 'url(/art/PocketKnights/Map/Base.png)',
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                padding: '16px',
-                gap: '12px',
-                overflowY: 'auto',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '8px',
-                }}
-              >
-                <div
-                  style={{
-                    fontFamily: "'Yoster Island',Volter,monospace",
-                    fontSize: '17px',
-                    color: '#FFF2B0',
-                    textShadow: '0 3px 0 #141D2E',
-                  }}
-                >
-                  {v.mapTitle}
-                </div>
-                <div
-                  style={{
-                    fontSize: '9px',
-                    color: '#9DB4D4',
-                    letterSpacing: '.12em',
-                  }}
-                >
-                  {v.mapProgress}
-                </div>
-              </div>
-
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '4px',
-                  border: '1px solid #3A4C74',
-                  borderRadius: '6px',
-                  background: 'rgba(20,29,46,.82)',
-                  padding: '8px 10px',
-                }}
-              >
-                <div
-                  style={{
-                    fontFamily: "'Yoster Island',Volter,monospace",
-                    fontSize: '12px',
-                    color: v.ascensionColor,
-                    letterSpacing: '.08em',
-                  }}
-                >
-                  {v.ascensionLabel}
-                </div>
-                <div
-                  style={{
-                    fontSize: '10px',
-                    color: '#9DB4D4',
-                    lineHeight: '1.6',
-                  }}
-                >
-                  {v.ascensionNote}
-                </div>
-              </div>
-
-              <div
-                ref={v.setFtueMap}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '10px',
-                }}
-              >
-                {(v.mapNodes || []).map((n: any) => (
-                  <Fragment key={n.id}>
-                    <div
-                      onClick={n.run || undefined}
-                      style={{
-                        cursor: n.cursor,
-                        opacity: n.opacity,
-                        position: 'relative',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        minHeight: '84px',
-                        padding: '10px',
-                        border: '2px solid ' + n.bd,
-                        borderRadius: '8px 2px 8px 2px',
-                        backgroundColor: '#182238',
-                        backgroundImage: `url(${n.bg})`,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      <div
-                        style={{
-                          position: 'absolute',
-                          inset: '0',
-                          background:
-                            'linear-gradient(90deg,rgba(20,29,46,.94),rgba(20,29,46,.62))',
-                        }}
-                      ></div>
-                      <div
-                        style={{
-                          position: 'relative',
-                          width: '58px',
-                          height: '58px',
-                          flexShrink: '0',
-                          backgroundImage: `url(${n.bossUrl})`,
-                          backgroundSize: 'contain',
-                          backgroundRepeat: 'no-repeat',
-                          backgroundPosition: 'center',
-                          imageRendering: 'pixelated',
-                        }}
-                      ></div>
-                      <div
-                        style={{
-                          position: 'relative',
-                          flex: '1',
-                          minWidth: '0',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '4px',
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                          }}
-                        >
-                          <div
-                            style={{
-                              fontFamily: "'Yoster Island',Volter,monospace",
-                              fontSize: '13px',
-                              color: '#FFF2B0',
-                            }}
-                          >
-                            {n.name}
-                          </div>
-                          <div
-                            style={{
-                              display: n.kingDisplay,
-                              alignItems: 'center',
-                              padding: '1px 5px',
-                              borderRadius: '3px',
-                              background: '#7A3038',
-                              fontSize: '8px',
-                              color: '#FFD9DC',
-                              letterSpacing: '.1em',
-                            }}
-                          >
-                            ASCEND
-                          </div>
-                        </div>
-                        <div
-                          style={{
-                            fontSize: '9px',
-                            color: '#9DB4D4',
-                            lineHeight: '1.6',
-                          }}
-                        >
-                          {n.blurb}
-                        </div>
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            fontSize: '9px',
-                            letterSpacing: '.1em',
-                            color: '#CBD9EC',
-                          }}
-                        >
-                          <span>{n.waves}</span>
-                          <span style={{ color: '#FFC24B' }}>{n.bossName}</span>
-                        </div>
-                      </div>
-                      <div
-                        style={{
-                          position: 'relative',
-                          flexShrink: '0',
-                          alignSelf: 'flex-start',
-                          padding: '2px 6px',
-                          borderRadius: '3px',
-                          background: n.tagBg,
-                          color: n.tagFg,
-                          fontSize: '8px',
-                          letterSpacing: '.1em',
-                        }}
-                      >
-                        {n.tag}
-                      </div>
-                    </div>
-                  </Fragment>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ padding: '10px 16px 14px' }}>
-              <div
-                onClick={v.goHome}
-                style={{
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  height: '42px',
-                  border: '3px solid #000000',
-                  borderRadius: '8px 2px 8px 2px',
-                  background: '#B5C0FF',
-                  boxShadow:
-                    '0 -4px 0 0 #7E84E6 inset, 0 4px 0 0 #FFF inset, 0 2px 0 0 rgba(0,0,0,.25)',
-                  color: '#000000',
-                  fontFamily: "'Yoster Island',Volter,monospace",
-                  fontSize: '13px',
-                }}
-              >
-                HOME
               </div>
             </div>
           </>

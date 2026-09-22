@@ -20,6 +20,7 @@ import {
   INTENT_ICON,
   JUNK_ICON,
   LEAGUES,
+  MAP_PIN_URLS,
   PACKS,
   RIDERS,
   WAVE_ENEMIES,
@@ -45,6 +46,7 @@ const HARDCODED = [
 
 export const artPaths = () => {
   const paths = new Set(HARDCODED);
+  for (const pin of MAP_PIN_URLS) paths.add(pin);
   for (const g of GEAR) {
     const u = getGearImageUrl(g.id);
     if (u) paths.add(u);
@@ -97,7 +99,9 @@ const main = async () => {
     }
   }
 
-  console.log(`\n${written} written, ${unchanged} unchanged, ${failed.length} failed.`);
+  console.log(
+    `\n${written} written, ${unchanged} unchanged, ${failed.length} failed.`
+  );
   for (const f of failed) console.error('  ' + f);
   if (written) {
     console.log(

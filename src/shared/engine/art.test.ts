@@ -12,6 +12,7 @@ import {
   INTENT_ICON,
   JUNK_ICON,
   LEAGUES,
+  MAP_PIN_URLS,
   PACKS,
   RIDERS,
   WAVE_ENEMIES,
@@ -45,6 +46,7 @@ const collect = (): string[] => {
   for (const icon of Object.values(EFFECT_ICON)) paths.add(icon);
   paths.add(JUNK_ICON);
   for (const league of LEAGUES) paths.add(league.icon);
+  for (const pin of MAP_PIN_URLS) paths.add(pin);
   paths.add(COIN_ICON);
   paths.add(GEM_ICON);
   paths.add(HEART_PIECE_ICON);

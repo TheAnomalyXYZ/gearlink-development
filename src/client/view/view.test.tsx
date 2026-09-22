@@ -91,6 +91,11 @@ const fakeApp = (over: Record<string, unknown>): GearLinkApp => {
     coinsEarned: 120,
     endReason: null,
     locationId: FIRST_LOCATION,
+    openLocation: null,
+    mapW: 384,
+    mapH: 600,
+    mapX: 0,
+    mapY: -120,
     runWon: false,
     ascended: false,
     heartPiecesEarned: 0,
@@ -286,8 +291,15 @@ const fakeApp = (over: Record<string, unknown>): GearLinkApp => {
     setFtueEnemy: noop,
     setFtueTrack: noop,
     setFtueCard: noop,
-    setFtueFight: noop,
     setFtueMap: noop,
+    mapWrapRef: noop,
+    onMapDown: noop,
+    onMapMove: noop,
+    onMapUp: noop,
+    onMapClickCapture: noop,
+    mapFrame: () => ({ w: 384, h: 852, x: 0, y: -100 }),
+    tapLocation: curried,
+    closeLocation: noop,
     setFtueHero: noop,
     setFtueGear: noop,
     setFtueSlots: noop,
@@ -307,9 +319,16 @@ const renders = (label: string, over: Record<string, unknown>) => {
 void test('every screen renders', () => {
   renders('splash', { phase: 'splash' });
   renders('home', { phase: 'home' });
-  renders('map', { phase: 'map' });
-  renders('map at first climb', {
-    phase: 'map',
+  renders('home with a location open', {
+    phase: 'home',
+    openLocation: 'caves',
+  });
+  renders('home with a locked location open', {
+    phase: 'home',
+    openLocation: 'castle',
+  });
+  renders('home at first climb', {
+    phase: 'home',
     profile: { ...profile, ascension: 0, progress: 0 },
   });
   renders('hero picker', { phase: 'hero' });
@@ -444,7 +463,6 @@ void test('the coaching overlay renders at every step', () => {
     hole: { top: 10, left: 10, w: 80, h: 30 },
   };
   for (const step of [
-    'fight',
     'location',
     'hero',
     'gear',

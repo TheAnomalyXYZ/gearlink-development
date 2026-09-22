@@ -59,6 +59,7 @@ import {
   mulberry32,
   foeLoadout,
   FIRST_LOCATION,
+  MAP_ART,
   NO_HEARTS,
   canApplyHeart,
   heartsFor,
@@ -98,7 +99,6 @@ import { Screen } from './view/Screen.js';
 type Phase =
   | 'splash'
   | 'home'
-  | 'map'
   | 'hero'
   | 'gear'
   | 'battle'
@@ -149,6 +149,15 @@ export type AppState = {
    *  whether that kill was The King's. */
   runWon: boolean;
   ascended: boolean;
+  /** The pin whose detail panel is open on the map. Null is the bare map. */
+  openLocation: string | null;
+  /** Map viewport: the container's measured size, and how far the artwork has
+   *  been panned within it. */
+  mapW: number;
+  mapH: number;
+  mapX: number;
+  mapY: number;
+
   /** Pieces the last win dropped, for the end screen's readout. */
   heartPiecesEarned: number;
   /** An upgrade is in flight; the button stays inert until it lands. */
@@ -284,6 +293,19 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   private pendingMe = false;
 
   private wrap: HTMLElement | null = null;
+  private mapWrap: HTMLElement | null = null;
+  private mro: ResizeObserver | null = null;
+  /** Pan bookkeeping. Held on the instance, not in state, so a pointer move
+   *  only re-renders when the offset actually changes - and `moved` is what
+   *  tells a drag apart from a tap on a pin. */
+  private mapDrag = {
+    active: false,
+    startX: 0,
+    startY: 0,
+    originX: 0,
+    originY: 0,
+    moved: false,
+  };
   private foeWrap: HTMLElement | null = null;
   private arena: HTMLElement | null = null;
   private ro: ResizeObserver | null = null;
@@ -302,7 +324,6 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   private ftueBoardEl: HTMLElement | null = null;
   private ftueEnemyEl: HTMLElement | null = null;
   private ftueTrackEl: HTMLElement | null = null;
-  private ftueFightEl: HTMLElement | null = null;
   private ftueMapEl: HTMLElement | null = null;
   private ftueHeroEl: HTMLElement | null = null;
   private ftueGearEl: HTMLElement | null = null;
@@ -324,6 +345,11 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     locationId: FIRST_LOCATION,
     runWon: false,
     ascended: false,
+    openLocation: null,
+    mapW: 0,
+    mapH: 0,
+    mapX: 0,
+    mapY: 0,
     heartPiecesEarned: 0,
     heartUpgrading: false,
     boardW: 0,
@@ -411,7 +437,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
 
   override componentWillUnmount(): void {
     this.clearAllTimers();
-    for (const o of [this.ro, this.fro, this.aro, this.cardObs])
+    for (const o of [this.ro, this.fro, this.aro, this.cardObs, this.mro])
       o?.disconnect();
     window.removeEventListener('resize', this.measureFtue);
     window.removeEventListener('orientationchange', this.measureFtue);
@@ -835,14 +861,135 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   };
 
   goLoadout = (): void => this.setState({ phase: 'home' });
-  goMap = this.goStep('map');
+  /** HOME IS THE MAP, so there is nowhere else to send anyone. Kept as its own
+   *  name because the end screen and the hero step both mean "back to the map"
+   *  rather than "back to a menu". */
+  goMap = (): void => {
+    this.setState({ openLocation: null });
+    this.goStep('home')();
+  };
 
-  /** Pick a node and walk straight into the hero step. A locked node is inert:
+  /* ---------- the map ---------- */
+
+  mapWrapRef = (el: HTMLElement | null): void => {
+    this.mro?.disconnect();
+    this.mapWrap = el;
+    if (!el) return;
+    this.mro = new ResizeObserver(this.measureMap);
+    this.mro.observe(el);
+    this.measureMap();
+  };
+
+  /** Cover-scale the artwork to the viewport and keep the pan inside it. The
+   *  map is taller than the shell, so the overflow is what there is to pan. */
+  measureMap = (): void => {
+    const el = this.mapWrap;
+    if (!el) return;
+    const w = el.clientWidth;
+    const h = el.clientHeight;
+    if (!w || !h) return;
+    this.setState((s) => {
+      const { x, y } = this.clampPan(s.mapX, s.mapY, w, h);
+      // Open centred on the vertical overflow rather than pinned to the top,
+      // so the first thing on screen is the middle of the road.
+      const started = s.mapW > 0 || s.mapH > 0;
+      const min = this.panBounds(w, h);
+      const y0 = started ? y : min.minY / 2;
+      return { mapW: w, mapH: h, mapX: x, mapY: started ? y : y0 };
+    });
+  };
+
+  private panBounds(w: number, h: number) {
+    const scale = Math.max(w / MAP_ART.w, h / MAP_ART.h) || 1;
+    return {
+      scale,
+      minX: Math.min(w - MAP_ART.w * scale, 0),
+      minY: Math.min(h - MAP_ART.h * scale, 0),
+    };
+  }
+  private clampPan(x: number, y: number, w: number, h: number) {
+    const { minX, minY } = this.panBounds(w, h);
+    return {
+      x: Math.max(minX, Math.min(0, x)),
+      y: Math.max(minY, Math.min(0, y)),
+    };
+  }
+  /** The artwork's drawn size and offset, for the view. */
+  mapFrame(): { w: number; h: number; x: number; y: number } {
+    const st = this.state;
+    const { scale } = this.panBounds(
+      st.mapW || MAP_ART.w,
+      st.mapH || MAP_ART.h
+    );
+    return {
+      w: MAP_ART.w * scale,
+      h: MAP_ART.h * scale,
+      x: st.mapX,
+      y: st.mapY,
+    };
+  }
+
+  /** Movement past this many px is a drag, not a tap - which is what stops a
+   *  pan that ends over a pin from opening it. */
+  private static readonly DRAG_SLOP = 6;
+
+  onMapDown = (e: ReactPointerEvent): void => {
+    this.mapDrag = {
+      active: true,
+      startX: e.clientX,
+      startY: e.clientY,
+      originX: this.state.mapX,
+      originY: this.state.mapY,
+      moved: false,
+    };
+  };
+  onMapMove = (e: ReactPointerEvent): void => {
+    const d = this.mapDrag;
+    if (!d.active) return;
+    const dx = e.clientX - d.startX;
+    const dy = e.clientY - d.startY;
+    if (!d.moved && Math.abs(dx) + Math.abs(dy) > GearLinkApp.DRAG_SLOP) {
+      d.moved = true;
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+    }
+    if (!d.moved) return;
+    const st = this.state;
+    const { x, y } = this.clampPan(
+      d.originX + dx,
+      d.originY + dy,
+      st.mapW,
+      st.mapH
+    );
+    if (x !== st.mapX || y !== st.mapY) this.setState({ mapX: x, mapY: y });
+  };
+  onMapUp = (e: ReactPointerEvent): void => {
+    if (this.mapDrag.active && e.currentTarget.hasPointerCapture?.(e.pointerId))
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    this.mapDrag.active = false;
+  };
+  /** Swallow the click a drag leaves behind, so panning never opens a pin. */
+  onMapClickCapture = (e: { stopPropagation: () => void }): void => {
+    if (!this.mapDrag.moved) return;
+    this.mapDrag.moved = false;
+    e.stopPropagation();
+  };
+
+  /** Tap a pin: open its panel, or close it if it was already the open one.
+   *  A locked pin says so rather than doing nothing. */
+  tapLocation = (id: string) => (): void => {
+    if (this.mapDrag.moved) return;
+    this.setState((s) => ({ openLocation: s.openLocation === id ? null : id }));
+  };
+  closeLocation = (): void => this.setState({ openLocation: null });
+
+  /** Commit to a location and walk into the hero step. A locked node is inert:
    *  the map is the only gate on the run, so it is enforced here as well as on
    *  the server. */
   pickLocation = (id: string) => (): void => {
     if (locationIndex(id) > this.state.profile.progress) return;
-    this.setState({ locationId: id, flow: 'run' }, () => this.goStep('hero')());
+    this.setState({ locationId: id, flow: 'run', openLocation: null }, () =>
+      this.goStep('hero')()
+    );
   };
   goHome = this.goStep('home');
   openPause = (): void => this.setState({ modal: 'pause' });
@@ -2228,9 +2375,6 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     this.setState({ ftueStep: next, ftuePlace: null });
   };
 
-  setFtueFight = (el: HTMLElement | null): void => {
-    this.ftueFightEl = el;
-  };
   setFtueMap = (el: HTMLElement | null): void => {
     this.ftueMapEl = el;
   };
@@ -2283,15 +2427,13 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
           ? this.ftueEnemyEl
           : spec.target === 'track'
             ? this.ftueTrackEl
-            : spec.target === 'fight'
-              ? this.ftueFightEl
-              : spec.target === 'map'
-                ? this.ftueMapEl
-                : spec.target === 'hero'
-                  ? this.ftueHeroEl
-                  : spec.target === 'slots'
-                    ? this.ftueSlotsEl
-                    : this.ftueGearEl;
+            : spec.target === 'map'
+              ? this.ftueMapEl
+              : spec.target === 'hero'
+                ? this.ftueHeroEl
+                : spec.target === 'slots'
+                  ? this.ftueSlotsEl
+                  : this.ftueGearEl;
     if (!el) return;
     const arena = this.ftueRoot.getBoundingClientRect();
     const rect = el.getBoundingClientRect();

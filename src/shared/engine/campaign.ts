@@ -27,6 +27,11 @@ export type Location = {
   king?: boolean;
   /** One line for the map card. */
   blurb: string;
+  /** The pin sprite's key under `/art/PocketKnights/Map/`. */
+  pin: string;
+  /** Where the pin sits on the map art, as percentages of it. The artwork is
+   *  the same 384x852 Base.png Neura Knights uses, so these are its positions. */
+  at: { top?: string; bottom?: string; left?: string; right?: string };
 };
 
 export const LOCATIONS: Location[] = [
@@ -39,6 +44,8 @@ export const LOCATIONS: Location[] = [
     minWaves: 3,
     maxWaves: 3,
     blurb: 'Bandits on the road. Short, and it forgives a bad link.',
+    pin: '02_Forest',
+    at: { bottom: '19%', left: '7.75%' },
   },
   {
     id: 'bridge',
@@ -49,6 +56,8 @@ export const LOCATIONS: Location[] = [
     minWaves: 3,
     maxWaves: 4,
     blurb: 'The toll is paid in HP. The troll hits like a wall falling.',
+    pin: '03_Bridge',
+    at: { bottom: '35%', right: '8.75%' },
   },
   {
     id: 'caves',
@@ -59,6 +68,8 @@ export const LOCATIONS: Location[] = [
     minWaves: 3,
     maxWaves: 4,
     blurb: 'Big pools, slow swings. Bring something that keeps hitting.',
+    pin: '04_Caves',
+    at: { bottom: '42.5%', left: '3%' },
   },
   {
     id: 'ghost',
@@ -69,6 +80,8 @@ export const LOCATIONS: Location[] = [
     minWaves: 4,
     maxWaves: 5,
     blurb: 'Five waves of dead men. Block is worth more than damage here.',
+    pin: '05_Ghost_Town',
+    at: { top: '27.75%', right: '2.75%' },
   },
   {
     id: 'mountain',
@@ -79,6 +92,8 @@ export const LOCATIONS: Location[] = [
     minWaves: 4,
     maxWaves: 5,
     blurb: 'Armoured and patient. The Queen punishes a wasted turn.',
+    pin: '06_Mountain',
+    at: { top: '22.5%', left: '4%' },
   },
   {
     id: 'castle',
@@ -90,6 +105,8 @@ export const LOCATIONS: Location[] = [
     maxWaves: 5,
     king: true,
     blurb: 'The King holds the last wave. Put him down and you ascend.',
+    pin: '07_Castle',
+    at: { top: '2.5%', right: '1.25%' },
   },
 ];
 
@@ -160,3 +177,26 @@ export const planBattle = (loc: Location, rng: () => number): WavePlan[] => {
  *  he is meant to end a run that arrived underbuilt. */
 export const KING_HP_X100 = 130;
 export const KING_STR_X100 = 110;
+
+/** The map artwork's native size. Pins are placed against these, and the image
+ *  is scaled to COVER the viewport, so a percentage always lands on the same
+ *  spot of the drawing whatever the shell is. */
+export const MAP_ART = {
+  url: '/art/PocketKnights/Map/Base.png',
+  w: 384,
+  h: 852,
+};
+
+export type PinState = 'Default' | 'Active' | 'Locked';
+
+/** A location's pin sprite, in one of its three states. */
+export const mapPinUrlFor = (pin: string, state: PinState): string =>
+  '/art/PocketKnights/Map/' + pin + '_' + state + '.png';
+
+/** Every pin sprite the map can draw - what the asset test and the art sync
+ *  both walk. */
+export const MAP_PIN_URLS: string[] = LOCATIONS.flatMap((l) =>
+  (['Default', 'Active', 'Locked'] as PinState[]).map((st) =>
+    mapPinUrlFor(l.pin, st)
+  )
+);
