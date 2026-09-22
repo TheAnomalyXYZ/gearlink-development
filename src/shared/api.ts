@@ -115,6 +115,39 @@ export type DuelChallengeResponse = {
   url: string;
 };
 
+/**
+ * What the inline view of a CHALLENGE post draws.
+ *
+ * Every image url is resolved on the SERVER. The feed view has to stay small -
+ * no engine, no card table - so it is handed finished paths rather than the ids
+ * it would need the gear and rank tables to turn into art.
+ */
+export type ChallengeCard = {
+  /** Reddit handle, without the u/ prefix. */
+  username: string;
+  /** Snoovatar, or empty when the account has none. */
+  avatar: string;
+  trophies: number;
+  leagueName: string;
+  leagueIcon: string;
+  /** I, II or III - empty at Knight, which is a single rung. */
+  leagueNumeral: string;
+  leagueColor: string;
+  leagueShade: string;
+  /** The duellist's class, and the art and perk line that go with it. */
+  cls: HeroClass;
+  heroImg: string;
+  heroPerk: string;
+  /** Their five, as art plus the orb colour each becomes on the board. */
+  gear: { icon: string; tint: string; name: string }[];
+};
+
+export type ChallengeResponse = {
+  type: 'challengeCard';
+  /** Null on an ordinary GearLink post, which shows the plain splash. */
+  card: ChallengeCard | null;
+};
+
 export type DuelResultRequest = {
   foe: string;
   /** Reddit user id of the opponent, when it was a listed player. */

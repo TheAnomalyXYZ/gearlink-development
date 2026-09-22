@@ -6,6 +6,7 @@
  * adopts what came back.
  */
 import type {
+  ChallengeResponse,
   CollectPackRequest,
   DuelChallengeResponse,
   DuelOpponentsResponse,
@@ -64,6 +65,8 @@ export const api = {
   duelOpponents: (cursor: number) =>
     call<DuelOpponentsResponse>('/duel/opponents?cursor=' + cursor),
   duelChallenge: () => call<DuelChallengeResponse>('/duel/challenge', {}),
+  /** What this post's inline view should draw. Used by the splash only. */
+  challengeCard: () => call<ChallengeResponse>('/challenge'),
   ftueSeen: (which: 'run' | 'duel' | 'duelSetup') =>
     call<ProfileResponse>('/ftue/seen', { which }),
 };

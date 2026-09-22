@@ -1,10 +1,11 @@
 import { Hono } from 'hono';
 import type { Context as HonoContext } from 'hono';
-import { context, redis } from '@devvit/web/server';
+import { context, reddit, redis } from '@devvit/web/server';
 import type {
   BuyBundleRequest,
   BuyPackRequest,
   CollectPackRequest,
+  ChallengeResponse,
   DuelChallengeResponse,
   DuelListedRequest,
   DuelOpponentsResponse,
@@ -28,7 +29,7 @@ import {
   removeFromPool,
   syncPoolScore,
 } from '../core/duelpool.js';
-import { createChallengePost } from '../core/post.js';
+import { createChallengePost, readChallengeCard } from '../core/post.js';
 import {
   COINS_PER_SCORE,
   COIN_BUNDLES,
@@ -440,6 +441,16 @@ api.get('/duel/opponents', async (c) => {
   });
 });
 
+/** The snoovatar a challenge post carries. A missing one is not an error - the
+ *  card falls back to the duellist's class art. */
+const snoovatarOf = async (username: string): Promise<string> => {
+  try {
+    return (await reddit.getSnoovatarUrl(username)) ?? '';
+  } catch {
+    return '';
+  }
+};
+
 /** Share a new loadout as a post, so the challenge reaches people who are not
  *  in the app. Only a LISTED player can post one - a challenge nobody can
  *  answer from the lobby would be an empty invitation. */
@@ -456,7 +467,9 @@ api.post('/duel/challenge', async (c) => {
     const post = await createChallengePost(
       me.username,
       profile.trophies,
-      profile.duelCls
+      profile.duelCls,
+      profile.duelPicked,
+      await snoovatarOf(me.username)
     );
     return c.json<DuelChallengeResponse>({
       type: 'challenge',
@@ -508,6 +521,22 @@ api.post('/duel/result', async (c) => {
   // the rung they left.
   if (delta !== 0) await syncPoolScore(me.userId, trophies);
   return c.json(profileJson(await loadProfile(me.userId, me.username)));
+});
+
+/**
+ * What this post's inline view should draw. A challenge post answers with the
+ * duellist who made it; every other GearLink post answers with null and gets
+ * the plain splash. Deliberately unauthenticated: the feed shows this card to
+ * logged-out visitors too, and it exposes nothing the post title does not.
+ */
+api.get('/challenge', async (c) => {
+  const { postId } = context;
+  if (!postId)
+    return c.json<ChallengeResponse>({ type: 'challengeCard', card: null });
+  return c.json<ChallengeResponse>({
+    type: 'challengeCard',
+    card: await readChallengeCard(postId),
+  });
 });
 
 /** The two coaching flows are each seen once per ACCOUNT, not once per device. */

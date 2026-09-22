@@ -10,6 +10,7 @@ import {
   HERO_PERKS,
   INTENT_ICON,
   JUNK_ICON,
+  LEAGUES,
   PACKS,
   RIDERS,
   WAVE_ENEMIES,
@@ -42,6 +43,7 @@ const collect = (): string[] => {
   for (const icon of Object.values(INTENT_ICON)) paths.add(icon);
   for (const icon of Object.values(EFFECT_ICON)) paths.add(icon);
   paths.add(JUNK_ICON);
+  for (const league of LEAGUES) paths.add(league.icon);
   paths.add(COIN_ICON);
   paths.add(GEM_ICON);
   for (const pack of PACKS) {
@@ -61,11 +63,16 @@ void test('no asset path points off this app origin', () => {
 });
 
 void test('every asset path has a file behind it', () => {
-  const missing = collect().filter((p) => !existsSync(join('public', p.slice(1))));
+  const missing = collect().filter(
+    (p) => !existsSync(join('public', p.slice(1)))
+  );
   assert.deepEqual(missing, [], 'these are referenced but not bundled');
 });
 
 void test('every gear card resolves to an image', () => {
   for (const g of GEAR)
-    assert.ok(getGearImageUrl(g.id), `${g.id} has no art, so its orb would be blank`);
+    assert.ok(
+      getGearImageUrl(g.id),
+      `${g.id} has no art, so its orb would be blank`
+    );
 });

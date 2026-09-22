@@ -4274,6 +4274,38 @@ export const Screen = ({ v }: { v: View }) => (
                     gap: '8px',
                   }}
                 >
+                  {/* The rank sprite with its level numeral over the corner,
+                      the way the Neura Knights battle rank icon draws it. */}
+                  <div
+                    style={{
+                      position: 'relative',
+                      width: '34px',
+                      height: '34px',
+                      flexShrink: '0',
+                      backgroundImage: `url(${v.leagueIcon})`,
+                      backgroundSize: 'contain',
+                      backgroundRepeat: 'no-repeat',
+                      backgroundPosition: 'center',
+                      imageRendering: 'pixelated',
+                    }}
+                  >
+                    <div
+                      style={{
+                        position: 'absolute',
+                        right: '-2px',
+                        bottom: '-4px',
+                        display: v.leagueNumeralDisplay,
+                        lineHeight: '1',
+                        fontFamily: "'Yoster Island',Volter,monospace",
+                        fontSize: '11px',
+                        color: '#FFFFFF',
+                        WebkitTextStroke: '1.5px #000000',
+                        paintOrder: 'stroke fill',
+                      }}
+                    >
+                      {v.leagueNumeral}
+                    </div>
+                  </div>
                   <div
                     style={{
                       flex: '1',

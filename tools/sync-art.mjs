@@ -19,6 +19,7 @@ import {
   HERO_PERKS,
   INTENT_ICON,
   JUNK_ICON,
+  LEAGUES,
   PACKS,
   RIDERS,
   WAVE_ENEMIES,
@@ -59,6 +60,7 @@ export const artPaths = () => {
   for (const icon of Object.values(INTENT_ICON)) paths.add(icon);
   for (const icon of Object.values(EFFECT_ICON)) paths.add(icon);
   paths.add(JUNK_ICON);
+  for (const league of LEAGUES) paths.add(league.icon);
   paths.add(COIN_ICON);
   paths.add(GEM_ICON);
   for (const pack of PACKS) {

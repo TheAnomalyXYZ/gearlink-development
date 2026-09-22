@@ -27,16 +27,63 @@ export type League = {
   color: string;
   /** Darker companion, for the badge's fill behind `color`. */
   shade: string;
+  /** The rank sprite, same art the Neura Knights BattleRankIcon draws. */
+  icon: string;
+  /** The level as Neura Knights writes it on the badge: I, II, III. Empty for
+   *  Knight, which is one rung and carries no numeral. */
+  numeral: string;
 };
 
-const TIERS: { tier: LeagueTier; color: string; shade: string }[] = [
-  { tier: 'Bronze', color: '#CD8B54', shade: '#5E3A22' },
-  { tier: 'Silver', color: '#C7D3E4', shade: '#455063' },
-  { tier: 'Gold', color: '#FFC24B', shade: '#6A4A0E' },
-  { tier: 'Platinum', color: '#7FD8FF', shade: '#18506B' },
-  { tier: 'Diamond', color: '#A46BE8', shade: '#3C1E63' },
-  { tier: 'Knight', color: '#FF6BD6', shade: '#5C1140' },
+/** The rank sprites live beside the rest of the art, served from this app's
+ *  own origin - a web view's CSP blocks the CDN they come from. */
+const RANK_ART = '/art/NeuraKnights/rank/';
+
+const TIERS: {
+  tier: LeagueTier;
+  color: string;
+  shade: string;
+  icon: string;
+}[] = [
+  {
+    tier: 'Bronze',
+    color: '#CD8B54',
+    shade: '#5E3A22',
+    icon: RANK_ART + 'Bronze.png',
+  },
+  {
+    tier: 'Silver',
+    color: '#C7D3E4',
+    shade: '#455063',
+    icon: RANK_ART + 'Silver.png',
+  },
+  {
+    tier: 'Gold',
+    color: '#FFC24B',
+    shade: '#6A4A0E',
+    icon: RANK_ART + 'Gold.png',
+  },
+  {
+    tier: 'Platinum',
+    color: '#7FD8FF',
+    shade: '#18506B',
+    icon: RANK_ART + 'Platinum.png',
+  },
+  {
+    tier: 'Diamond',
+    color: '#A46BE8',
+    shade: '#3C1E63',
+    icon: RANK_ART + 'Diamond.png',
+  },
+  // Knight's own sprite is the black-and-gold one, not another Gold.
+  {
+    tier: 'Knight',
+    color: '#FF6BD6',
+    shade: '#5C1140',
+    icon: RANK_ART + 'Goldblack.png',
+  },
 ];
+
+const NUMERALS = ['', 'I', 'II', 'III'];
 
 /** Floors, in ladder order. Bronze 1 opens at 500 rather than nothing: that is
  *  where every account starts AND the hard floor it can never fall through, so
@@ -74,6 +121,8 @@ export const LEAGUES: League[] = FLOORS.map((floor, idx) => {
     floor,
     color: t.color,
     shade: t.shade,
+    icon: t.icon,
+    numeral: NUMERALS[level] ?? '',
   };
 });
 

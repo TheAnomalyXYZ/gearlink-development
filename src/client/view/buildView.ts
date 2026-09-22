@@ -895,6 +895,10 @@ export const buildView = (app: GearLinkApp): View => {
     leagueName: myLeague.name.toUpperCase(),
     leagueColor: myLeague.color,
     leagueShade: myLeague.shade,
+    /* The rank sprite, same art the challenge post and Neura Knights use. */
+    leagueIcon: myLeague.icon,
+    leagueNumeral: myLeague.numeral,
+    leagueNumeralDisplay: myLeague.numeral ? 'block' : 'none',
     /* One pip per level, so Bronze 2 reads as the middle rung of its tier at a
        glance. Knight is a single rung and so shows one lit pip. */
     leaguePips: (myLeague.level === 0 ? [1] : [1, 2, 3]).map((n) => ({
