@@ -14,15 +14,17 @@
  */
 import { Component } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import { showToast } from '@devvit/web/client';
+import { navigateTo, showToast } from '@devvit/web/client';
 import { OrderResultStatus, purchase } from '@devvit/payments/client';
 import {
   DUEL_FTUE_STEPS,
+  DUEL_LOBBY_SIZE,
   DUEL_LOSS_TROPHIES,
   DUEL_MATCH_SECONDS,
   DUEL_THINK_MIN,
   DUEL_THINK_SKILL,
   DUEL_THINK_SPREAD,
+  DUEL_SETUP_STEPS,
   DUEL_WIN_TROPHIES,
   DUEL_STACK_MIN_H,
   EFFECT_LABEL,
@@ -51,12 +53,14 @@ import {
   isSuper,
   junkFor,
   magnitudeFor,
+  loadoutIsLegal,
   makeDuelSide,
   markMultX100,
   mulberry32,
   foeLoadout,
   orbTypeOf,
   ownedLoadout,
+  resolveLoadout,
   riderOf,
   scoreOf,
   REFILL_WEIGHT,
@@ -94,6 +98,7 @@ type Phase =
   | 'shop'
   | 'inventory'
   | 'opening'
+  | 'duelOptIn'
   | 'duelLobby'
   | 'duel';
 
@@ -167,6 +172,20 @@ export type AppState = {
   shopMsg: string | null;
   openPack: OpenState | null;
 
+  /* Which flow the hero and gear steps are serving. They are the same two
+     screens either way; what changes is where the five they build ends up -
+     in the run about to start, or in the duel loadout the ladder keeps. */
+  flow: 'run' | 'duel';
+  /** The run's own five, parked while the duel flow borrows the screens. */
+  runSaved: { cls: HeroClass; picked: string[] } | null;
+  duelSetup: number | null;
+  duelSaving: boolean;
+  duelOpponents: DuelFoe[];
+  duelCursor: number;
+  duelLoading: boolean;
+  duelPadded: boolean;
+  challengeUrl: string | null;
+
   duel: DuelState | null;
   duelFoe: DuelFoe | null;
   duelOutcome: DuelOutcome | null;
@@ -199,6 +218,10 @@ const EMPTY_PROFILE: Profile = {
   best: null,
   seenFtue: true,
   seenDuelFtue: true,
+  seenDuelSetup: true,
+  duelCls: null,
+  duelPicked: [],
+  duelListed: false,
 };
 
 /** The design ships mutators as authoring knobs; this build runs the base rules. */
@@ -307,6 +330,16 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     invTab: 'packs',
     shopMsg: null,
     openPack: null,
+    flow: 'run',
+    runSaved: null,
+    duelSetup: null,
+    duelSaving: false,
+    duelOpponents: [],
+    duelCursor: 0,
+    duelLoading: false,
+    duelPadded: false,
+    challengeUrl: null,
+
     duel: null,
     duelFoe: null,
     duelOutcome: null,
@@ -1329,12 +1362,185 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     return this.duelRngs[side]!;
   }
 
-  goDuelLobby = (): void =>
+  /* ---------- duel setup ---------- */
+
+  /** The duel loadout as gear, or null while it is still unbuilt. */
+  private duelLoadout(): Gear[] | null {
+    const p = this.state.profile;
+    if (!p.duelCls || !loadoutIsLegal(p.duelPicked, p.duelCls)) return null;
+    const g = resolveLoadout(p.duelPicked);
+    return g.length === 5 ? g : null;
+  }
+
+  /**
+   * DUEL, from the bottom bar. A player with no duel loadout is sent to build
+   * one first - the mode's first ask is the build, not a fight, because the
+   * five you list are what other people's lobbies will hand their bot.
+   */
+  goDuelLobby = (): void => {
+    if (!this.duelLoadout()) {
+      this.enterDuelSetup();
+      return;
+    }
     this.setState({ phase: 'duelLobby', duelFoe: null, duelOutcome: null });
+    void this.loadOpponents(this.state.duelCursor);
+  };
+
+  /** Borrow the hero and gear screens for the duel build, parking the run's own
+   *  five so a duel rebuild never costs the player the run they had set up. */
+  enterDuelSetup = (): void => {
+    const p = this.state.profile;
+    const cls = p.duelCls ?? this.state.heroClass;
+    const picked =
+      p.duelCls && loadoutIsLegal(p.duelPicked, p.duelCls)
+        ? p.duelPicked.slice()
+        : ownedLoadout(cls, p.gear);
+    this.setState((st) => ({
+      phase: 'hero',
+      flow: 'duel',
+      runSaved: st.runSaved ?? { cls: st.heroClass, picked: st.picked.slice() },
+      heroClass: cls,
+      picked,
+      tab: 'attack',
+      lastGear: null,
+      peek: null,
+      duelSetup: p.seenDuelSetup ? null : 0,
+      homeMenu: false,
+    }));
+  };
+
+  /** Hand the screens back to the run, with the five it had before. */
+  private restoreRunLoadout(): Pick<
+    AppState,
+    'flow' | 'runSaved' | 'heroClass' | 'picked' | 'duelSetup'
+  > {
+    const saved = this.state.runSaved;
+    return {
+      flow: 'run',
+      runSaved: null,
+      heroClass: saved ? saved.cls : this.state.heroClass,
+      picked: saved ? saved.picked : this.state.picked,
+      duelSetup: null,
+    };
+  }
+
+  leaveDuelSetup = (): void =>
+    this.setState({ ...this.restoreRunLoadout(), phase: 'home', peek: null });
+
+  goDuelOptIn = (): void => {
+    if (this.state.picked.length !== 5) return;
+    this.setState({ phase: 'duelOptIn', peek: null });
+  };
+
+  nextDuelSetup = (): void =>
+    this.setState((s) =>
+      s.duelSetup === null
+        ? null
+        : { duelSetup: Math.min(s.duelSetup + 1, DUEL_SETUP_STEPS.length - 1) }
+    );
+
+  skipDuelSetup = (): void => {
+    this.setState({ duelSetup: null });
+    void api
+      .ftueSeen('duelSetup')
+      .then((r) => this.adopt(r.profile))
+      .catch(() => undefined);
+  };
+
+  /** The opt-in itself. Listing puts the five in the pool at this account's
+   *  trophy count and shares a challenge post; staying out saves the loadout
+   *  and nothing else - duelling still works either way. */
+  private saveDuelLoadout(listed: boolean): void {
+    if (this.state.duelSaving) return;
+    const cls = this.state.heroClass;
+    const picked = this.state.picked;
+    if (!loadoutIsLegal(picked, cls)) return;
+    this.setState({ duelSaving: true, duelSetup: null });
+    void api
+      .saveDuelLoadout({ cls, picked, listed })
+      .then((r) => {
+        this.adopt(r.profile);
+        this.setState({
+          ...this.restoreRunLoadout(),
+          duelSaving: false,
+          phase: 'duelLobby',
+          duelFoe: null,
+          duelOutcome: null,
+        });
+        void this.loadOpponents(0);
+        if (listed) this.postChallenge();
+      })
+      .catch((e) => {
+        this.setState({ duelSaving: false });
+        this.fail(e);
+      });
+  }
+
+  listAndShare = (): void => this.saveDuelLoadout(true);
+  saveUnlisted = (): void => this.saveDuelLoadout(false);
+
+  /** Toggle listing from the lobby, without walking the build again. */
+  toggleListed = (): void => {
+    const next = !this.state.profile.duelListed;
+    void api
+      .setDuelListed(next)
+      .then((r) => this.adopt(r.profile, r.message))
+      .catch(this.fail);
+  };
+
+  /** Share the challenge. A post is the only way this reaches people who are
+   *  not already in the app, so it is its own action rather than a side effect
+   *  the player cannot repeat. */
+  postChallenge = (): void => {
+    void api
+      .duelChallenge()
+      .then((r) => {
+        this.setState({ challengeUrl: r.url });
+        try {
+          showToast('Challenge posted. Tap VIEW POST to open it.');
+        } catch {
+          /* toast is a nicety; the url is on screen either way */
+        }
+      })
+      .catch(this.fail);
+  };
+
+  openChallenge = (): void => {
+    const url = this.state.challengeUrl;
+    if (url) navigateTo(url);
+  };
+
+  /* ---------- the lobby ---------- */
+
+  private async loadOpponents(cursor: number): Promise<void> {
+    this.setState({ duelLoading: true });
+    try {
+      const r = await api.duelOpponents(cursor);
+      this.setState({
+        duelOpponents: r.opponents,
+        duelCursor: cursor,
+        duelPadded: r.padded,
+        duelLoading: false,
+      });
+    } catch (e) {
+      this.setState({ duelLoading: false });
+      this.fail(e);
+    }
+  }
+
+  /** REFRESH walks the window along rather than re-rolling it, so pressing it
+   *  twice shows you two different neighbourhoods and not the same five. */
+  refreshOpponents = (): void => {
+    if (this.state.duelLoading) return;
+    void this.loadOpponents(this.state.duelCursor + DUEL_LOBBY_SIZE);
+  };
 
   startDuel = (foe: DuelFoe) => (): void => {
-    const mine = this.loadout();
-    if (mine.length !== 5) return;
+    const mine = this.duelLoadout();
+    if (!mine) {
+      this.enterDuelSetup();
+      return;
+    }
     this.duelRngs = {};
     this.duelStartedAt = Date.now();
     this.setState({
@@ -1359,10 +1565,15 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       foeSaid: '',
       duelFtue: this.state.profile.seenDuelFtue ? null : 0,
       duel: {
-        me: makeDuelSide(this.state.heroClass, mine, 1, this.duelRng('me')),
+        me: makeDuelSide(
+          this.state.profile.duelCls ?? this.state.heroClass,
+          mine,
+          1,
+          this.duelRng('me')
+        ),
         foe: makeDuelSide(
           foe.cls,
-          foeLoadout(foe.cls),
+          foeLoadout(foe.cls, foe.picked),
           foe.skill,
           this.duelRng('foe')
         ),
@@ -1622,8 +1833,14 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       },
       busy: false,
     });
+    const foe = this.state.duelFoe;
     void api
-      .duelResult({ foe: this.state.duelFoe?.name ?? '', won, seconds })
+      .duelResult({
+        foe: foe?.name ?? '',
+        ...(foe && foe.kind === 'player' ? { foeId: foe.id } : {}),
+        won,
+        seconds,
+      })
       .then((r) => {
         const before = this.state.profile.trophies;
         this.adopt(r.profile);
@@ -1648,6 +1865,9 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     for (const t of [this.duelBot, this.foeT1, this.foeT2, this.foeT3])
       clearTimeout(t);
     this.setState({ phase: 'duelLobby', duelOutcome: null });
+    // The result moved the trophy count, so the band the lobby matched against
+    // is stale the moment the duel ends.
+    void this.loadOpponents(this.state.duelCursor);
   };
 
   /* ---------- shop / bag / packs ---------- */

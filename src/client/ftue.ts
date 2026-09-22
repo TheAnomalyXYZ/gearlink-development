@@ -128,3 +128,10 @@ export const findAttackLink = (
   }
   return best ? best.path : null;
 };
+
+/**
+ * Which phase each duel SETUP step belongs to. The setup card is an overlay on
+ * the screen that step is about, so it never floats over a screen the player
+ * cannot act on - and the step only appears once its own phase is showing.
+ */
+export const DUEL_SETUP_PHASE: string[] = ['hero', 'hero', 'gear', 'duelOptIn'];

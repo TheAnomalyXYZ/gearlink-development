@@ -35,6 +35,10 @@ const profile: Profile = {
   best: { score: 4210, waves: 7, chain: 6, hero: 'Hero' },
   seenFtue: false,
   seenDuelFtue: false,
+  seenDuelSetup: false,
+  duelCls: 'Hero',
+  duelPicked: defaultLoadout('Hero'),
+  duelListed: true,
 };
 
 const run = new Run({
@@ -114,6 +118,39 @@ const fakeApp = (over: Record<string, unknown>): GearLinkApp => {
     invTab: 'packs',
     shopMsg: null,
     openPack: null,
+    flow: 'run',
+    runSaved: null,
+    duelSetup: null,
+    duelSaving: false,
+    duelOpponents: [
+      {
+        kind: 'player',
+        id: 't2_abc',
+        name: 'duellist',
+        cls: 'Archer',
+        rating: 1020,
+        skill: 0.8,
+        blurb: 'Gold 2 - duels as Archer',
+        avatar: 'https://example.invalid/snoo.png',
+        picked: defaultLoadout('Archer'),
+      },
+      {
+        kind: 'bot',
+        id: 'bot:sledge',
+        name: 'Sledge',
+        cls: 'Hero',
+        rating: 1100,
+        skill: 0.72,
+        blurb: 'Gold 2 - Trades blows. Blocks late.',
+        avatar: '',
+        picked: [],
+      },
+    ],
+    duelCursor: 0,
+    duelLoading: false,
+    duelPadded: true,
+    challengeUrl: 'https://reddit.com/r/test/comments/abc',
+
     duel: null,
     duelFoe: null,
     duelOutcome: null,
@@ -190,6 +227,17 @@ const fakeApp = (over: Record<string, unknown>): GearLinkApp => {
     goShop: noop,
     goInventory: noop,
     goDuelLobby: noop,
+    goDuelOptIn: noop,
+    enterDuelSetup: noop,
+    leaveDuelSetup: noop,
+    nextDuelSetup: noop,
+    skipDuelSetup: noop,
+    listAndShare: noop,
+    saveUnlisted: noop,
+    toggleListed: noop,
+    postChallenge: noop,
+    openChallenge: noop,
+    refreshOpponents: noop,
     leaveDuel: noop,
     duelAgain: noop,
     revealNext: noop,
@@ -248,6 +296,28 @@ void test('every screen renders', () => {
   renders('bag', { phase: 'inventory' });
   renders('collection', { phase: 'inventory', invTab: 'gear' });
   renders('duel lobby', { phase: 'duelLobby' });
+  renders('duel opt-in', { phase: 'duelOptIn', flow: 'duel' });
+  renders('duel hero picker', { phase: 'hero', flow: 'duel' });
+});
+
+void test('the duel setup coaching renders at every step', () => {
+  for (let i = 0; i < 4; i++)
+    renders('duel setup ' + i, {
+      phase: ['hero', 'hero', 'gear', 'duelOptIn'][i],
+      flow: 'duel',
+      duelSetup: i,
+      lastGear: defaultLoadout('Hero')[0],
+    });
+});
+
+void test('a lobby with nobody listed still fills with bots', () => {
+  const html = renders('empty pool', {
+    phase: 'duelLobby',
+    duelOpponents: [],
+    duelPadded: true,
+    duelLoading: true,
+  });
+  assert.ok(html.includes('REFRESH'), 'the refresh control went missing');
 });
 
 void test('the battle HUD renders through a whole turn cycle', () => {
@@ -274,14 +344,18 @@ void test('the battle HUD renders through a whole turn cycle', () => {
 void test('a duel renders on both layouts and at its end', () => {
   const duel = {
     me: makeDuelSide('Hero', run.loadout, 1, rng),
-    foe: makeDuelSide('Mage', foeLoadout('Mage'), 0.9, rng),
+    foe: makeDuelSide('Mage', foeLoadout('Mage', []), 0.9, rng),
   };
   const foe = {
-    name: 'Emberwright',
+    kind: 'player',
+    id: 't2_xyz',
+    name: 'emberwright',
     cls: 'Mage',
     rating: 1240,
     skill: 0.94,
     blurb: '',
+    avatar: '',
+    picked: [],
   };
   renders('duel stacked', { phase: 'duel', duel, duelFoe: foe });
   renders('duel compact', {

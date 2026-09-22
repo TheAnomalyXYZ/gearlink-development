@@ -3,6 +3,7 @@ export * from './constants.js';
 export * from './duel.js';
 export * from './economy.js';
 export * from './gear.js';
+export * from './league.js';
 export * from './monsters.js';
 export * from './replay.js';
 export * from './rng.js';

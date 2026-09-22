@@ -39,11 +39,13 @@ import {
   HERO_PERKS,
   NO_STATUS,
   defaultLoadout,
+  loadoutIsLegal,
   markMultX100,
   resolveLoadout,
   riderOf,
 } from './gear.js';
 import type { Gear, HeroClass, Mutators, Rider, Status } from './types.js';
+import { TOP_LEAGUE, TROPHY_FLOOR } from './league.js';
 import { NO_MUTATORS } from './run.js';
 
 export const DUEL_HP = 60;
@@ -71,8 +73,7 @@ export const DUEL_STACK_MIN_H = 576;
 
 /** Junk reuses the library's Ignore sprite - there is no junk art in the
  *  collection, and "ignore" is the right read for a tile you cannot link. */
-export const JUNK_ICON =
-  '/art/PocketKnights/Battle/Effects/Ignore.png';
+export const JUNK_ICON = '/art/PocketKnights/Battle/Effects/Ignore.png';
 
 /** Junk is ARMOURED: a clear beside it only cracks it, and only an orthogonal
  *  clear counts. Two passes to break one cell, or a bomb through it. The value
@@ -86,35 +87,118 @@ export const junkFor = (len: number): number =>
     ? 0
     : Math.min(DUEL_JUNK_CAP, len - (DUEL_JUNK_MIN_LINK - 1));
 
+/**
+ * An opponent in the lobby. A duel is always played against the LOCAL bot -
+ * there is no live socket between two Reddit clients - but who that bot is
+ * playing as changes: `kind: 'player'` carries a real, opted-in Reddit
+ * account's duel loadout, avatar and trophy count, and the bot drives their
+ * kit on their behalf. `kind: 'bot'` is the house roster, used to pad the
+ * list out when the pool has nobody at your rating yet.
+ */
 export type DuelFoe = {
+  kind: 'player' | 'bot';
+  /** Reddit user id for a player, the roster id for a bot. */
+  id: string;
+  /** Reddit handle for a player (no u/ prefix), the bot's name otherwise. */
   name: string;
   cls: HeroClass;
+  /** Trophies. Named `rating` since the arena header has always called it that. */
   rating: number;
   skill: number;
   blurb: string;
+  /** Snoovatar for a player; empty for a bot, which falls back to class art. */
+  avatar: string;
+  /** Their five gear ids. Empty means "use the class default". */
+  picked: string[];
 };
 
-export const DUEL_FOES: DuelFoe[] = [
+/** The span of the ladder, Bronze 1's floor to Knight's - what a rating is
+ *  measured against, so the numbers below move with the league table instead
+ *  of hard-coding its ends twice. */
+const LADDER_SPAN = TOP_LEAGUE.floor - TROPHY_FLOOR;
+
+/** How well the bot plays a player's kit, by how far up the ladder they sit.
+ *  A duel against someone's loadout should get harder as you climb, without
+ *  the lobby needing to store a skill rating nobody earned. */
+export const skillForTrophies = (trophies: number): number => {
+  const up = Math.max(0, Math.min(LADDER_SPAN, trophies - TROPHY_FLOOR));
+  return 0.62 + (up / LADDER_SPAN) * 0.35;
+};
+
+const BOT_NAMES = [
+  'Sledge',
+  'Quillon',
+  'Emberwright',
+  'Tallow',
+  'Rookvane',
+  'Coilspur',
+  'Mirelight',
+  'Harrowgate',
+  'Voss',
+  'Pellingrove',
+  'Stagwick',
+  'Thornmere',
+];
+const BOT_BLURBS = [
+  'Trades blows. Blocks late.',
+  'Hunts long links for the junk.',
+  'Burns, then buries you in junk.',
+  'Digs out fast. Punishes a slow board.',
+  'Holds block, then swings for the kill.',
+  'Sends junk before it sends damage.',
+];
+const BOT_CLASSES: HeroClass[] = ['Hero', 'Archer', 'Mage'];
+
+/** The house roster, spread the length of the ladder so a lobby at any rating
+ *  can always be filled. Deterministic: the same rung is always the same foe,
+ *  so a refresh reshuffles who you see rather than reinventing them. */
+export const DUEL_BOTS: DuelFoe[] = BOT_NAMES.map((name, i) => {
+  // One bot per rung of the ladder's lower reaches and one at the top, so
+  // every band a player can sit in has a house foe near it.
+  const rating =
+    TROPHY_FLOOR +
+    Math.round((i / (BOT_NAMES.length - 1)) * (LADDER_SPAN + 200));
+  return {
+    kind: 'bot' as const,
+    id: 'bot:' + name.toLowerCase(),
+    name,
+    cls: BOT_CLASSES[i % BOT_CLASSES.length]!,
+    rating,
+    skill: skillForTrophies(rating),
+    blurb: BOT_BLURBS[i % BOT_BLURBS.length]!,
+    avatar: '',
+    picked: [],
+  };
+});
+
+/** How many opponents the lobby shows at once. */
+export const DUEL_LOBBY_SIZE = 5;
+/** Only opponents inside this trophy band are considered "close" - past it the
+ *  list widens rather than showing nobody. */
+export const DUEL_MATCH_BAND = 250;
+
+/**
+ * Setup coaching, shown once before a player's first duel. It runs BEFORE the
+ * lobby rather than inside a match: a duel loadout is a thing you keep and put
+ * your name to, so the first thing the mode asks for is the build, not a fight.
+ * The last step is the opt-in, which is a real choice and so has no Next.
+ */
+export const DUEL_SETUP_STEPS = [
   {
-    name: 'Sledge',
-    cls: 'Hero',
-    rating: 1120,
-    skill: 0.72,
-    blurb: 'Trades blows. Blocks late.',
+    title: 'Duels are a different fight',
+    body: 'No monsters and no waves. Two boards, two HP pools, and everything you link either hits your opponent or buries their grid.',
   },
   {
-    name: 'Quillon',
-    cls: 'Archer',
-    rating: 1180,
-    skill: 0.85,
-    blurb: 'Hunts long links for the junk.',
+    title: 'Pick who you duel as',
+    body: 'Your duel hero is kept separately from your gauntlet run, so climbing the ladder never means rebuilding the run you like.',
   },
   {
-    name: 'Emberwright',
-    cls: 'Mage',
-    rating: 1240,
-    skill: 0.94,
-    blurb: 'Burns, then buries you in junk.',
+    title: 'Build the five you defend with',
+    body: 'These five pieces are what you attack with AND what the ladder hands your opponents when they challenge you while you are away.',
+  },
+  {
+    title: 'Then put your name to it',
+    body: "Listing your loadout puts you in the opponent pool at your trophy count. Stay out and you can still duel - you just will not show up in anybody else's lobby.",
   },
 ];
 
@@ -182,8 +266,12 @@ export const makeDuelSide = (
   ),
 });
 
-export const foeLoadout = (cls: HeroClass): Gear[] =>
-  resolveLoadout(defaultLoadout(cls));
+/** The five an opponent fights with. A listed player carries their own; a bot,
+ *  or a listing too old to still resolve, falls back to the class default. */
+export const foeLoadout = (cls: HeroClass, picked?: string[]): Gear[] =>
+  picked && loadoutIsLegal(picked, cls)
+    ? resolveLoadout(picked)
+    : resolveLoadout(defaultLoadout(cls));
 
 /** Junk survives a collapse as junk, so the refill never overwrites it. */
 const duelCollapse = (

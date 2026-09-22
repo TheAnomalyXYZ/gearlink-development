@@ -13,8 +13,8 @@ import {
   BTN,
   COIN_BUNDLES,
   COIN_ICON,
-  DUEL_FOES,
   DUEL_FTUE_STEPS,
+  DUEL_SETUP_STEPS,
   DUEL_HP,
   DUEL_JUNK_MIN_LINK,
   DUEL_MATCH_SECONDS,
@@ -40,6 +40,10 @@ import {
   RIDERS,
   WAVE_ENEMIES,
   colOf,
+  leagueOf,
+  leagueProgress,
+  nextLeague,
+  toNextLeague,
   enemyDisplayForWave,
   getGearImageUrl,
   isJunk,
@@ -53,7 +57,13 @@ import {
   rowOf,
 } from '../../shared/engine/index.js';
 import { BOMB_ICON, GEARLINK_ICON, NAV_ICON } from './assets.js';
-import { FTUE_COPY, FTUE_DOING, FTUE_LEGEND, FTUE_ORDER } from '../ftue.js';
+import {
+  DUEL_SETUP_PHASE,
+  FTUE_COPY,
+  FTUE_DOING,
+  FTUE_LEGEND,
+  FTUE_ORDER,
+} from '../ftue.js';
 
 export type View = Record<string, any>;
 
@@ -68,6 +78,30 @@ export const buildView = (app: GearLinkApp): View => {
   const RID = RIDERS as Record<string, NonNullable<(typeof RIDERS)['burn']>>;
   const st = app.state as any;
   const loadout = app.loadout();
+  const myLeague = leagueOf(st.profile.trophies);
+  const upLeague = nextLeague(st.profile.trophies);
+  const toNext = toNextLeague(st.profile.trophies);
+
+  /** Five read-only gear tiles, for the screens that SHOW a loadout rather
+   *  than edit it - the opt-in card and the lobby's own row. */
+  const duelSlotTiles = (picked: string[]) =>
+    [0, 1, 2, 3, 4].map((i) => {
+      const id = picked[i];
+      const g = id ? GEAR.find((x) => x.id === id) : null;
+      let ordinal = 0;
+      if (g)
+        for (let k = 0; k < i; k++) {
+          const p = GEAR.find((x) => x.id === picked[k]);
+          if (p && p.effect === g.effect) ordinal++;
+        }
+      return {
+        icon: g ? getGearImageUrl(g.id) || EFFECT_ICON[g.effect] : '',
+        bg: g
+          ? EFFECT_TINTS[g.effect]![Math.min(ordinal, 2)]
+          : 'rgba(0,0,0,.4)',
+        opacity: g ? 1 : 0.35,
+      };
+    });
   const perk = app.perk();
   const bs = st.bs;
 
@@ -856,15 +890,107 @@ export const buildView = (app: GearLinkApp): View => {
     goDuelLobby: app.goDuelLobby,
     leaveDuel: app.leaveDuel,
     duelAgain: app.duelAgain,
-    duelFoes: DUEL_FOES.map((f) => ({
-      name: f.name,
-      blurb: f.blurb,
-      rating: f.rating,
-      cls: f.cls.toUpperCase(),
-      img: (PERKS[f.cls] || PERKS['Hero']!).img,
-      perk: (PERKS[f.cls] || PERKS['Hero']!).line,
-      run: app.startDuel(f),
+
+    /* ---------- the ladder ---------- */
+    leagueName: myLeague.name.toUpperCase(),
+    leagueColor: myLeague.color,
+    leagueShade: myLeague.shade,
+    /* One pip per level, so Bronze 2 reads as the middle rung of its tier at a
+       glance. Knight is a single rung and so shows one lit pip. */
+    leaguePips: (myLeague.level === 0 ? [1] : [1, 2, 3]).map((n) => ({
+      bg:
+        myLeague.level === 0 || n <= myLeague.level
+          ? myLeague.color
+          : 'rgba(255,255,255,.18)',
     })),
+    leaguePct: Math.round(leagueProgress(st.profile.trophies) * 100) + '%',
+    leagueNextName: upLeague
+      ? upLeague.name.toUpperCase()
+      : 'TOP OF THE LADDER',
+    leagueNextLine:
+      toNext === null
+        ? 'Knight is the last rung. Everything above it is defending it.'
+        : toNext + ' more trophies to ' + upLeague!.name + '.',
+
+    /* ---------- duel setup coaching ---------- */
+    duelSetupDisplay:
+      st.duelSetup !== null && DUEL_SETUP_PHASE[st.duelSetup] === st.phase
+        ? 'flex'
+        : 'none',
+    duelSetupTitle:
+      st.duelSetup === null
+        ? ''
+        : (DUEL_SETUP_STEPS[st.duelSetup]?.title ?? ''),
+    duelSetupBody:
+      st.duelSetup === null ? '' : (DUEL_SETUP_STEPS[st.duelSetup]?.body ?? ''),
+    duelSetupDots: DUEL_SETUP_STEPS.map((_, i) => ({
+      bg: i === st.duelSetup ? '#FCE370' : 'rgba(255,255,255,.22)',
+    })),
+    /* The last step IS the opt-in, and that is a real choice - so it has no
+       Next to press past it with. */
+    duelSetupNextDisplay:
+      st.duelSetup !== null && st.duelSetup < DUEL_SETUP_STEPS.length - 1
+        ? 'flex'
+        : 'none',
+    nextDuelSetup: app.nextDuelSetup,
+    skipDuelSetup: app.skipDuelSetup,
+
+    /* ---------- opt-in ---------- */
+    isDuelOptIn: st.phase === 'duelOptIn',
+    duelOptInCls: st.heroClass.toUpperCase(),
+    duelOptInImg: (PERKS[st.heroClass] || PERKS['Hero']!).img,
+    duelOptInPerk: (PERKS[st.heroClass] || PERKS['Hero']!).line,
+    duelOptInSlots: duelSlotTiles(st.picked),
+    duelOptInBusy: st.duelSaving ? 0.5 : 1,
+    listAndShare: app.listAndShare,
+    saveUnlisted: app.saveUnlisted,
+    backToDuelGear: app.goStep('gear'),
+
+    /* ---------- lobby ---------- */
+    duelListed: !!st.profile.duelListed,
+    duelListedLabel: st.profile.duelListed ? 'LISTED' : 'NOT LISTED',
+    duelListedColor: st.profile.duelListed ? '#AEE45D' : '#9DB4D4',
+    duelListedLine: st.profile.duelListed
+      ? 'Other duellists near your trophies can draw you as an opponent.'
+      : 'You are hidden from other lobbies. You can still duel anyone here.',
+    duelListedToggleLabel: st.profile.duelListed ? 'GO PRIVATE' : 'LIST ME',
+    toggleListed: app.toggleListed,
+    postChallenge: app.postChallenge,
+    openChallenge: app.openChallenge,
+    challengeDisplay: st.challengeUrl ? 'flex' : 'none',
+    shareDisplay: st.profile.duelListed ? 'flex' : 'none',
+    editDuelLoadout: app.enterDuelSetup,
+    leaveDuelSetup: app.leaveDuelSetup,
+    myDuelCls: (st.profile.duelCls ?? st.heroClass).toUpperCase(),
+    myDuelImg: (PERKS[st.profile.duelCls ?? st.heroClass] || PERKS['Hero']!)
+      .img,
+    myDuelSlots: duelSlotTiles(st.profile.duelPicked ?? []),
+
+    refreshOpponents: app.refreshOpponents,
+    refreshOpacity: st.duelLoading ? 0.5 : 1,
+    duelPaddedDisplay: st.duelPadded ? 'block' : 'none',
+    duelListEmptyDisplay:
+      st.duelLoading && !st.duelOpponents.length ? 'block' : 'none',
+    /* Reddit handles and snoovatars, not the game's class art: the row has to
+       read as a PERSON you are challenging. Class art is the fallback for the
+       house bots, which have no Reddit account behind them. */
+    duelFoes: (st.duelOpponents as any[]).map((f) => {
+      const lg = leagueOf(f.rating);
+      return {
+        name: f.kind === 'player' ? 'u/' + f.name : f.name,
+        blurb: f.blurb,
+        rating: f.rating,
+        cls: f.cls.toUpperCase(),
+        img: f.avatar || (PERKS[f.cls] || PERKS['Hero']!).img,
+        avatarFit: f.avatar ? 'cover' : 'contain',
+        badge: lg.name.toUpperCase(),
+        badgeColor: lg.color,
+        badgeBg: lg.shade,
+        tagDisplay: f.kind === 'bot' ? 'flex' : 'none',
+        perk: (PERKS[f.cls] || PERKS['Hero']!).line,
+        run: app.startDuel(f),
+      };
+    }),
     duelRules: [
       {
         k: 'ATTACK',
@@ -1084,7 +1210,10 @@ export const buildView = (app: GearLinkApp): View => {
       return {
         duelFoeName: (st.duelFoe || {}).name || '',
         duelFoeNameUpper: fname,
-        duelFoeImg: (PERKS[d.foe.cls] || PERKS['Hero']!).img,
+        /* The arena keeps the face the lobby showed: a snoovatar when you are
+           duelling a real account's loadout, class art for a house bot. */
+        duelFoeImg:
+          (st.duelFoe || {}).avatar || (PERKS[d.foe.cls] || PERKS['Hero']!).img,
         duelMyImg: (PERKS[d.me.cls] || PERKS['Hero']!).img,
         duelMyHp: d.me.hp,
         duelFoeHp: d.foe.hp,
@@ -1615,10 +1744,17 @@ export const buildView = (app: GearLinkApp): View => {
     ],
     isHeroStep: st.phase === 'hero',
     isGearStep: st.phase === 'gear',
+    /* The hero and gear screens serve both flows, so their footers name the
+       flow they are in - a duel build that ended in "ENTER THE ARENA" would
+       read as starting a run. */
+    isDuelFlow: st.flow === 'duel',
+    heroStepTitle: st.flow === 'duel' ? 'PICK YOUR DUELLIST' : 'PICK YOUR HERO',
+    startLabel: st.flow === 'duel' ? 'SAVE THIS FIVE' : 'ENTER THE ARENA',
+    startRun: st.flow === 'duel' ? app.goDuelOptIn : app.startRun,
     heroStepActions: [
       {
-        label: 'HOME',
-        run: app.goStep('home'),
+        label: st.flow === 'duel' ? 'CANCEL' : 'HOME',
+        run: st.flow === 'duel' ? app.leaveDuelSetup : app.goStep('home'),
         h: '46px',
         size: '13px',
         flex: '0 0 34%',
@@ -1791,7 +1927,6 @@ export const buildView = (app: GearLinkApp): View => {
       st.picked.length === 5
         ? 'Five orb types go on the board, one per equipped card.'
         : 'Equip five cards to fill the board.',
-    startRun: app.startRun,
     startBg: st.picked.length === 5 ? BTN.primary.bg : BTN.disabled.bg,
     startShadow:
       st.picked.length === 5 ? BTN.primary.shadow : BTN.disabled.shadow,

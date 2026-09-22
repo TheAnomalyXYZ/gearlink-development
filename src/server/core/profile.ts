@@ -7,8 +7,9 @@
  */
 import { redis } from '@devvit/web/server';
 import type { BestRun, Profile } from '../../shared/api.js';
-import { STARTER_GEAR } from '../../shared/engine/gear.js';
+import { STARTER_GEAR, loadoutIsLegal } from '../../shared/engine/gear.js';
 import { PACKS } from '../../shared/engine/economy.js';
+import { TROPHY_FLOOR } from '../../shared/engine/league.js';
 import type { HeroClass } from '../../shared/engine/types.js';
 
 const profileKey = (userId: string) => `profile:${userId}`;
@@ -18,10 +19,10 @@ const profileKey = (userId: string) => `profile:${userId}`;
  *  affordable buy. */
 const STARTING_COINS = 250;
 const STARTING_GEMS = 60;
-/** Every duellist opens on the same number, so a rating is only ever what the
- *  player did with it. The lobby's foes sit above this on purpose - the weakest
- *  is +120 - so the ladder always has somewhere to climb. */
-const STARTING_TROPHIES = 1000;
+/** Every duellist opens on Bronze 1's floor, which is also the lowest a trophy
+ *  count can go - so a rating is only ever what the player did with it, and a
+ *  losing streak costs rungs without ever dropping anyone off the ladder. */
+const STARTING_TROPHIES = TROPHY_FLOOR;
 
 const num = (raw: string | undefined, fallback: number): number => {
   const n = raw === undefined ? NaN : Number(raw);
@@ -44,6 +45,27 @@ const obj = (raw: string | undefined): Record<string, number> => {
     return {};
   }
 };
+
+/** A stored duel loadout is only honoured if it still resolves to five legal
+ *  pieces of its own class - a card table that changed under a save must not
+ *  hand somebody a four-orb board. */
+const parsePicked = (
+  raw: string | undefined,
+  cls: HeroClass | null
+): string[] => {
+  if (!raw || !cls) return [];
+  try {
+    const p: unknown = JSON.parse(raw);
+    if (!Array.isArray(p)) return [];
+    const ids = p.filter((x): x is string => typeof x === 'string');
+    return loadoutIsLegal(ids, cls) ? ids : [];
+  } catch {
+    return [];
+  }
+};
+
+const parseCls = (raw: string | undefined): HeroClass | null =>
+  raw === 'Hero' || raw === 'Archer' || raw === 'Mage' ? raw : null;
 
 const parseBest = (raw: string | undefined): BestRun | null => {
   if (!raw) return null;
@@ -92,6 +114,8 @@ export const loadProfile = async (
   for (const [id, n] of Object.entries(STARTER_GEAR()))
     if (!(gear[id]! > 0)) gear[id] = n;
 
+  const duelCls = parseCls(h['duelCls']);
+
   return {
     username,
     coins: num(h['coins'], STARTING_COINS),
@@ -102,6 +126,10 @@ export const loadProfile = async (
     best: parseBest(h['best']),
     seenFtue: h['seenFtue'] === '1',
     seenDuelFtue: h['seenDuelFtue'] === '1',
+    seenDuelSetup: h['seenDuelSetup'] === '1',
+    duelCls,
+    duelPicked: parsePicked(h['duelPicked'], duelCls),
+    duelListed: h['duelListed'] === '1',
   };
 };
 
@@ -116,6 +144,10 @@ export type ProfilePatch = Partial<
     | 'best'
     | 'seenFtue'
     | 'seenDuelFtue'
+    | 'seenDuelSetup'
+    | 'duelCls'
+    | 'duelPicked'
+    | 'duelListed'
   >
 >;
 
@@ -129,7 +161,9 @@ export const saveProfile = async (
   if (patch.gems !== undefined)
     fields['gems'] = String(Math.max(0, Math.floor(patch.gems)));
   if (patch.trophies !== undefined)
-    fields['trophies'] = String(Math.max(0, Math.floor(patch.trophies)));
+    fields['trophies'] = String(
+      Math.max(TROPHY_FLOOR, Math.floor(patch.trophies))
+    );
   if (patch.gear !== undefined) fields['gear'] = JSON.stringify(patch.gear);
   if (patch.packs !== undefined) fields['packs'] = JSON.stringify(patch.packs);
   if (patch.best !== undefined) fields['best'] = JSON.stringify(patch.best);
@@ -137,6 +171,13 @@ export const saveProfile = async (
     fields['seenFtue'] = patch.seenFtue ? '1' : '0';
   if (patch.seenDuelFtue !== undefined)
     fields['seenDuelFtue'] = patch.seenDuelFtue ? '1' : '0';
+  if (patch.seenDuelSetup !== undefined)
+    fields['seenDuelSetup'] = patch.seenDuelSetup ? '1' : '0';
+  if (patch.duelCls !== undefined) fields['duelCls'] = patch.duelCls ?? '';
+  if (patch.duelPicked !== undefined)
+    fields['duelPicked'] = JSON.stringify(patch.duelPicked);
+  if (patch.duelListed !== undefined)
+    fields['duelListed'] = patch.duelListed ? '1' : '0';
   if (!Object.keys(fields).length) return;
   await redis.hSet(profileKey(userId), fields);
 };

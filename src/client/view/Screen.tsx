@@ -638,7 +638,7 @@ export const Screen = ({ v }: { v: View }) => (
                   letterSpacing: '.02em',
                 }}
               >
-                PICK YOUR HERO
+                {v.heroStepTitle}
               </div>
 
               <div
@@ -1673,7 +1673,7 @@ export const Screen = ({ v }: { v: View }) => (
                     opacity: v.startOpacity,
                   }}
                 >
-                  ENTER THE ARENA
+                  {v.startLabel}
                 </div>
               </div>
             </div>
@@ -4025,6 +4025,180 @@ export const Screen = ({ v }: { v: View }) => (
           </>
         ) : null}
 
+        {v.isDuelOptIn ? (
+          <>
+            <div
+              style={{
+                flex: '1',
+                minHeight: '0',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+                padding: '14px',
+                background: '#283C74',
+                overflowY: 'auto',
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: "'Yoster Island',Volter,monospace",
+                  fontSize: '17px',
+                  color: '#FFF2B0',
+                  flexShrink: '0',
+                }}
+              >
+                PUT YOUR NAME TO IT
+              </div>
+              <div
+                style={{
+                  fontSize: '10px',
+                  color: '#CBD9EC',
+                  lineHeight: '1.6',
+                  textWrap: 'pretty',
+                  flexShrink: '0',
+                }}
+              >
+                This is the five you duel with. List it and other duellists near
+                your trophies can draw you as an opponent while you are away -
+                and a challenge post goes up with your name on it. Stay private
+                and you keep duelling exactly the same; you just will not appear
+                in anybody else&apos;s lobby.
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  background: '#1D2956',
+                  border: '2px solid #3A4C74',
+                  borderRadius: '8px 0 8px 0',
+                  padding: '10px',
+                  flexShrink: '0',
+                }}
+              >
+                <div
+                  style={{
+                    width: '44px',
+                    height: '44px',
+                    flexShrink: '0',
+                    backgroundImage: `url(${v.duelOptInImg})`,
+                    backgroundSize: 'contain',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'center',
+                    imageRendering: 'pixelated',
+                  }}
+                ></div>
+                <div
+                  style={{
+                    flex: '1',
+                    minWidth: '0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '3px',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontFamily: "'Yoster Island',Volter,monospace",
+                      fontSize: '13px',
+                      color: '#FFFFFF',
+                    }}
+                  >
+                    {v.duelOptInCls}
+                  </div>
+                  <div style={{ fontSize: '9px', color: '#8A9BBF' }}>
+                    {v.duelOptInPerk}
+                  </div>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    {(v.duelOptInSlots || []).map((g: any, gI: number) => (
+                      <Fragment key={gI}>
+                        <div
+                          style={{
+                            width: '26px',
+                            height: '26px',
+                            borderRadius: '6px 0 6px 0',
+                            background: g.bg,
+                            backgroundImage: `url(${g.icon})`,
+                            backgroundSize: '80%',
+                            backgroundRepeat: 'no-repeat',
+                            backgroundPosition: 'center',
+                            imageRendering: 'pixelated',
+                            opacity: g.opacity,
+                          }}
+                        ></div>
+                      </Fragment>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  flexShrink: '0',
+                  opacity: v.duelOptInBusy,
+                }}
+              >
+                <div
+                  onClick={v.listAndShare}
+                  style={{
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '46px',
+                    border: '3px solid #000000',
+                    borderRadius: '8px 2px 8px 2px',
+                    background: '#FCE270',
+                    boxShadow: '0 -3px 0 0 #FF961D inset, 0 3px 0 0 #FFF inset',
+                    color: '#000000',
+                    fontFamily: "'Yoster Island',Volter,monospace",
+                    fontSize: '14px',
+                    textAlign: 'center',
+                  }}
+                >
+                  LIST ME &amp; POST THE CHALLENGE
+                </div>
+                <div
+                  onClick={v.saveUnlisted}
+                  style={{
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '38px',
+                    border: '2px solid #000000',
+                    borderRadius: '8px 2px 8px 2px',
+                    background: '#B5C0FF',
+                    boxShadow: '0 -2px 0 0 #7E84E6 inset, 0 2px 0 0 #FFF inset',
+                    color: '#000000',
+                    fontFamily: "'Yoster Island',Volter,monospace",
+                    fontSize: '12px',
+                  }}
+                >
+                  SAVE, STAY PRIVATE
+                </div>
+                <div
+                  onClick={v.backToDuelGear}
+                  style={{
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    fontSize: '9px',
+                    color: '#9DB4D4',
+                    letterSpacing: '.14em',
+                    paddingTop: '2px',
+                  }}
+                >
+                  BACK TO THE FIVE
+                </div>
+              </div>
+            </div>
+          </>
+        ) : null}
+
         {v.isDuelLobby ? (
           <>
             <div
@@ -4079,34 +4253,254 @@ export const Screen = ({ v }: { v: View }) => (
                 </div>
               </div>
 
+              {/* The league banner: which rung you are on, how far up it you
+                  are, and what the next one costs. */}
               <div
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '2px',
+                  gap: '6px',
+                  background: v.leagueShade,
+                  border: `2px solid ${v.leagueColor}`,
+                  borderRadius: '8px 0 8px 0',
+                  padding: '10px',
                   flexShrink: '0',
                 }}
               >
                 <div
                   style={{
-                    fontFamily: "'Yoster Island',Volter,monospace",
-                    fontSize: '17px',
-                    color: '#FFF2B0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
                   }}
                 >
-                  DUEL
+                  <div
+                    style={{
+                      flex: '1',
+                      fontFamily: "'Yoster Island',Volter,monospace",
+                      fontSize: '15px',
+                      color: v.leagueColor,
+                    }}
+                  >
+                    {v.leagueName}
+                  </div>
+                  <div style={{ display: 'flex', gap: '3px' }}>
+                    {(v.leaguePips || []).map((p: any, pI: number) => (
+                      <Fragment key={pI}>
+                        <div
+                          style={{
+                            width: '9px',
+                            height: '9px',
+                            transform: 'rotate(45deg)',
+                            background: p.bg,
+                          }}
+                        ></div>
+                      </Fragment>
+                    ))}
+                  </div>
                 </div>
                 <div
                   style={{
-                    fontSize: '10px',
-                    color: '#CBD9EC',
-                    lineHeight: '1.6',
-                    textWrap: 'pretty',
+                    height: '6px',
+                    borderRadius: '3px',
+                    background: 'rgba(0,0,0,.45)',
+                    overflow: 'hidden',
                   }}
                 >
-                  No monsters and no pre-built team. Your board and theirs, one
-                  above the other, and everything you link either hits them or
-                  buries them.
+                  <div
+                    style={{
+                      width: v.leaguePct,
+                      height: '100%',
+                      background: v.leagueColor,
+                    }}
+                  ></div>
+                </div>
+                <div style={{ fontSize: '9px', color: '#E8EEF8' }}>
+                  {v.leagueNextLine}
+                </div>
+              </div>
+
+              {/* Your own listing: the five other people's lobbies hand their
+                  bot, and whether it is on the board at all. */}
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  background: '#1D2956',
+                  borderRadius: '8px 0 8px 0',
+                  padding: '10px',
+                  flexShrink: '0',
+                }}
+              >
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: '9px' }}
+                >
+                  <div
+                    style={{
+                      width: '34px',
+                      height: '34px',
+                      flexShrink: '0',
+                      backgroundImage: `url(${v.myDuelImg})`,
+                      backgroundSize: 'contain',
+                      backgroundRepeat: 'no-repeat',
+                      backgroundPosition: 'center',
+                      imageRendering: 'pixelated',
+                    }}
+                  ></div>
+                  <div
+                    style={{
+                      flex: '1',
+                      minWidth: '0',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '3px',
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'baseline',
+                        gap: '6px',
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontFamily: "'Yoster Island',Volter,monospace",
+                          fontSize: '11px',
+                          color: '#FFFFFF',
+                        }}
+                      >
+                        YOUR LOADOUT
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '8px',
+                          color: v.duelListedColor,
+                          letterSpacing: '.1em',
+                        }}
+                      >
+                        {v.duelListedLabel}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      {(v.myDuelSlots || []).map((g: any, gI: number) => (
+                        <Fragment key={gI}>
+                          <div
+                            style={{
+                              width: '22px',
+                              height: '22px',
+                              borderRadius: '6px 0 6px 0',
+                              background: g.bg,
+                              backgroundImage: `url(${g.icon})`,
+                              backgroundSize: '80%',
+                              backgroundRepeat: 'no-repeat',
+                              backgroundPosition: 'center',
+                              imageRendering: 'pixelated',
+                              opacity: g.opacity,
+                            }}
+                          ></div>
+                        </Fragment>
+                      ))}
+                    </div>
+                  </div>
+                  <div
+                    onClick={v.editDuelLoadout}
+                    style={{
+                      cursor: 'pointer',
+                      flexShrink: '0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      height: '24px',
+                      padding: '0 9px',
+                      border: '1px solid #000000',
+                      borderRadius: '8px 2px 8px 2px',
+                      background: '#B5C0FF',
+                      boxShadow:
+                        '0 -2px 0 0 #7E84E6 inset, 0 2px 0 0 #FFF inset',
+                      color: '#000000',
+                      fontFamily: "'Yoster Island',Volter,monospace",
+                      fontSize: '9px',
+                    }}
+                  >
+                    EDIT
+                  </div>
+                </div>
+                <div
+                  style={{
+                    fontSize: '9px',
+                    color: '#CBD9EC',
+                    lineHeight: '1.6',
+                  }}
+                >
+                  {v.duelListedLine}
+                </div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <div
+                    onClick={v.toggleListed}
+                    style={{
+                      cursor: 'pointer',
+                      flex: '1',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      height: '28px',
+                      border: '1px solid #000000',
+                      borderRadius: '8px 2px 8px 2px',
+                      background: '#B5C0FF',
+                      boxShadow:
+                        '0 -2px 0 0 #7E84E6 inset, 0 2px 0 0 #FFF inset',
+                      color: '#000000',
+                      fontFamily: "'Yoster Island',Volter,monospace",
+                      fontSize: '9px',
+                    }}
+                  >
+                    {v.duelListedToggleLabel}
+                  </div>
+                  <div
+                    onClick={v.postChallenge}
+                    style={{
+                      cursor: 'pointer',
+                      flex: '1',
+                      display: v.shareDisplay,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      height: '28px',
+                      border: '1px solid #000000',
+                      borderRadius: '8px 2px 8px 2px',
+                      background: '#FCE270',
+                      boxShadow:
+                        '0 -2px 0 0 #FF961D inset, 0 2px 0 0 #FFF inset',
+                      color: '#000000',
+                      fontFamily: "'Yoster Island',Volter,monospace",
+                      fontSize: '9px',
+                    }}
+                  >
+                    POST CHALLENGE
+                  </div>
+                  <div
+                    onClick={v.openChallenge}
+                    style={{
+                      cursor: 'pointer',
+                      flex: '0 0 auto',
+                      display: v.challengeDisplay,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      height: '28px',
+                      padding: '0 9px',
+                      border: '1px solid #000000',
+                      borderRadius: '8px 2px 8px 2px',
+                      background: '#AEE45D',
+                      boxShadow:
+                        '0 -2px 0 0 #6FA02E inset, 0 2px 0 0 #FFF inset',
+                      color: '#000000',
+                      fontFamily: "'Yoster Island',Volter,monospace",
+                      fontSize: '9px',
+                    }}
+                  >
+                    VIEW POST
+                  </div>
                 </div>
               </div>
 
@@ -4157,13 +4551,53 @@ export const Screen = ({ v }: { v: View }) => (
 
               <div
                 style={{
-                  fontSize: '9px',
-                  color: '#9DB4D4',
-                  letterSpacing: '.14em',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '8px',
                   flexShrink: '0',
                 }}
               >
-                PICK AN OPPONENT
+                <div
+                  style={{
+                    fontSize: '9px',
+                    color: '#9DB4D4',
+                    letterSpacing: '.14em',
+                  }}
+                >
+                  NEAR YOUR TROPHIES
+                </div>
+                <div
+                  onClick={v.refreshOpponents}
+                  style={{
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '24px',
+                    padding: '0 10px',
+                    border: '1px solid #000000',
+                    borderRadius: '8px 2px 8px 2px',
+                    background: '#B5C0FF',
+                    boxShadow: '0 -2px 0 0 #7E84E6 inset, 0 2px 0 0 #FFF inset',
+                    color: '#000000',
+                    fontFamily: "'Yoster Island',Volter,monospace",
+                    fontSize: '9px',
+                    opacity: v.refreshOpacity,
+                  }}
+                >
+                  REFRESH
+                </div>
+              </div>
+              <div
+                style={{
+                  display: v.duelListEmptyDisplay,
+                  fontSize: '9px',
+                  color: '#8A9BBF',
+                  flexShrink: '0',
+                }}
+              >
+                Finding duellists at your rating...
               </div>
               <div
                 style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}
@@ -4188,8 +4622,11 @@ export const Screen = ({ v }: { v: View }) => (
                           width: '40px',
                           height: '40px',
                           flexShrink: '0',
+                          borderRadius: '50%',
+                          overflow: 'hidden',
+                          backgroundColor: 'rgba(0,0,0,.35)',
                           backgroundImage: `url(${f.img})`,
-                          backgroundSize: 'contain',
+                          backgroundSize: f.avatarFit,
                           backgroundRepeat: 'no-repeat',
                           backgroundPosition: 'center',
                           imageRendering: 'pixelated',
@@ -4214,30 +4651,49 @@ export const Screen = ({ v }: { v: View }) => (
                           <div
                             style={{
                               fontFamily: "'Yoster Island',Volter,monospace",
-                              fontSize: '12px',
+                              fontSize: '11px',
                               color: '#FFFFFF',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
                             }}
                           >
                             {f.name}
                           </div>
                           <div
                             style={{
-                              fontSize: '8px',
-                              color: '#9DB4D4',
+                              display: f.tagDisplay,
+                              flexShrink: '0',
+                              fontSize: '7px',
+                              color: '#8A9BBF',
                               letterSpacing: '.1em',
                             }}
                           >
-                            {f.cls}
+                            BOT
                           </div>
                         </div>
                         <div
                           style={{
-                            fontSize: '9px',
-                            color: '#CBD9EC',
-                            lineHeight: '1.5',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '5px',
                           }}
                         >
-                          {f.blurb}
+                          <div
+                            style={{
+                              padding: '1px 5px',
+                              borderRadius: '4px',
+                              background: f.badgeBg,
+                              color: f.badgeColor,
+                              fontSize: '7px',
+                              letterSpacing: '.1em',
+                            }}
+                          >
+                            {f.badge}
+                          </div>
+                          <div style={{ fontSize: '8px', color: '#9DB4D4' }}>
+                            {f.cls}
+                          </div>
                         </div>
                         <div style={{ fontSize: '8px', color: '#8A9BBF' }}>
                           {f.perk}
@@ -4256,6 +4712,19 @@ export const Screen = ({ v }: { v: View }) => (
                     </div>
                   </Fragment>
                 ))}
+              </div>
+              <div
+                style={{
+                  display: v.duelPaddedDisplay,
+                  fontSize: '8px',
+                  color: '#8A9BBF',
+                  lineHeight: '1.6',
+                  flexShrink: '0',
+                }}
+              >
+                Not enough listed duellists at your rating yet, so the rest of
+                this lobby is house bots. List your own loadout to put a real
+                name in somebody else&apos;s.
               </div>
             </div>
           </>
@@ -5916,6 +6385,104 @@ export const Screen = ({ v }: { v: View }) => (
             </div>
           </>
         ) : null}
+
+        {/* Duel setup coaching. It sits OVER the screen its step is about and
+            never blocks it: the build is done by doing, so the card explains
+            and gets out of the way rather than gating the controls. */}
+        <div
+          style={{
+            position: 'absolute',
+            left: '10px',
+            right: '10px',
+            bottom: '10px',
+            zIndex: '40',
+            display: v.duelSetupDisplay,
+            flexDirection: 'column',
+            gap: '7px',
+            background: '#FFF2B0',
+            border: '3px solid #000000',
+            borderRadius: '10px 2px 10px 2px',
+            boxShadow: '0 4px 0 0 rgba(0,0,0,.35)',
+            padding: '11px',
+            pointerEvents: 'auto',
+          }}
+        >
+          <div
+            style={{
+              fontFamily: "'Yoster Island',Volter,monospace",
+              fontSize: '13px',
+              color: '#141D2E',
+            }}
+          >
+            {v.duelSetupTitle}
+          </div>
+          <div
+            style={{
+              fontSize: '10px',
+              color: '#2B3A56',
+              lineHeight: '1.6',
+              textWrap: 'pretty',
+            }}
+          >
+            {v.duelSetupBody}
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '8px',
+            }}
+          >
+            <div style={{ display: 'flex', gap: '4px' }}>
+              {(v.duelSetupDots || []).map((d: any, dI: number) => (
+                <Fragment key={dI}>
+                  <div
+                    style={{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      background: d.bg,
+                    }}
+                  ></div>
+                </Fragment>
+              ))}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div
+                onClick={v.skipDuelSetup}
+                style={{
+                  cursor: 'pointer',
+                  fontSize: '9px',
+                  color: '#5A6478',
+                  letterSpacing: '.12em',
+                }}
+              >
+                SKIP
+              </div>
+              <div
+                onClick={v.nextDuelSetup}
+                style={{
+                  cursor: 'pointer',
+                  display: v.duelSetupNextDisplay,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '28px',
+                  padding: '0 14px',
+                  border: '2px solid #000000',
+                  borderRadius: '8px 2px 8px 2px',
+                  background: '#FCE270',
+                  boxShadow: '0 -3px 0 0 #FF961D inset, 0 3px 0 0 #FFF inset',
+                  color: '#000000',
+                  fontFamily: "'Yoster Island',Volter,monospace",
+                  fontSize: '11px',
+                }}
+              >
+                NEXT
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

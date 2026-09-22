@@ -5,7 +5,11 @@ import type {
   BuyBundleRequest,
   BuyPackRequest,
   CollectPackRequest,
+  DuelChallengeResponse,
+  DuelListedRequest,
+  DuelOpponentsResponse,
   DuelResultRequest,
+  SaveDuelLoadoutRequest,
   ErrorResponse,
   InitResponse,
   LeaderboardResponse,
@@ -19,14 +23,23 @@ import type {
 import { loadProfile, saveProfile } from '../core/profile.js';
 import { getLeaderboard, recordScore } from '../core/leaderboard.js';
 import {
+  listInPool,
+  opponentsNear,
+  removeFromPool,
+  syncPoolScore,
+} from '../core/duelpool.js';
+import { createChallengePost } from '../core/post.js';
+import {
   COINS_PER_SCORE,
   COIN_BUNDLES,
   DUEL_LOSS_TROPHIES,
   DUEL_MATCH_SECONDS,
   DUEL_WIN_TROPHIES,
   bundleById,
+  loadoutIsLegal,
   packById,
   rollPack,
+  TROPHY_FLOOR,
   verifyRun,
 } from '../../shared/engine/index.js';
 import type { PulledCard } from '../../shared/engine/economy.js';
@@ -332,6 +345,133 @@ api.post('/shop/collect', async (c) => {
 });
 
 /**
+ * Save the duel loadout, and list or delist it in the opponent pool.
+ *
+ * The five are checked here the same way a run's are: owned, legal, and of the
+ * hero's own class. A listed loadout is what OTHER people's lobbies hand their
+ * bot, so a forged one would be a forged opponent for everybody.
+ */
+api.post('/duel/loadout', async (c) => {
+  const me = who();
+  if (!me) return unauthorised(c);
+  const body = (await c.req
+    .json()
+    .catch(() => null)) as SaveDuelLoadoutRequest | null;
+  if (!body || !loadoutIsLegal(body.picked ?? [], body.cls))
+    return c.json<ErrorResponse>(
+      { status: 'error', message: 'that is not a legal five' },
+      400
+    );
+
+  const profile = await loadProfile(me.userId, me.username);
+  for (const id of body.picked)
+    if (!(profile.gear[id]! > 0))
+      return c.json<ErrorResponse>(
+        { status: 'error', message: 'loadout contains gear you do not own' },
+        400
+      );
+
+  const listed = !!body.listed;
+  await saveProfile(me.userId, {
+    duelCls: body.cls,
+    duelPicked: body.picked,
+    duelListed: listed,
+    seenDuelSetup: true,
+  });
+  if (listed)
+    await listInPool(
+      me.userId,
+      me.username,
+      profile.trophies,
+      body.cls,
+      body.picked
+    );
+  else await removeFromPool(me.userId);
+
+  return c.json(profileJson(await loadProfile(me.userId, me.username)));
+});
+
+/** Opt in or out without rebuilding. Opting out only hides you from other
+ *  people's lobbies - it never stops you duelling. */
+api.post('/duel/listed', async (c) => {
+  const me = who();
+  if (!me) return unauthorised(c);
+  const body = (await c.req
+    .json()
+    .catch(() => null)) as DuelListedRequest | null;
+  const profile = await loadProfile(me.userId, me.username);
+  const listed = !!body?.listed;
+  if (listed && (!profile.duelCls || profile.duelPicked.length !== 5))
+    return c.json(
+      profileJson(profile, 'Build a duel loadout before you list it.')
+    );
+
+  await saveProfile(me.userId, { duelListed: listed });
+  if (listed)
+    await listInPool(
+      me.userId,
+      me.username,
+      profile.trophies,
+      profile.duelCls!,
+      profile.duelPicked
+    );
+  else await removeFromPool(me.userId);
+  return c.json(profileJson(await loadProfile(me.userId, me.username)));
+});
+
+/** Five opponents near the asker's trophy count. `cursor` is what REFRESH
+ *  advances, so the button walks the neighbourhood instead of re-rolling it. */
+api.get('/duel/opponents', async (c) => {
+  const me = who();
+  if (!me) return unauthorised(c);
+  const raw = Number(c.req.query('cursor'));
+  const cursor = Number.isFinite(raw) ? Math.floor(raw) : 0;
+  const profile = await loadProfile(me.userId, me.username);
+  const { opponents, padded } = await opponentsNear(
+    me.userId,
+    profile.trophies,
+    cursor
+  );
+  return c.json<DuelOpponentsResponse>({
+    type: 'opponents',
+    opponents,
+    cursor,
+    padded,
+  });
+});
+
+/** Share a new loadout as a post, so the challenge reaches people who are not
+ *  in the app. Only a LISTED player can post one - a challenge nobody can
+ *  answer from the lobby would be an empty invitation. */
+api.post('/duel/challenge', async (c) => {
+  const me = who();
+  if (!me) return unauthorised(c);
+  const profile = await loadProfile(me.userId, me.username);
+  if (!profile.duelListed || !profile.duelCls)
+    return c.json<ErrorResponse>(
+      { status: 'error', message: 'list your loadout before challenging' },
+      400
+    );
+  try {
+    const post = await createChallengePost(
+      me.username,
+      profile.trophies,
+      profile.duelCls
+    );
+    return c.json<DuelChallengeResponse>({
+      type: 'challenge',
+      url: `https://reddit.com/r/${context.subredditName}/comments/${post.id}`,
+    });
+  } catch (e) {
+    console.error('challenge post failed: ' + String(e));
+    return c.json<ErrorResponse>(
+      { status: 'error', message: 'could not post that challenge' },
+      500
+    );
+  }
+});
+
+/**
  * Duel outcome. A duel runs against a local AI on a real-time clock, so there
  * is no move list to replay - this is reported, not verified. It is bounded
  * instead: the trophy delta is fixed, and a "win" that arrives faster than a
@@ -361,9 +501,12 @@ api.post('/duel/result', async (c) => {
     : body.won
       ? DUEL_WIN_TROPHIES
       : -DUEL_LOSS_TROPHIES;
-  await saveProfile(me.userId, {
-    trophies: Math.max(0, profile.trophies + delta),
-  });
+  const trophies = Math.max(TROPHY_FLOOR, profile.trophies + delta);
+  await saveProfile(me.userId, { trophies });
+  // The pool is scored by trophies, so a result that moves them has to move the
+  // band this player is matched in - otherwise a climber keeps being offered to
+  // the rung they left.
+  if (delta !== 0) await syncPoolScore(me.userId, trophies);
   return c.json(profileJson(await loadProfile(me.userId, me.username)));
 });
 
@@ -376,6 +519,8 @@ api.post('/ftue/seen', async (c) => {
   } | null;
   if (body?.which === 'duel')
     await saveProfile(me.userId, { seenDuelFtue: true });
+  else if (body?.which === 'duelSetup')
+    await saveProfile(me.userId, { seenDuelSetup: true });
   else await saveProfile(me.userId, { seenFtue: true });
   return c.json(profileJson(await loadProfile(me.userId, me.username)));
 });

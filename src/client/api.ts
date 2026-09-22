@@ -7,7 +7,10 @@
  */
 import type {
   CollectPackRequest,
+  DuelChallengeResponse,
+  DuelOpponentsResponse,
   DuelResultRequest,
+  SaveDuelLoadoutRequest,
   InitResponse,
   LeaderboardResponse,
   OpenPackResponse,
@@ -54,7 +57,14 @@ export const api = {
     call<ProfileResponse>('/shop/collect', req),
   duelResult: (req: DuelResultRequest) =>
     call<ProfileResponse>('/duel/result', req),
-  ftueSeen: (which: 'run' | 'duel') =>
+  saveDuelLoadout: (req: SaveDuelLoadoutRequest) =>
+    call<ProfileResponse>('/duel/loadout', req),
+  setDuelListed: (listed: boolean) =>
+    call<ProfileResponse>('/duel/listed', { listed }),
+  duelOpponents: (cursor: number) =>
+    call<DuelOpponentsResponse>('/duel/opponents?cursor=' + cursor),
+  duelChallenge: () => call<DuelChallengeResponse>('/duel/challenge', {}),
+  ftueSeen: (which: 'run' | 'duel' | 'duelSetup') =>
     call<ProfileResponse>('/ftue/seen', { which }),
 };
 

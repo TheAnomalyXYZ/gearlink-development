@@ -1,5 +1,6 @@
 import type { HeroClass } from './engine/types.js';
 import type { PulledCard } from './engine/economy.js';
+import type { DuelFoe } from './engine/duel.js';
 
 /** Everything the client needs to boot: who the player is, what they own, and
  *  where this post's ladder currently stands. */
@@ -16,6 +17,15 @@ export type Profile = {
   /** Whether this account has been shown the first-run coaching. */
   seenFtue: boolean;
   seenDuelFtue: boolean;
+  /** Whether the duel SETUP flow (hero, five, opt-in) has been walked once. */
+  seenDuelSetup: boolean;
+  /** The duel loadout, kept apart from the gauntlet one so climbing the ladder
+   *  never means rebuilding the run you like. Null until it is first built. */
+  duelCls: HeroClass | null;
+  duelPicked: string[];
+  /** Listed in the opponent pool: other players can draw you as a foe. Opting
+   *  out does not stop you duelling, it only hides you from their lobbies. */
+  duelListed: boolean;
 };
 
 export type BestRun = {
@@ -80,8 +90,35 @@ export type CollectPackRequest = { token: string };
 
 export type BuyBundleRequest = { bundleId: string };
 
+export type SaveDuelLoadoutRequest = {
+  cls: HeroClass;
+  picked: string[];
+  /** Whether to list this loadout in the opponent pool. */
+  listed: boolean;
+};
+
+export type DuelListedRequest = { listed: boolean };
+
+/** One lobby row. `isYou` never appears here - the pool excludes the asker. */
+export type DuelOpponentsResponse = {
+  type: 'opponents';
+  opponents: DuelFoe[];
+  /** Echoed back on REFRESH to walk past the rows just shown. */
+  cursor: number;
+  /** True when the pool had nobody close and the list was padded with bots. */
+  padded: boolean;
+};
+
+export type DuelChallengeResponse = {
+  type: 'challenge';
+  /** Permalink of the post that was created. */
+  url: string;
+};
+
 export type DuelResultRequest = {
   foe: string;
+  /** Reddit user id of the opponent, when it was a listed player. */
+  foeId?: string;
   won: boolean;
   /** Seconds the match lasted, used to reject instantly-reported wins. */
   seconds: number;
