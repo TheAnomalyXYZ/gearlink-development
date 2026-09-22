@@ -144,3 +144,9 @@ export const BTN = {
     shadow: '0 -4px 0 0 #6B737A inset, 0 4px 0 0 #FFF inset',
   },
 };
+
+/** Clearing a whole location pays a lump on top of the per-wave bonus, so a
+ *  battle finished is always worth more than a battle abandoned one wave in. */
+export const BATTLE_CLEAR_BONUS = 300;
+/** Each step along the map is worth 25% more for the same play. */
+export const LOCATION_SCORE_STEP_X100 = 25;

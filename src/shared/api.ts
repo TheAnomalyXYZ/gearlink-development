@@ -1,4 +1,5 @@
 import type { HeroClass } from './engine/types.js';
+import type { Hearts } from './engine/hearts.js';
 import type { PulledCard } from './engine/economy.js';
 import type { DuelFoe } from './engine/duel.js';
 
@@ -14,6 +15,17 @@ export type Profile = {
   /** packId -> unopened count. */
   packs: Record<string, number>;
   best: BestRun | null;
+  /** How many times The King has fallen. Scales every battle on the map. */
+  ascension: number;
+  /** Unspent heart pieces. A shared pool: three of them buy one container for
+   *  whichever class you choose. */
+  heartPieces: number;
+  /** Heart containers applied, PER CLASS - building a hero up is a choice, so
+   *  swapping class does not carry the pool with it. */
+  hearts: Hearts;
+  /** How far along the map this ascension has got: locations 0..progress are
+   *  open, and progress === LOCATIONS.length means the map is finished. */
+  progress: number;
   /** Whether this account has been shown the first-run coaching. */
   seenFtue: boolean;
   seenDuelFtue: boolean;
@@ -60,20 +72,39 @@ export type SubmitRunRequest = {
   heroClass: HeroClass;
   picked: string[];
   moves: number[][];
+  /** Which location was fought. */
+  locationId: string;
+  /** The ascension the client played at. It has to match the profile, or the
+   *  replay would be scored against different monsters than were fought. */
+  ascension: number;
+  /** Heart containers the chosen class has. Checked against the profile. */
+  hearts: number;
 };
 
 export type SubmitRunResponse = {
   type: 'run';
-  /** The score the server's replay produced. */
+  /** The score the server's replay produced, scaled by map depth and ascension. */
   score: number;
   waves: number;
   chain: number;
   coinsEarned: number;
   isBest: boolean;
   rank: number | null;
+  /** The location's boss fell. */
+  won: boolean;
+  /** How many waves the battle held, for the end screen's "3/4" readout. */
+  waveCount: number;
+  /** True when this win was The King's: the map resets one ascension higher. */
+  ascended: boolean;
+  /** Heart pieces the boss dropped. Only a location's FIRST clear this
+   *  ascension pays, so a cleared location cannot be farmed. */
+  heartPiecesEarned: number;
   profile: Profile;
   leaderboard: LeaderboardEntry[];
 };
+
+/** Spend three pieces on one more container for this class. */
+export type ApplyHeartRequest = { cls: HeroClass };
 
 export type BuyPackRequest = { packId: string };
 export type OpenPackRequest = { packId: string };

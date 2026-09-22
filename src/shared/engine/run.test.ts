@@ -44,7 +44,9 @@ const playOut = (seed: number, cls: HeroClass, maxTurns = 250) => {
     );
     moves.push(move);
     state = out.bs;
-    if (out.over || !hasAnyMove(state.board)) break;
+    // A battle now ENDS when the location's boss falls, so the transcript must
+    // stop there - a move after the win is exactly what the server rejects.
+    if (out.battleWon || out.over || !hasAnyMove(state.board)) break;
   }
   return { picked, state, moves };
 };

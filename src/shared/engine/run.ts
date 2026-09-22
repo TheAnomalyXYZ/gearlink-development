@@ -1,5 +1,7 @@
 /**
- * The gauntlet run engine. One turn resolves in the order stepGearLink uses:
+ * The battle engine. One battle is one location on the map: 3-5 waves drawn
+ * from that location's pool, the last of them always its elite. One turn
+ * resolves in the order stepGearLink uses:
  * payout -> attack -> block -> heal -> kill check -> enemy beat -> death.
  *
  * `Run` owns the RNG stream and nothing else that mutates, so constructing one
@@ -19,7 +21,6 @@ import {
   BRUTE_STR_X100,
   CELLS,
   COMBO_BONUS,
-  ELITE_EVERY,
   ELITE_HEAVY_EVERY,
   ELITE_HEAVY_X100,
   ELITE_HP_X100,
@@ -29,7 +30,6 @@ import {
   MAX_DETONATION_STAGES,
   PERIOD_BANDS,
   PERIOD_FLOOR,
-  PLAYER_HP,
   REFILL_WEIGHT,
   SUPER_FLAG,
   SUPER_MIN_LINK,
@@ -39,10 +39,25 @@ import {
   WAVE_BASE_HP_MIN,
   WAVE_BASE_STR_MAX,
   WAVE_BASE_STR_MIN,
+  BATTLE_CLEAR_BONUS,
+  LOCATION_SCORE_STEP_X100,
   WAVE_CLEAR_BONUS,
-  WAVE_HP_GROWTH_BANDS,
   WAVE_STR_GROWTH_BANDS,
 } from './constants.js';
+import {
+  ASCENSION_HP_X100,
+  ASCENSION_SCORE_X100,
+  ASCENSION_STR_X100,
+  FIRST_LOCATION,
+  KING_HP_X100,
+  KING_STR_X100,
+  compoundX100,
+  difficultyStep,
+  locationById,
+  locationIndex,
+  planBattle,
+} from './campaign.js';
+import type { Location, WavePlan } from './campaign.js';
 import {
   bombCells,
   chainType,
@@ -60,7 +75,8 @@ import {
   resolveLoadout,
   riderOf,
 } from './gear.js';
-import { MONSTER_BASE_HP, WAVE_ENEMIES } from './monsters.js';
+import { clampContainers, maxHpFor } from './hearts.js';
+import { MONSTER_BASE_HP } from './monsters.js';
 import { hash32, mulberry32 } from './rng.js';
 import type {
   DetonationStage,
@@ -107,6 +123,13 @@ export type RunConfig = {
   heroClass: HeroClass;
   picked: string[];
   mutators?: Mutators;
+  /** Which map node this battle is. Defaults to the first. */
+  locationId?: string;
+  /** How many times the player has put The King down. Scales everything. */
+  ascension?: number;
+  /** Heart containers this hero has banked. The engine takes the COUNT, never
+   *  a max-HP figure, so a forged pool cannot be submitted. */
+  hearts?: number;
 };
 
 export class Run {
@@ -117,6 +140,13 @@ export class Run {
   readonly loadout: Gear[];
   readonly weights: number[];
   readonly base: RunBase;
+  readonly location: Location;
+  readonly locIndex: number;
+  readonly ascension: number;
+  readonly hearts: number;
+  /** The whole battle, rolled once at construction. Its length is the number
+   *  of waves this location fields, and its last entry is always the boss. */
+  readonly plan: WavePlan[];
   private rng: () => number;
 
   constructor(cfg: RunConfig) {
@@ -137,13 +167,34 @@ export class Run {
         WAVE_BASE_STR_MIN +
         Math.floor(this.rng() * (WAVE_BASE_STR_MAX - WAVE_BASE_STR_MIN + 1)),
     };
+    // Then the battle plan, then the opening board. Any reordering here
+    // desyncs every replay, so the three draws stay in this order.
+    this.location = locationById(cfg.locationId ?? FIRST_LOCATION);
+    this.locIndex = locationIndex(this.location.id);
+    this.ascension = Math.max(0, Math.floor(cfg.ascension ?? 0));
+    this.hearts = clampContainers(cfg.hearts ?? 0);
+    this.plan = planBattle(this.location, this.rng);
+  }
+
+  /** How many waves this battle runs. */
+  get waveCount(): number {
+    return this.plan.length;
+  }
+  /** Past the last wave there is no monster left: the battle is won. */
+  planFor(wave: number): WavePlan {
+    return this.plan[Math.min(Math.max(1, wave), this.waveCount) - 1]!;
+  }
+  isBossWave(wave: number): boolean {
+    return wave >= this.waveCount;
   }
 
   get perk() {
     return HERO_PERKS[this.heroClass] ?? HERO_PERKS.Hero;
   }
+  /** GLASS KNIGHT is a fixed handicap, so it overrides the upgrade rather than
+   *  scaling with it - the mutator's whole point is a pool you cannot grow. */
   maxHp(): number {
-    return this.mutators.glassKnight ? GLASS_KNIGHT_HP : PLAYER_HP;
+    return this.mutators.glassKnight ? GLASS_KNIGHT_HP : maxHpFor(this.hearts);
   }
 
   /** The opening state. Must be called exactly once, straight after
@@ -178,31 +229,49 @@ export class Run {
     };
   }
 
+  /** The last wave of a location is ALWAYS its elite - that is what makes a
+   *  battle read as a fight with an ending rather than a slice of a gauntlet.
+   *  Everything before it draws from the affix table, with the opening waves
+   *  of the first location left plain so a new player meets one rule at a
+   *  time. */
   affixForWave(wave: number): string {
-    if (wave % ELITE_EVERY === 0) return 'elite';
-    if (wave <= AFFIX_FREE_WAVES) return 'none';
+    if (this.isBossWave(wave)) return 'elite';
+    if (this.locIndex === 0 && wave <= AFFIX_FREE_WAVES) return 'none';
     return AFFIX_TABLE[
-      hash32(this.base.hp + ':' + this.base.strength + ':' + wave) %
-        AFFIX_TABLE.length
+      hash32(
+        this.base.hp +
+          ':' +
+          this.base.strength +
+          ':' +
+          this.location.id +
+          ':' +
+          wave
+      ) % AFFIX_TABLE.length
     ]!;
   }
 
-  /** HP comes from the monster table rather than one ramped number, so each
-   *  wave is the pool that monster actually has. */
+  /** HP is the pool the PLANNED monster actually has, then compounded once per
+   *  ascension. The monster table already ramps across the map, so no second
+   *  per-wave growth is applied on top of it. */
   waveHp(wave: number): number {
-    const n = WAVE_ENEMIES.length;
-    const name = WAVE_ENEMIES[Math.min(wave - 1, n - 1)]![0];
-    let hp = MONSTER_BASE_HP[name] ?? 30;
-    for (let w = n + 1; w <= wave; w++)
-      hp = hp * (growthFor(WAVE_HP_GROWTH_BANDS, w) / 1000);
+    const plan = this.planFor(wave);
+    let hp = MONSTER_BASE_HP[plan.name] ?? 30;
+    if (plan.boss && this.location.king) hp = (hp * KING_HP_X100) / 100;
+    hp = hp * compoundX100(ASCENSION_HP_X100, this.ascension);
     return Math.max(1, Math.round(hp));
   }
 
   enemyForWave(wave: number): Enemy {
     const m = this.mutators;
+    const step = difficultyStep(this.locIndex, wave);
     let hp = this.waveHp(wave);
-    let strength = rampedStat(this.base.strength, WAVE_STR_GROWTH_BANDS, wave);
-    let period = basePeriodForWave(wave);
+    let strength = rampedStat(this.base.strength, WAVE_STR_GROWTH_BANDS, step);
+    if (this.planFor(wave).boss && this.location.king)
+      strength = Math.round((strength * KING_STR_X100) / 100);
+    strength = Math.round(
+      strength * compoundX100(ASCENSION_STR_X100, this.ascension)
+    );
+    let period = basePeriodForWave(step);
     let armor = 0;
     let blockCap = 0;
     let healX100 = 100;
@@ -492,6 +561,7 @@ export class Run {
     turnsUsed++;
 
     let waveCleared = false;
+    let battleWon = false;
     let enemyAttacked = false;
     let enemyDamage = 0;
     let over = false;
@@ -518,9 +588,18 @@ export class Run {
       stx.burn = 0;
       stx.mark = 0;
       stx.frost = 0;
-      const nextEnemy = this.enemyForWave(wave);
-      enemyHp = nextEnemy.hp;
-      if (nextEnemy.charged) meter = Math.max(0, nextEnemy.period - 1);
+      if (wave > this.waveCount) {
+        // The boss was the last wave, so there is nothing to walk on. The
+        // battle is won here; the caller stops the run rather than dealing
+        // another enemy.
+        battleWon = true;
+        enemyHp = 0;
+        waveBonus += BATTLE_CLEAR_BONUS;
+      } else {
+        const nextEnemy = this.enemyForWave(wave);
+        enemyHp = nextEnemy.hp;
+        if (nextEnemy.charged) meter = Math.max(0, nextEnemy.period - 1);
+      }
     } else {
       // FROST stalls the charge instead of advancing it, one stack per turn.
       if (stx.frost > 0) stx.frost -= 1;
@@ -561,6 +640,7 @@ export class Run {
       healed,
       detonations,
       waveCleared,
+      battleWon,
       enemyAttacked,
       enemyDamage,
       over,
@@ -593,3 +673,17 @@ export class Run {
 
 export const scoreOf = (bs: RunState): number =>
   bs.damageDealt + bs.waveBonus + COMBO_BONUS * bs.maxChain;
+
+/** What the battle is worth once the map is taken into account: deeper
+ *  locations and higher ascensions pay more for the same play, which is what
+ *  makes climbing again worth doing. */
+export const battleScore = (
+  bs: RunState,
+  locIndex: number,
+  ascension: number
+): number =>
+  Math.round(
+    scoreOf(bs) *
+      (1 + locIndex * (LOCATION_SCORE_STEP_X100 / 100)) *
+      compoundX100(ASCENSION_SCORE_X100, ascension)
+  );

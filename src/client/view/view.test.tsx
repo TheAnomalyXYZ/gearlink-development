@@ -6,7 +6,9 @@ import { Screen } from './Screen.js';
 import type { GearLinkApp } from '../GearLinkApp.js';
 import {
   DUEL_HP,
+  FIRST_LOCATION,
   NO_STATUS,
+  enemyDisplayFor,
   Run,
   defaultLoadout,
   foeLoadout,
@@ -33,6 +35,10 @@ const profile: Profile = {
   ),
   packs: { base: 2, gold: 1 },
   best: { score: 4210, waves: 7, chain: 6, hero: 'Hero' },
+  ascension: 1,
+  progress: 3,
+  heartPieces: 4,
+  hearts: { Hero: 2, Archer: 0, Mage: 10 },
   seenFtue: false,
   seenDuelFtue: false,
   seenDuelSetup: false,
@@ -84,6 +90,11 @@ const fakeApp = (over: Record<string, unknown>): GearLinkApp => {
     endT: 1,
     coinsEarned: 120,
     endReason: null,
+    locationId: FIRST_LOCATION,
+    runWon: false,
+    ascended: false,
+    heartPiecesEarned: 0,
+    heartUpgrading: false,
     boardW: 340,
     boardH: 283,
     chain: [],
@@ -192,6 +203,15 @@ const fakeApp = (over: Record<string, unknown>): GearLinkApp => {
     intentFor: (e: unknown, m: number, h: number) =>
       run.intentFor(e as never, m, h),
     scoreOf: (s: typeof bs) => s.damageDealt,
+    waveCount: () => run.waveCount,
+    waveDisplay: (w: number) =>
+      enemyDisplayFor(run.planFor(w).name, run.location.region),
+    locationName: () => run.location.name,
+    isBossWave: (w: number) => run.isBossWave(w),
+    isKingWave: () => false,
+    heartsOfClass: () => 2,
+    canUpgradeHp: () => true,
+    upgradeHp: curried,
     ftueHint: () => null,
     rollUp: (v: number) => v,
     packSummary: () => 'New gear - Rare',
@@ -205,6 +225,9 @@ const fakeApp = (over: Record<string, unknown>): GearLinkApp => {
     pageSlot: curried,
     inspectGear: curried,
     goStep: curried,
+    pickLocation: curried,
+    goMap: noop,
+    endAction: noop,
     startDuel: curried,
     pickShopTab: curried,
     pickInvTab: curried,
@@ -264,6 +287,7 @@ const fakeApp = (over: Record<string, unknown>): GearLinkApp => {
     setFtueTrack: noop,
     setFtueCard: noop,
     setFtueFight: noop,
+    setFtueMap: noop,
     setFtueHero: noop,
     setFtueGear: noop,
     setFtueSlots: noop,
@@ -283,6 +307,11 @@ const renders = (label: string, over: Record<string, unknown>) => {
 void test('every screen renders', () => {
   renders('splash', { phase: 'splash' });
   renders('home', { phase: 'home' });
+  renders('map', { phase: 'map' });
+  renders('map at first climb', {
+    phase: 'map',
+    profile: { ...profile, ascension: 0, progress: 0 },
+  });
   renders('hero picker', { phase: 'hero' });
   renders('gear picker', {
     phase: 'gear',
@@ -290,6 +319,19 @@ void test('every screen renders', () => {
   });
   renders('battle', { phase: 'battle', bs });
   renders('run end', { phase: 'end', bs, endReason: 'dead' });
+  renders('location taken', {
+    phase: 'end',
+    bs,
+    endReason: 'won',
+    runWon: true,
+  });
+  renders('ascended', {
+    phase: 'end',
+    bs,
+    endReason: 'won',
+    runWon: true,
+    ascended: true,
+  });
   renders('shop', { phase: 'shop' });
   renders('shop coins tab', { phase: 'shop', shopTab: 'coins' });
   renders('shop gems tab', { phase: 'shop', shopTab: 'gems' });
@@ -298,6 +340,16 @@ void test('every screen renders', () => {
   renders('duel lobby', { phase: 'duelLobby' });
   renders('duel opt-in', { phase: 'duelOptIn', flow: 'duel' });
   renders('duel hero picker', { phase: 'hero', flow: 'duel' });
+  renders('hero picker with no pieces', {
+    phase: 'hero',
+    profile: { ...profile, heartPieces: 0 },
+  });
+  renders('hero picker mid-upgrade', { phase: 'hero', heartUpgrading: true });
+  renders('hero picker at full hearts', {
+    phase: 'hero',
+    heroClass: 'Mage',
+    picked: defaultLoadout('Mage'),
+  });
 });
 
 void test('the duel setup coaching renders at every step', () => {
@@ -393,6 +445,7 @@ void test('the coaching overlay renders at every step', () => {
   };
   for (const step of [
     'fight',
+    'location',
     'hero',
     'gear',
     'orbs',

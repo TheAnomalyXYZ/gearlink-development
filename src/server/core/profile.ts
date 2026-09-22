@@ -10,6 +10,9 @@ import type { BestRun, Profile } from '../../shared/api.js';
 import { STARTER_GEAR, loadoutIsLegal } from '../../shared/engine/gear.js';
 import { PACKS } from '../../shared/engine/economy.js';
 import { TROPHY_FLOOR } from '../../shared/engine/league.js';
+import { MAP_LENGTH, MAX_ASCENSION } from '../../shared/engine/campaign.js';
+import { normaliseHearts } from '../../shared/engine/hearts.js';
+import type { Hearts } from '../../shared/engine/hearts.js';
 import type { HeroClass } from '../../shared/engine/types.js';
 
 const profileKey = (userId: string) => `profile:${userId}`;
@@ -28,6 +31,9 @@ const num = (raw: string | undefined, fallback: number): number => {
   const n = raw === undefined ? NaN : Number(raw);
   return Number.isFinite(n) ? n : fallback;
 };
+
+const clamp = (n: number, lo: number, hi: number): number =>
+  Math.max(lo, Math.min(hi, Math.floor(n)));
 
 const obj = (raw: string | undefined): Record<string, number> => {
   if (!raw) return {};
@@ -61,6 +67,20 @@ const parsePicked = (
     return loadoutIsLegal(ids, cls) ? ids : [];
   } catch {
     return [];
+  }
+};
+
+/** Containers are normalised on the way out, so a save written before a class
+ *  existed - or one edited to something silly - still reads as a legal record. */
+const parseHearts = (raw: string | undefined): Hearts => {
+  if (!raw) return normaliseHearts(undefined);
+  try {
+    const p: unknown = JSON.parse(raw);
+    if (!p || typeof p !== 'object' || Array.isArray(p))
+      return normaliseHearts(undefined);
+    return normaliseHearts(p as Partial<Hearts>);
+  } catch {
+    return normaliseHearts(undefined);
   }
 };
 
@@ -124,6 +144,10 @@ export const loadProfile = async (
     gear,
     packs: normalisePacks(obj(h['packs'])),
     best: parseBest(h['best']),
+    ascension: clamp(num(h['ascension'], 0), 0, MAX_ASCENSION),
+    heartPieces: Math.max(0, Math.floor(num(h['heartPieces'], 0))),
+    hearts: parseHearts(h['hearts']),
+    progress: clamp(num(h['progress'], 0), 0, MAP_LENGTH),
     seenFtue: h['seenFtue'] === '1',
     seenDuelFtue: h['seenDuelFtue'] === '1',
     seenDuelSetup: h['seenDuelSetup'] === '1',
@@ -142,6 +166,10 @@ export type ProfilePatch = Partial<
     | 'gear'
     | 'packs'
     | 'best'
+    | 'ascension'
+    | 'progress'
+    | 'heartPieces'
+    | 'hearts'
     | 'seenFtue'
     | 'seenDuelFtue'
     | 'seenDuelSetup'
@@ -167,6 +195,14 @@ export const saveProfile = async (
   if (patch.gear !== undefined) fields['gear'] = JSON.stringify(patch.gear);
   if (patch.packs !== undefined) fields['packs'] = JSON.stringify(patch.packs);
   if (patch.best !== undefined) fields['best'] = JSON.stringify(patch.best);
+  if (patch.ascension !== undefined)
+    fields['ascension'] = String(clamp(patch.ascension, 0, MAX_ASCENSION));
+  if (patch.progress !== undefined)
+    fields['progress'] = String(clamp(patch.progress, 0, MAP_LENGTH));
+  if (patch.heartPieces !== undefined)
+    fields['heartPieces'] = String(Math.max(0, Math.floor(patch.heartPieces)));
+  if (patch.hearts !== undefined)
+    fields['hearts'] = JSON.stringify(normaliseHearts(patch.hearts));
   if (patch.seenFtue !== undefined)
     fields['seenFtue'] = patch.seenFtue ? '1' : '0';
   if (patch.seenDuelFtue !== undefined)

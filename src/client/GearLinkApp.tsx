@@ -46,7 +46,7 @@ import {
   bundleById,
   duelBestMove,
   duelStep,
-  enemyDisplayForWave,
+  enemyDisplayFor,
   fallDistances,
   hasAnyMove,
   isJunk,
@@ -58,6 +58,13 @@ import {
   markMultX100,
   mulberry32,
   foeLoadout,
+  FIRST_LOCATION,
+  NO_HEARTS,
+  canApplyHeart,
+  heartsFor,
+  maxHpFor,
+  locationById,
+  locationIndex,
   orbTypeOf,
   ownedLoadout,
   resolveLoadout,
@@ -91,6 +98,7 @@ import { Screen } from './view/Screen.js';
 type Phase =
   | 'splash'
   | 'home'
+  | 'map'
   | 'hero'
   | 'gear'
   | 'battle'
@@ -132,7 +140,19 @@ export type AppState = {
 
   endT: number;
   coinsEarned: number;
-  endReason: 'dead' | 'stuck' | 'ended' | null;
+  endReason: 'dead' | 'stuck' | 'ended' | 'won' | null;
+
+  /** The map node the next run is for. Chosen on the map, kept through the
+   *  hero and gear steps, and sent with the transcript. */
+  locationId: string;
+  /** What the last submission said about the map: whether the boss fell, and
+   *  whether that kill was The King's. */
+  runWon: boolean;
+  ascended: boolean;
+  /** Pieces the last win dropped, for the end screen's readout. */
+  heartPiecesEarned: number;
+  /** An upgrade is in flight; the button stays inert until it lands. */
+  heartUpgrading: boolean;
 
   boardW: number;
   boardH: number;
@@ -216,6 +236,10 @@ const EMPTY_PROFILE: Profile = {
   gear: {},
   packs: {},
   best: null,
+  ascension: 0,
+  progress: 0,
+  heartPieces: 0,
+  hearts: { ...NO_HEARTS },
   seenFtue: true,
   seenDuelFtue: true,
   seenDuelSetup: true,
@@ -279,6 +303,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   private ftueEnemyEl: HTMLElement | null = null;
   private ftueTrackEl: HTMLElement | null = null;
   private ftueFightEl: HTMLElement | null = null;
+  private ftueMapEl: HTMLElement | null = null;
   private ftueHeroEl: HTMLElement | null = null;
   private ftueGearEl: HTMLElement | null = null;
   private ftueSlotsEl: HTMLElement | null = null;
@@ -296,6 +321,11 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     endT: 1,
     coinsEarned: 0,
     endReason: null,
+    locationId: FIRST_LOCATION,
+    runWon: false,
+    ascended: false,
+    heartPiecesEarned: 0,
+    heartUpgrading: false,
     boardW: 0,
     boardH: 0,
     chain: [],
@@ -464,9 +494,39 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   mflags(): Mutators {
     return MUTATORS;
   }
-  maxHp(): number {
-    return this.run ? this.run.maxHp() : 40;
+  /** Containers banked by the class currently selected. This is what the run
+   *  is built with and what the transcript carries; the server checks it
+   *  against the profile before it replays anything. */
+  heartsOfClass(cls?: HeroClass): number {
+    return heartsFor(this.state.profile.hearts, cls ?? this.state.heroClass);
   }
+  maxHp(): number {
+    return this.run ? this.run.maxHp() : maxHpFor(this.heartsOfClass());
+  }
+  /** Whether the pieces on hand buy this class another container. */
+  canUpgradeHp(cls?: HeroClass): boolean {
+    return canApplyHeart(
+      this.state.profile.heartPieces,
+      this.heartsOfClass(cls)
+    );
+  }
+
+  /** Spend three pieces on the selected class. The server owns the wallet, so
+   *  nothing is deducted here - the profile that comes back is adopted whole. */
+  upgradeHp = (cls: HeroClass) => (): void => {
+    if (this.state.heartUpgrading || !this.canUpgradeHp(cls)) return;
+    this.setState({ heartUpgrading: true });
+    void api
+      .applyHeart({ cls })
+      .then((r) => {
+        this.setState({ heartUpgrading: false });
+        this.adopt(r.profile, r.message);
+      })
+      .catch((e) => {
+        this.setState({ heartUpgrading: false });
+        this.fail(e);
+      });
+  };
   perk() {
     return HERO_PERKS[this.state.heroClass] ?? HERO_PERKS.Hero;
   }
@@ -489,7 +549,37 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
           seed: 1,
           heroClass: this.state.heroClass,
           picked: this.state.picked,
+          locationId: this.state.locationId,
+          ascension: this.state.profile.ascension,
+          hearts: this.heartsOfClass(),
         }).enemyForWave(wave);
+  }
+
+  /** How many waves the battle in flight holds. Before it starts, the map
+   *  card shows the location's band instead, so this is only ever asked
+   *  during a run. */
+  waveCount(): number {
+    return this.run ? this.run.waveCount : 0;
+  }
+
+  locationName(): string {
+    return locationById(this.state.locationId).name;
+  }
+  /** The last wave of the battle, which is always the location's elite. */
+  isBossWave(wave: number): boolean {
+    return this.run ? this.run.isBossWave(wave) : false;
+  }
+  /** The Castle's boss wave, and the only kill that ascends. */
+  isKingWave(wave: number): boolean {
+    return this.isBossWave(wave) && !!locationById(this.state.locationId).king;
+  }
+
+  /** Name and art for a wave of the run in flight. The region is the
+   *  LOCATION's, so every wave of a battle shares one backdrop. */
+  waveDisplay(wave: number) {
+    const loc = locationById(this.state.locationId);
+    const name = this.run ? this.run.planFor(wave).name : loc.mobs[0]!;
+    return enemyDisplayFor(name, loc.region);
   }
   blockCapFor = (e: any) => (this.run ? this.run.blockCapFor(e) : 0);
   swingStrength = (e: any, hits: number) =>
@@ -745,6 +835,15 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   };
 
   goLoadout = (): void => this.setState({ phase: 'home' });
+  goMap = this.goStep('map');
+
+  /** Pick a node and walk straight into the hero step. A locked node is inert:
+   *  the map is the only gate on the run, so it is enforced here as well as on
+   *  the server. */
+  pickLocation = (id: string) => (): void => {
+    if (locationIndex(id) > this.state.profile.progress) return;
+    this.setState({ locationId: id, flow: 'run' }, () => this.goStep('hero')());
+  };
   goHome = this.goStep('home');
   openPause = (): void => this.setState({ modal: 'pause' });
   resume = (): void => this.setState({ modal: null });
@@ -862,6 +961,9 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       heroClass: this.state.heroClass,
       picked: this.state.picked,
       mutators: MUTATORS,
+      locationId: this.state.locationId,
+      ascension: this.state.profile.ascension,
+      hearts: this.heartsOfClass(),
     });
     this.moves = [];
     const bs = this.run.start();
@@ -888,6 +990,9 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       dying: null,
       swing: null,
       coinsEarned: 0,
+      runWon: false,
+      ascended: false,
+      heartPiecesEarned: 0,
       ftueStep: this.state.profile.seenFtue ? null : 'orbs',
       ftuePlace: null,
       ftueSample: { damage: 0, killed: false },
@@ -924,11 +1029,17 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         heroClass: this.state.heroClass,
         picked: this.state.picked,
         moves,
+        locationId: this.state.locationId,
+        ascension: this.state.profile.ascension,
+        hearts: this.heartsOfClass(),
       });
       this.setState({
         profile: res.profile,
         leaderboard: res.leaderboard,
         coinsEarned: res.coinsEarned,
+        runWon: res.won,
+        ascended: res.ascended,
+        heartPiecesEarned: res.heartPiecesEarned,
       });
     } catch (e) {
       // The run is over on screen either way; say plainly that it did not bank.
@@ -1138,7 +1249,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       this.t6 = setTimeout(this.advanceFtue, 900);
     }
     const prevWave = this.state.bs.wave;
-    const prevMon = enemyDisplayForWave(prevWave);
+    const prevMon = this.waveDisplay(prevWave);
 
     const land = () => {
       const pops: Pop[] = [];
@@ -1191,11 +1302,11 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       }));
 
       const tail = () => {
-        const stuck = !out.over && !hasAnyMove(out.bs.board);
-        if (out.over || stuck) {
+        const stuck = !out.over && !out.battleWon && !hasAnyMove(out.bs.board);
+        if (out.battleWon || out.over || stuck) {
           this.setState({
             phase: 'end',
-            endReason: out.over ? 'dead' : 'stuck',
+            endReason: out.battleWon ? 'won' : out.over ? 'dead' : 'stuck',
             busy: false,
             hitWho: null,
             pops: [],
@@ -2120,6 +2231,9 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   setFtueFight = (el: HTMLElement | null): void => {
     this.ftueFightEl = el;
   };
+  setFtueMap = (el: HTMLElement | null): void => {
+    this.ftueMapEl = el;
+  };
   setFtueHero = (el: HTMLElement | null): void => {
     this.ftueHeroEl = el;
   };
@@ -2171,11 +2285,13 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
             ? this.ftueTrackEl
             : spec.target === 'fight'
               ? this.ftueFightEl
-              : spec.target === 'hero'
-                ? this.ftueHeroEl
-                : spec.target === 'slots'
-                  ? this.ftueSlotsEl
-                  : this.ftueGearEl;
+              : spec.target === 'map'
+                ? this.ftueMapEl
+                : spec.target === 'hero'
+                  ? this.ftueHeroEl
+                  : spec.target === 'slots'
+                    ? this.ftueSlotsEl
+                    : this.ftueGearEl;
     if (!el) return;
     const arena = this.ftueRoot.getBoundingClientRect();
     const rect = el.getBoundingClientRect();

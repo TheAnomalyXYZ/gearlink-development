@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import type { Context as HonoContext } from 'hono';
 import { context, reddit, redis } from '@devvit/web/server';
 import type {
+  ApplyHeartRequest,
   BuyBundleRequest,
   BuyPackRequest,
   CollectPackRequest,
@@ -33,6 +34,14 @@ import { createChallengePost, readChallengeCard } from '../core/post.js';
 import {
   COINS_PER_SCORE,
   COIN_BUNDLES,
+  HEART_PIECES_PER_CONTAINER,
+  LOCATIONS,
+  MAP_LENGTH,
+  MAX_ASCENSION,
+  canApplyHeart,
+  heartPiecesForBoss,
+  heartsFor,
+  locationIndex,
   DUEL_LOSS_TROPHIES,
   DUEL_MATCH_SECONDS,
   DUEL_WIN_TROPHIES,
@@ -115,11 +124,41 @@ api.post('/run', async (c) => {
       );
   }
 
+  // The map is the server's to hand out: a location past the player's progress
+  // is not theirs to fight, and the ascension has to be the one the profile
+  // records or the replay would score different monsters than were fought.
+  const locId = body.locationId ?? LOCATIONS[0]!.id;
+  if (!LOCATIONS.some((l) => l.id === locId))
+    return c.json<ErrorResponse>(
+      { status: 'error', message: 'unknown location' },
+      400
+    );
+  const locIdx = locationIndex(locId);
+  if (locIdx > profile.progress)
+    return c.json<ErrorResponse>(
+      { status: 'error', message: 'that location is still locked' },
+      400
+    );
+  if (body.ascension !== profile.ascension)
+    return c.json<ErrorResponse>(
+      { status: 'error', message: 'ascension mismatch' },
+      400
+    );
+  const hearts = heartsFor(profile.hearts, body.heroClass);
+  if (body.hearts !== hearts)
+    return c.json<ErrorResponse>(
+      { status: 'error', message: 'heart containers mismatch' },
+      400
+    );
+
   const replay = verifyRun({
     seed: body.seed,
     heroClass: body.heroClass,
     picked: body.picked,
     moves: body.moves,
+    locationId: locId,
+    ascension: profile.ascension,
+    hearts,
   });
   if (!replay.ok)
     return c.json<ErrorResponse>(
@@ -127,7 +166,7 @@ api.post('/run', async (c) => {
       400
     );
 
-  const { score, state } = replay;
+  const { score, state, won, waveCount } = replay;
   const coinsEarned = Math.floor(score / COINS_PER_SCORE);
   const isNewBest = !profile.best || score > profile.best.score;
   const best = isNewBest
@@ -139,7 +178,32 @@ api.post('/run', async (c) => {
       }
     : profile.best;
 
-  await saveProfile(me.userId, { coins: profile.coins + coinsEarned, best });
+  /* A win opens the NEXT location, and never closes one already open - a
+     replayed early location must not walk the map backwards. The Castle is the
+     exception: its win is an ascension, so the map starts over one tier up. */
+  const isKing = won && locIdx === MAP_LENGTH - 1;
+  /* Heart pieces drop on a location's FIRST clear this ascension only. The
+     frontier is exactly `progress`, so re-fighting somewhere already taken
+     pays nothing and the first location cannot be farmed for a bigger pool. */
+  const firstClear = won && locIdx === profile.progress;
+  const heartPiecesEarned = firstClear ? heartPiecesForBoss(locIdx) : 0;
+  const ascended = isKing && profile.ascension < MAX_ASCENSION;
+  const ascension = ascended ? profile.ascension + 1 : profile.ascension;
+  const progress = isKing
+    ? ascended
+      ? 0
+      : MAP_LENGTH
+    : won
+      ? Math.max(profile.progress, locIdx + 1)
+      : profile.progress;
+
+  await saveProfile(me.userId, {
+    coins: profile.coins + coinsEarned,
+    best,
+    ascension,
+    progress,
+    heartPieces: profile.heartPieces + heartPiecesEarned,
+  });
   const { isBest, rank } = await recordScore(
     me.postId,
     me.userId,
@@ -165,9 +229,60 @@ api.post('/run', async (c) => {
     coinsEarned,
     isBest,
     rank,
+    won,
+    waveCount,
+    ascended,
+    heartPiecesEarned,
     profile: after,
     leaderboard,
   });
+});
+
+/**
+ * Spend three pieces on one more container for a class.
+ *
+ * The class is the caller's to choose and the pool is shared, so the ONLY
+ * checks are that the pieces exist and the class is not already capped. The
+ * write is a read-modify-write on one profile, which is the same shape every
+ * other purchase here uses.
+ */
+api.post('/hearts/apply', async (c) => {
+  const me = who();
+  if (!me) return unauthorised(c);
+
+  const body = (await c.req
+    .json()
+    .catch(() => null)) as ApplyHeartRequest | null;
+  const cls = body?.cls;
+  if (cls !== 'Hero' && cls !== 'Archer' && cls !== 'Mage')
+    return c.json<ErrorResponse>(
+      { status: 'error', message: 'unknown hero class' },
+      400
+    );
+
+  const profile = await loadProfile(me.userId, me.username);
+  const have = heartsFor(profile.hearts, cls);
+  if (!canApplyHeart(profile.heartPieces, have))
+    return c.json<ErrorResponse>(
+      {
+        status: 'error',
+        message:
+          profile.heartPieces < HEART_PIECES_PER_CONTAINER
+            ? 'You need ' + HEART_PIECES_PER_CONTAINER + ' heart pieces.'
+            : 'This hero is already at full health.',
+      },
+      400
+    );
+
+  const hearts = { ...profile.hearts, [cls]: have + 1 };
+  await saveProfile(me.userId, {
+    heartPieces: profile.heartPieces - HEART_PIECES_PER_CONTAINER,
+    hearts,
+  });
+  const after = await loadProfile(me.userId, me.username);
+  return c.json<ProfileResponse>(
+    profileJson(after, cls + ' gained a heart container.')
+  );
 });
 
 const profileJson = (profile: Profile, message?: string) => {

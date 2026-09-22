@@ -10,10 +10,11 @@ import { MIN_LINK, areAdjacent, orbTypeOf } from '../shared/engine/index.js';
 import type { Gear } from '../shared/engine/types.js';
 
 export type FtueStep =
-  'fight' | 'hero' | 'gear' | 'orbs' | 'drag' | 'damage' | 'waves';
+  'fight' | 'location' | 'hero' | 'gear' | 'orbs' | 'drag' | 'damage' | 'waves';
 
 export const FTUE_ORDER: FtueStep[] = [
   'fight',
+  'location',
   'hero',
   'gear',
   'orbs',
@@ -26,6 +27,7 @@ export const FTUE_ORDER: FtueStep[] = [
  *  the card instead of stranding it on a screen that is no longer showing. */
 export const FTUE_PHASE_STEP: Record<string, FtueStep> = {
   home: 'fight',
+  map: 'location',
   hero: 'hero',
   gear: 'gear',
 };
@@ -33,6 +35,7 @@ export const FTUE_PHASE_STEP: Record<string, FtueStep> = {
 /** Steps the player completes by acting. These never raise a scrim. */
 export const FTUE_DOING: Record<string, boolean> = {
   fight: true,
+  location: true,
   hero: true,
   gear: true,
   drag: true,
@@ -43,6 +46,7 @@ export const FTUE_TARGET: Record<
   { target: string; place: 'above' | 'below' }
 > = {
   fight: { target: 'fight', place: 'above' },
+  location: { target: 'map', place: 'below' },
   hero: { target: 'hero', place: 'below' },
   gear: { target: 'slots', place: 'above' },
   orbs: { target: 'board', place: 'above' },
@@ -53,8 +57,12 @@ export const FTUE_TARGET: Record<
 
 export const FTUE_COPY: Record<string, { title: string; body: string }> = {
   fight: {
-    title: 'Start a run',
-    body: "Tap FIGHT to set up a run. You'll pick a hero first, then equip the gear you take in.",
+    title: 'Pick a battle',
+    body: 'Tap FIGHT to open the map. Pick a location, then your hero and the five you take in.',
+  },
+  location: {
+    title: 'Choose where to fight',
+    body: 'Each location is one battle of 3 to 5 waves, and the last wave is the elite guarding it. Start at Greenwood - the rest of the map opens as you take them.',
   },
   hero: {
     title: 'Pick your hero',
@@ -74,8 +82,8 @@ export const FTUE_COPY: Record<string, { title: string; body: string }> = {
   },
   damage: { title: 'Nice hit!', body: '' },
   waves: {
-    title: 'Beat waves to win',
-    body: 'The bar fills one notch per move; when it reaches the red notch the enemy swings, so block or heal before it does. Kill an enemy and the next wave walks in - the further you get, the bigger the reward.',
+    title: 'Clear the location',
+    body: 'The bar fills one notch per move; when it reaches the red notch the enemy swings, so block or heal before it does. Kill it and the next wave walks in. The last wave is the elite that guards this place - put it down and the location is yours.',
   },
 };
 

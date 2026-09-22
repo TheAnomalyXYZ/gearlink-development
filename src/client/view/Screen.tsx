@@ -616,6 +616,245 @@ export const Screen = ({ v }: { v: View }) => (
           </>
         ) : null}
 
+        {v.isMap ? (
+          <>
+            <div
+              style={{
+                flex: '1',
+                minHeight: '0',
+                display: 'flex',
+                flexDirection: 'column',
+                background: '#141D2E',
+                backgroundImage: 'url(/art/PocketKnights/Map/Base.png)',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                padding: '16px',
+                gap: '12px',
+                overflowY: 'auto',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '8px',
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: "'Yoster Island',Volter,monospace",
+                    fontSize: '17px',
+                    color: '#FFF2B0',
+                    textShadow: '0 3px 0 #141D2E',
+                  }}
+                >
+                  {v.mapTitle}
+                </div>
+                <div
+                  style={{
+                    fontSize: '9px',
+                    color: '#9DB4D4',
+                    letterSpacing: '.12em',
+                  }}
+                >
+                  {v.mapProgress}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                  border: '1px solid #3A4C74',
+                  borderRadius: '6px',
+                  background: 'rgba(20,29,46,.82)',
+                  padding: '8px 10px',
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: "'Yoster Island',Volter,monospace",
+                    fontSize: '12px',
+                    color: v.ascensionColor,
+                    letterSpacing: '.08em',
+                  }}
+                >
+                  {v.ascensionLabel}
+                </div>
+                <div
+                  style={{
+                    fontSize: '10px',
+                    color: '#9DB4D4',
+                    lineHeight: '1.6',
+                  }}
+                >
+                  {v.ascensionNote}
+                </div>
+              </div>
+
+              <div
+                ref={v.setFtueMap}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                }}
+              >
+                {(v.mapNodes || []).map((n: any) => (
+                  <Fragment key={n.id}>
+                    <div
+                      onClick={n.run || undefined}
+                      style={{
+                        cursor: n.cursor,
+                        opacity: n.opacity,
+                        position: 'relative',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        minHeight: '84px',
+                        padding: '10px',
+                        border: '2px solid ' + n.bd,
+                        borderRadius: '8px 2px 8px 2px',
+                        backgroundColor: '#182238',
+                        backgroundImage: `url(${n.bg})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <div
+                        style={{
+                          position: 'absolute',
+                          inset: '0',
+                          background:
+                            'linear-gradient(90deg,rgba(20,29,46,.94),rgba(20,29,46,.62))',
+                        }}
+                      ></div>
+                      <div
+                        style={{
+                          position: 'relative',
+                          width: '58px',
+                          height: '58px',
+                          flexShrink: '0',
+                          backgroundImage: `url(${n.bossUrl})`,
+                          backgroundSize: 'contain',
+                          backgroundRepeat: 'no-repeat',
+                          backgroundPosition: 'center',
+                          imageRendering: 'pixelated',
+                        }}
+                      ></div>
+                      <div
+                        style={{
+                          position: 'relative',
+                          flex: '1',
+                          minWidth: '0',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '4px',
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontFamily: "'Yoster Island',Volter,monospace",
+                              fontSize: '13px',
+                              color: '#FFF2B0',
+                            }}
+                          >
+                            {n.name}
+                          </div>
+                          <div
+                            style={{
+                              display: n.kingDisplay,
+                              alignItems: 'center',
+                              padding: '1px 5px',
+                              borderRadius: '3px',
+                              background: '#7A3038',
+                              fontSize: '8px',
+                              color: '#FFD9DC',
+                              letterSpacing: '.1em',
+                            }}
+                          >
+                            ASCEND
+                          </div>
+                        </div>
+                        <div
+                          style={{
+                            fontSize: '9px',
+                            color: '#9DB4D4',
+                            lineHeight: '1.6',
+                          }}
+                        >
+                          {n.blurb}
+                        </div>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            fontSize: '9px',
+                            letterSpacing: '.1em',
+                            color: '#CBD9EC',
+                          }}
+                        >
+                          <span>{n.waves}</span>
+                          <span style={{ color: '#FFC24B' }}>{n.bossName}</span>
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          position: 'relative',
+                          flexShrink: '0',
+                          alignSelf: 'flex-start',
+                          padding: '2px 6px',
+                          borderRadius: '3px',
+                          background: n.tagBg,
+                          color: n.tagFg,
+                          fontSize: '8px',
+                          letterSpacing: '.1em',
+                        }}
+                      >
+                        {n.tag}
+                      </div>
+                    </div>
+                  </Fragment>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ padding: '10px 16px 14px' }}>
+              <div
+                onClick={v.goHome}
+                style={{
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '42px',
+                  border: '3px solid #000000',
+                  borderRadius: '8px 2px 8px 2px',
+                  background: '#B5C0FF',
+                  boxShadow:
+                    '0 -4px 0 0 #7E84E6 inset, 0 4px 0 0 #FFF inset, 0 2px 0 0 rgba(0,0,0,.25)',
+                  color: '#000000',
+                  fontFamily: "'Yoster Island',Volter,monospace",
+                  fontSize: '13px',
+                }}
+              >
+                HOME
+              </div>
+            </div>
+          </>
+        ) : null}
+
         {v.isHeroStep ? (
           <>
             <div
@@ -639,6 +878,59 @@ export const Screen = ({ v }: { v: View }) => (
                 }}
               >
                 {v.heroStepTitle}
+              </div>
+
+              <div
+                style={{
+                  display: v.heartPiecesDisplay,
+                  alignItems: 'center',
+                  gap: '9px',
+                  border: '1px solid #3A4C74',
+                  borderRadius: '6px',
+                  background: 'rgba(20,29,46,.55)',
+                  padding: '8px 10px',
+                }}
+              >
+                <div
+                  style={{
+                    width: '22px',
+                    height: '22px',
+                    flexShrink: '0',
+                    backgroundImage: `url(${v.heartIcon})`,
+                    backgroundSize: 'contain',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'center',
+                    imageRendering: 'pixelated',
+                  }}
+                ></div>
+                <div
+                  style={{
+                    flex: '1',
+                    minWidth: '0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontFamily: "'Yoster Island',Volter,monospace",
+                      fontSize: '11px',
+                      color: '#FFF2B0',
+                    }}
+                  >
+                    {v.heartPiecesLabel}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: '9px',
+                      color: '#9DB4D4',
+                      lineHeight: '1.6',
+                    }}
+                  >
+                    {v.heartPiecesNote}
+                  </div>
+                </div>
               </div>
 
               <div
@@ -703,6 +995,20 @@ export const Screen = ({ v }: { v: View }) => (
                         >
                           {h.perkLine}
                         </div>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '7px',
+                            fontSize: '9px',
+                            letterSpacing: '.08em',
+                          }}
+                        >
+                          <span style={{ color: '#FF9EA1' }}>{h.hpLabel}</span>
+                          <span style={{ color: '#9DB4D4' }}>
+                            HEARTS {h.heartsLabel}
+                          </span>
+                        </div>
                       </div>
                       <div
                         style={{
@@ -719,6 +1025,32 @@ export const Screen = ({ v }: { v: View }) => (
                       >
                         {h.tick}
                       </div>
+                    </div>
+                    <div
+                      onClick={h.upgradeRun || undefined}
+                      style={{
+                        display: h.upgradeDisplay,
+                        cursor: h.upgradeCursor,
+                        opacity: h.upgradeOpacity,
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '8px',
+                        height: '34px',
+                        marginTop: '-2px',
+                        padding: '0 10px',
+                        border: '3px solid #000000',
+                        borderRadius: '0 0 8px 2px',
+                        background: h.upgradeBg,
+                        boxShadow: h.upgradeShadow,
+                        color: '#000000',
+                        fontFamily: "'Yoster Island',Volter,monospace",
+                        fontSize: '11px',
+                      }}
+                    >
+                      <span>{h.upgradeLabel}</span>
+                      <span style={{ fontSize: '9px', opacity: '.75' }}>
+                        {h.upgradeCost}
+                      </span>
                     </div>
                   </Fragment>
                 ))}
@@ -1760,7 +2092,22 @@ export const Screen = ({ v }: { v: View }) => (
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        WAVE {v.waveNo}
+                        {v.waveLabel}
+                      </div>
+                      <div
+                        style={{
+                          display: v.bossFlagDisplay,
+                          flexShrink: '0',
+                          alignItems: 'center',
+                          padding: '1px 4px',
+                          borderRadius: '3px',
+                          background: '#7A3038',
+                          color: '#FFD9DC',
+                          fontSize: '8px',
+                          letterSpacing: '.1em',
+                        }}
+                      >
+                        {v.bossFlagLabel}
                       </div>
                       <div
                         style={{
@@ -1799,7 +2146,8 @@ export const Screen = ({ v }: { v: View }) => (
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      {v.scoreLabel} {v.score} / TURN {v.turns}
+                      {v.locationName} / {v.scoreLabel} {v.score} / TURN{' '}
+                      {v.turns}
                     </div>
                   </div>
                   <div
@@ -5928,7 +6276,7 @@ export const Screen = ({ v }: { v: View }) => (
                     style={{
                       fontFamily: "'Yoster Island',Volter,monospace",
                       fontSize: '20px',
-                      color: '#3C63FF',
+                      color: v.endTitleColor || '#3C63FF',
                       textAlign: 'center',
                     }}
                   >
@@ -5998,7 +6346,7 @@ export const Screen = ({ v }: { v: View }) => (
                 }}
               >
                 <div
-                  onClick={v.goLoadout}
+                  onClick={v.endAction}
                   style={{
                     cursor: 'pointer',
                     display: 'flex',
@@ -6013,6 +6361,26 @@ export const Screen = ({ v }: { v: View }) => (
                     color: '#000000',
                     fontFamily: "'Yoster Island',Volter,monospace",
                     fontSize: '14px',
+                  }}
+                >
+                  {v.endActionLabel}
+                </div>
+                <div
+                  onClick={v.goLoadout}
+                  style={{
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '40px',
+                    border: '3px solid #000000',
+                    borderRadius: '8px 2px 8px 2px',
+                    background: '#AEE45D',
+                    boxShadow:
+                      '0 -4px 0 0 rgba(0,0,0,.3) inset, 0 4px 0 0 #FFFFCB inset, 0 2px 0 0 rgba(0,0,0,.25)',
+                    color: '#000000',
+                    fontFamily: "'Yoster Island',Volter,monospace",
+                    fontSize: '12px',
                   }}
                 >
                   HOME

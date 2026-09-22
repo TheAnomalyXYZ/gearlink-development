@@ -7,6 +7,7 @@ import {
   EFFECT_ICON,
   GEAR,
   GEM_ICON,
+  HEART_PIECE_ICON,
   HERO_PERKS,
   INTENT_ICON,
   JUNK_ICON,
@@ -46,6 +47,7 @@ const collect = (): string[] => {
   for (const league of LEAGUES) paths.add(league.icon);
   paths.add(COIN_ICON);
   paths.add(GEM_ICON);
+  paths.add(HEART_PIECE_ICON);
   for (const pack of PACKS) {
     paths.add(pack.img);
     paths.add(pack.glow);

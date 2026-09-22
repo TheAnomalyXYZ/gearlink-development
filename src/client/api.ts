@@ -6,6 +6,7 @@
  * adopts what came back.
  */
 import type {
+  ApplyHeartRequest,
   ChallengeResponse,
   CollectPackRequest,
   DuelChallengeResponse,
@@ -50,6 +51,8 @@ export const api = {
   leaderboard: () => call<LeaderboardResponse>('/leaderboard'),
   submitRun: (run: SubmitRunRequest) => call<SubmitRunResponse>('/run', run),
   buyPack: (packId: string) => call<ProfileResponse>('/shop/pack', { packId }),
+  applyHeart: (req: ApplyHeartRequest) =>
+    call<ProfileResponse>('/hearts/apply', req),
   buyCoins: (bundleId: string) =>
     call<ProfileResponse>('/shop/coins', { bundleId }),
   openPack: (packId: string) =>

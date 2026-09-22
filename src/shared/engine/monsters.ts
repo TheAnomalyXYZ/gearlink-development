@@ -9,9 +9,9 @@
  * code builds has no file behind it.
  */
 
-/** Roster ordered by the monster table's base_hp ascending, so each wave is a
- *  bigger pool than the last. Past the roster the last entry keeps compounding,
- *  which is what makes the gauntlet endless. */
+/** The whole roster, ordered by the monster table's base_hp ascending. The MAP
+ *  is what decides who a battle fields now (see campaign.ts); this list is the
+ *  full cast, and the asset test walks it to prove every one has art. */
 export const WAVE_ENEMIES: [string, string][] = [
   ['Bandit Scout', 'Forest'],
   ['Bandit Leader', 'Forest'],
@@ -83,36 +83,25 @@ export const monsterUrlFor = (name: string): string =>
   '.png';
 
 export const backgroundUrlFor = (region: string): string =>
-  '/art/PocketKnights/Background/' +
-  (BG_FOR[region] ?? 'Forest') +
-  '.png';
+  '/art/PocketKnights/Background/' + (BG_FOR[region] ?? 'Forest') + '.png';
 
-/** The roster entry a wave fields. Past the end of the list the final entry
- *  repeats, with its stats compounding. */
-export const enemyDisplayForWave = (wave: number) => {
-  const e = WAVE_ENEMIES[Math.min(wave - 1, WAVE_ENEMIES.length - 1)]!;
-  return {
-    name: e[0],
-    region: e[1],
-    url: monsterUrlFor(e[0]),
-    bg: backgroundUrlFor(e[1]),
-  };
-};
+/** Art and name for one planned wave. The region comes from the LOCATION, not
+ *  the monster, so a bandit fought in the Castle stands in the Castle. */
+export const enemyDisplayFor = (name: string, region: string) => ({
+  name,
+  region,
+  url: monsterUrlFor(name),
+  bg: backgroundUrlFor(region),
+});
 
 export const INTENT_ICON: Record<string, string> = {
-  attack:
-    '/art/PocketKnights/Battle/Intent/Attack.png',
-  heavy:
-    '/art/PocketKnights/Battle/Intent/Special.png',
-  charge:
-    '/art/PocketKnights/Battle/Intent/Defense.png',
+  attack: '/art/PocketKnights/Battle/Intent/Attack.png',
+  heavy: '/art/PocketKnights/Battle/Intent/Special.png',
+  charge: '/art/PocketKnights/Battle/Intent/Defense.png',
 };
 
 export const EFFECT_ICON: Record<string, string> = {
-  attack:
-    '/art/PocketKnights/Battle/Intent/Attack.png',
-  block:
-    '/art/PocketKnights/Battle/Effects/Shield.png',
-  effect:
-    '/art/PocketKnights/Item/RegularHealthPotion_v1.png',
+  attack: '/art/PocketKnights/Battle/Intent/Attack.png',
+  block: '/art/PocketKnights/Battle/Effects/Shield.png',
+  effect: '/art/PocketKnights/Item/RegularHealthPotion_v1.png',
 };

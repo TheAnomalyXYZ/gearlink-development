@@ -22,10 +22,15 @@ import {
   EFFECT_ICON,
   EFFECT_LABEL,
   EFFECT_TINTS,
-  ELITE_EVERY,
   GEAR,
   GEM_BUNDLES,
   GEM_ICON,
+  HEART_PIECE_ICON,
+  HEART_PIECES_PER_CONTAINER,
+  HP_PER_HEART_CONTAINER,
+  MAX_HEART_CONTAINERS,
+  heartsFor,
+  maxHpFor,
   GRID_COLS,
   GRID_ROWS,
   HERO_PERKS,
@@ -38,13 +43,14 @@ import {
   RARITY_ORDER,
   RARITY_OUTLINE,
   RIDERS,
-  WAVE_ENEMIES,
   colOf,
   leagueOf,
   leagueProgress,
   nextLeague,
   toNextLeague,
-  enemyDisplayForWave,
+  LOCATIONS,
+  MAP_LENGTH,
+  backgroundUrlFor,
   getGearImageUrl,
   isJunk,
   isSuper,
@@ -105,17 +111,51 @@ export const buildView = (app: GearLinkApp): View => {
   const perk = app.perk();
   const bs = st.bs;
 
+  /* Heart containers are per class, so the hero card is where they belong:
+     you are already choosing a class there, and the card is the only place the
+     two numbers that matter - this hero's pool and what one more costs - sit
+     side by side. The duel flow borrows these cards but fights at a fixed
+     duel HP, so the upgrade row stays hidden there. */
+  const pieces = st.profile.heartPieces;
   const heroCards = Object.keys(HERO_PERKS).map((k: any) => {
     const p = PERKS[k]!;
+    const on = st.heroClass === k;
+    const containers = heartsFor(st.profile.hearts, k);
+    const capped = containers >= MAX_HEART_CONTAINERS;
+    const affordable = pieces >= HEART_PIECES_PER_CONTAINER;
+    const canUp = !capped && affordable && !st.heartUpgrading;
     return {
       name: k,
       img: p.img,
       perkLine: p.line,
       pick: app.pickHero(k),
-      bd: st.heroClass === k ? '#FFF2B0' : '#213854',
-      bg: st.heroClass === k ? '#1D2956' : '#182238',
-      tick: st.heroClass === k ? '+' : '',
-      tickBg: st.heroClass === k ? '#FCE370' : 'transparent',
+      bd: on ? '#FFF2B0' : '#213854',
+      bg: on ? '#1D2956' : '#182238',
+      tick: on ? '+' : '',
+      tickBg: on ? '#FCE370' : 'transparent',
+      hpLabel: 'HP ' + maxHpFor(containers),
+      heartsLabel: containers + '/' + MAX_HEART_CONTAINERS,
+      // Only the selected class shows a button, so there is never a question
+      // about which hero an upgrade would land on.
+      upgradeDisplay: on && st.flow !== 'duel' ? 'flex' : 'none',
+      upgradeLabel: capped
+        ? 'FULL HEALTH'
+        : st.heartUpgrading
+          ? 'UPGRADING...'
+          : affordable
+            ? '+' + HP_PER_HEART_CONTAINER + ' MAX HP'
+            : HEART_PIECES_PER_CONTAINER - pieces === 1
+              ? 'NEED 1 MORE PIECE'
+              : 'NEED ' +
+                (HEART_PIECES_PER_CONTAINER - pieces) +
+                ' MORE PIECES',
+      // A dead handler rather than a live one that the server would refuse.
+      upgradeRun: canUp ? app.upgradeHp(k) : null,
+      upgradeBg: canUp ? BTN.tertiary.bg : BTN.disabled.bg,
+      upgradeShadow: canUp ? BTN.tertiary.shadow : BTN.disabled.shadow,
+      upgradeCursor: canUp ? 'pointer' : 'default',
+      upgradeOpacity: canUp ? 1 : 0.65,
+      upgradeCost: capped ? '' : HEART_PIECES_PER_CONTAINER + ' PIECES',
     };
   });
 
@@ -245,7 +285,7 @@ export const buildView = (app: GearLinkApp): View => {
     const showWave =
       st.monPhase === 'dying' && st.dying ? Math.max(1, bs.wave - 1) : bs.wave;
     const enemy = app.enemyAt(null, showWave);
-    const disp = enemyDisplayForWave(showWave);
+    const disp = app.waveDisplay(showWave);
     const sxNow = Object.assign({}, NO_STATUS, bs.stx || {});
     // Frost stalls the meter, so the telegraph must not claim an imminent swing.
     const intent =
@@ -331,6 +371,14 @@ export const buildView = (app: GearLinkApp): View => {
 
     battle = {
       waveNo: showWave,
+      /* A battle is 3-5 waves now, so the HUD says how far through it is -
+         "WAVE 3/4" is the pacing the whole mode is built on. */
+      waveOf: app.waveCount(),
+      waveLabel: 'WAVE ' + showWave + '/' + app.waveCount(),
+      locationName: app.locationName(),
+      isBossWave: app.isBossWave(showWave),
+      bossFlagDisplay: app.isBossWave(showWave) ? 'flex' : 'none',
+      bossFlagLabel: app.isKingWave(showWave) ? 'THE KING' : 'ELITE',
       scoreLabel: 'SCORE',
       score: app.scoreOf(bs).toLocaleString(),
       turns: bs.turnsUsed,
@@ -852,6 +900,7 @@ export const buildView = (app: GearLinkApp): View => {
     setFtueTrack: app.setFtueTrack,
     setFtueCard: app.setFtueCard,
     setFtueFight: app.setFtueFight,
+    setFtueMap: app.setFtueMap,
     setFtueHero: app.setFtueHero,
     setFtueGear: app.setFtueGear,
     setFtueSlots: app.setFtueSlots,
@@ -861,7 +910,7 @@ export const buildView = (app: GearLinkApp): View => {
     bestStats: (() => {
       const b: any = st.profile.best;
       return [
-        { label: 'DEEPEST', value: b ? b.waves : 0, color: '#3C63FF' },
+        { label: 'WAVES', value: b ? b.waves : 0, color: '#3C63FF' },
         { label: 'BEST LINK', value: b ? b.chain : 0, color: '#1D2956' },
         {
           label: 'SCORE',
@@ -870,16 +919,19 @@ export const buildView = (app: GearLinkApp): View => {
         },
       ];
     })(),
-    ladder: [1, 4, 7, 10, 13, 15].map((w) => {
-      const d = WAVE_ENEMIES[Math.min(w - 1, WAVE_ENEMIES.length - 1)]!;
-      const elite = w % ELITE_EVERY === 0;
-      return {
-        url: monsterUrlFor(d[0]),
-        tag: 'W' + w,
-        color: elite ? '#FFC24B' : '#9DB4D4',
-        opacity: 1 - w / 26,
-      };
-    }),
+    /* The home strip is the road itself: one boss per location, lit as far as
+       this ascension has got. */
+    ladder: LOCATIONS.map((loc, i) => ({
+      url: monsterUrlFor(loc.boss),
+      tag: loc.name.split(' ')[0],
+      color:
+        i < st.profile.progress
+          ? '#8FE3A2'
+          : i === st.profile.progress
+            ? '#FFC24B'
+            : '#9DB4D4',
+      opacity: i <= st.profile.progress ? 1 : 0.4,
+    })),
     /* ---------- DUEL ---------- */
     isDuelLobby: st.phase === 'duelLobby',
     isDuel: st.phase === 'duel',
@@ -1710,7 +1762,7 @@ export const buildView = (app: GearLinkApp): View => {
       },
       {
         label: 'FIGHT',
-        run: app.goStep('hero'),
+        run: app.goMap,
         img: NAV_ICON.fight,
         icon: '34px',
         active: true,
@@ -1746,6 +1798,66 @@ export const buildView = (app: GearLinkApp): View => {
       { label: 'BLACKSMITHS', run: app.openBoardFromMenu },
       { label: 'HOW TO PLAY', run: app.openHowFromMenu },
     ],
+    /* ---------- the map ---------- */
+    isMap: st.phase === 'map',
+    goMap: app.goMap,
+    mapTitle: 'CHOOSE YOUR BATTLE',
+    /* The ascension badge is the only place the run's difficulty tier is
+       stated, so it shows even at zero rather than appearing from nowhere on
+       the first King kill. */
+    ascensionLabel:
+      st.profile.ascension > 0
+        ? 'ASCENSION ' + st.profile.ascension
+        : 'FIRST CLIMB',
+    ascensionColor: st.profile.ascension > 0 ? '#FFC24B' : '#9DB4D4',
+    ascensionNote:
+      st.profile.ascension > 0
+        ? 'Every monster on the map is harder, and every battle pays more.'
+        : 'Beat The King in the Castle to ascend. The map starts again, harder.',
+    mapProgress:
+      Math.min(st.profile.progress, MAP_LENGTH) + '/' + MAP_LENGTH + ' TAKEN',
+    mapNodes: LOCATIONS.map((loc, i) => {
+      const cleared = i < st.profile.progress;
+      const open = i <= st.profile.progress;
+      const next = i === st.profile.progress;
+      return {
+        id: loc.id,
+        name: loc.name,
+        blurb: open
+          ? loc.blurb
+          : 'Take the location before this one to open the road.',
+        bg: backgroundUrlFor(loc.region),
+        bossUrl: monsterUrlFor(loc.boss),
+        bossName: loc.boss.toUpperCase(),
+        waves:
+          loc.minWaves === loc.maxWaves
+            ? loc.minWaves + ' WAVES'
+            : loc.minWaves + '-' + loc.maxWaves + ' WAVES',
+        // A locked card has no handler at all, so a stray tap cannot start a
+        // run the server would refuse anyway.
+        run: open ? app.pickLocation(loc.id) : null,
+        opacity: open ? 1 : 0.45,
+        bd: next ? '#FFF2B0' : cleared ? '#8FE3A2' : '#213854',
+        tag: cleared ? 'CLEARED' : next ? 'NEXT' : 'LOCKED',
+        tagBg: cleared ? '#2E8B57' : next ? '#FCE370' : '#3A4C74',
+        tagFg: next ? '#1D2956' : '#FFFFFF',
+        cursor: open ? 'pointer' : 'default',
+        kingDisplay: loc.king ? 'flex' : 'none',
+      };
+    }),
+    /* ---------- heart pieces ---------- */
+    heartIcon: HEART_PIECE_ICON,
+    heartPieces: pieces,
+    heartPiecesDisplay: st.flow === 'duel' ? 'none' : 'flex',
+    heartPiecesLabel: pieces + ' HEART PIECE' + (pieces === 1 ? '' : 'S'),
+    heartPiecesNote:
+      'Location bosses drop them. ' +
+      HEART_PIECES_PER_CONTAINER +
+      ' make a container: +' +
+      HP_PER_HEART_CONTAINER +
+      ' max HP for one hero, up to ' +
+      MAX_HEART_CONTAINERS +
+      '.',
     isHeroStep: st.phase === 'hero',
     isGearStep: st.phase === 'gear',
     /* The hero and gear screens serve both flows, so their footers name the
@@ -1757,8 +1869,8 @@ export const buildView = (app: GearLinkApp): View => {
     startRun: st.flow === 'duel' ? app.goDuelOptIn : app.startRun,
     heroStepActions: [
       {
-        label: st.flow === 'duel' ? 'CANCEL' : 'HOME',
-        run: st.flow === 'duel' ? app.leaveDuelSetup : app.goStep('home'),
+        label: st.flow === 'duel' ? 'CANCEL' : 'MAP',
+        run: st.flow === 'duel' ? app.leaveDuelSetup : app.goMap,
         h: '46px',
         size: '13px',
         flex: '0 0 34%',
@@ -1947,17 +2059,30 @@ export const buildView = (app: GearLinkApp): View => {
     stop: app.stop,
     ...battle,
     endTitle:
-      st.endReason === 'stuck'
-        ? 'BOARD LOCKED'
-        : st.endReason === 'ended'
-          ? 'RUN FORFEIT'
-          : 'YOU FELL',
+      st.endReason === 'won'
+        ? st.ascended
+          ? 'ASCENDED'
+          : 'LOCATION TAKEN'
+        : st.endReason === 'stuck'
+          ? 'BOARD LOCKED'
+          : st.endReason === 'ended'
+            ? 'RUN FORFEIT'
+            : 'YOU FELL',
     endBody:
-      st.endReason === 'stuck'
-        ? 'No legal link left and no bomb to break the board open. Not stranding your last playable colours is part of the skill.'
-        : st.endReason === 'ended'
-          ? 'You walked out mid-run. A ranked entry would have been spent for nothing.'
-          : 'HP never comes back between waves, and enemy strength compounds. Depth is the score.',
+      st.endReason === 'won'
+        ? st.ascended
+          ? 'The King is down. The map opens again from Greenwood, and everything on it hits harder from here.'
+          : 'The elite fell and the road ahead is open. The next location fields more waves and a bigger guard.'
+        : st.endReason === 'stuck'
+          ? 'No legal link left and no bomb to break the board open. Not stranding your last playable colours is part of the skill.'
+          : st.endReason === 'ended'
+            ? 'You walked out mid-battle. Nothing on the map moved.'
+            : 'HP does not come back between waves. Clear the location in one go or not at all.',
+    endTitleColor: st.endReason === 'won' ? '#FCE370' : '#FF9EA1',
+    /* Won or lost, the way on is the map - there is nothing else to go back
+       to now that a run is one location rather than an endless gauntlet. */
+    endActionLabel: st.endReason === 'won' ? 'BACK TO THE MAP' : 'TRY AGAIN',
+    endAction: app.goMap,
     endStats: [
       {
         label: 'WAVES CLEARED',
@@ -1983,18 +2108,31 @@ export const buildView = (app: GearLinkApp): View => {
         color: '#2E8B57',
         anim: 'glPop 320ms 240ms ease-out both',
       },
-    ].concat(
-      !st.coinsEarned
-        ? []
-        : [
-            {
-              label: 'COINS EARNED',
-              value: '+' + app.rollUp(st.coinsEarned),
-              color: '#8A5A2B',
-              anim: 'glPop 320ms 320ms ease-out both',
-            },
-          ]
-    ),
+    ]
+      .concat(
+        !st.heartPiecesEarned
+          ? []
+          : [
+              {
+                label: 'HEART PIECES',
+                value: '+' + app.rollUp(st.heartPiecesEarned),
+                color: '#B23A48',
+                anim: 'glPop 320ms 400ms ease-out both',
+              },
+            ]
+      )
+      .concat(
+        !st.coinsEarned
+          ? []
+          : [
+              {
+                label: 'COINS EARNED',
+                value: '+' + app.rollUp(st.coinsEarned),
+                color: '#8A5A2B',
+                anim: 'glPop 320ms 320ms ease-out both',
+              },
+            ]
+      ),
     modalOpen: !!st.modal,
     modalTitle,
     modalRows,

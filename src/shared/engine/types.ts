@@ -94,6 +94,8 @@ export type StepResult = {
   healed: number;
   detonations: number;
   waveCleared: boolean;
+  /** The boss was the last wave: the location is taken and the run stops. */
+  battleWon: boolean;
   enemyAttacked: boolean;
   enemyDamage: number;
   over: boolean;
