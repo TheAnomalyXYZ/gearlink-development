@@ -1827,10 +1827,12 @@ export const buildView = (app: GearLinkApp): View => {
         anim: next && !isOpen ? 'glLoom 1800ms ease-in-out infinite' : 'none',
         newDisplay: next && !isOpen ? 'block' : 'none',
         panelDisplay: isOpen ? 'flex' : 'none',
-        // Panels on the right-hand pins open leftwards, and vice versa, so one
-        // never runs off the edge of the shell.
-        panelSide: loc.at.right !== undefined ? 'right' : 'left',
-        panelOffset: '64px',
+        /* The panel sits BESIDE the pin, anchored to the pin's outer edge with
+           a small gap - not overlapping it. Pins on the right-hand side of the
+           map open leftwards and vice versa, so a panel never runs off the
+           shell. */
+        panelLeft: loc.at.right !== undefined ? 'auto' : 'calc(100% + 8px)',
+        panelRight: loc.at.right !== undefined ? 'calc(100% + 8px)' : 'auto',
         name: loc.name,
         blurb: open
           ? loc.blurb

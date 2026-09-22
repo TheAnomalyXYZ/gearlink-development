@@ -269,17 +269,19 @@ export const Screen = ({ v }: { v: View }) => (
                             }}
                           ></div>
 
-                          {/* The detail panel, opening away from the edge the
-                              pin sits on so it never runs off the shell. */}
+                          {/* The detail panel, sitting alongside the pin and
+                              opening away from the edge the pin is on, so it
+                              never runs off the shell. */}
                           <div
                             style={{
                               position: 'absolute',
                               top: '50%',
                               transform: 'translateY(-50%)',
-                              [p.panelSide]: p.panelOffset,
-                              zIndex: '1',
+                              left: p.panelLeft,
+                              right: p.panelRight,
+                              zIndex: '5',
                               display: p.panelDisplay,
-                              width: '190px',
+                              width: '168px',
                               flexDirection: 'column',
                               gap: '6px',
                               padding: '9px 10px',
