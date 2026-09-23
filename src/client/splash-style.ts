@@ -57,14 +57,21 @@ export const MOTION = `
 @keyframes glk-sheen{0%{transform:translateX(-140%)}55%,100%{transform:translateX(240%)}}
 @keyframes glk-rise{0%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:translateY(0)}}
 @keyframes glk-blink{0%,100%{opacity:.35}50%{opacity:1}}
+@keyframes glk-twinkle{0%,100%{opacity:0;transform:scale(.4) rotate(0deg)}50%{opacity:1;transform:scale(1) rotate(180deg)}}
 .glk-bob{animation:glk-bob 3.2s ease-in-out infinite}
 .glk-breathe{animation:glk-breathe 3.2s ease-in-out infinite}
 .glk-pop{animation:glk-pop .5s cubic-bezier(.2,1.5,.4,1) both}
 .glk-sheen{animation:glk-sheen 2.8s ease-in-out infinite}
 .glk-blink{animation:glk-blink 1.6s ease-in-out infinite}
 .glk-rise{animation:glk-rise .45s ease-out both}
+.glk-star{position:absolute;pointer-events:none;color:#FFD84D;z-index:20;
+filter:drop-shadow(0 0 3px #FFF2A8) drop-shadow(0 0 6px #FFB84D)}
+.glk-s1{top:-4px;left:6px;animation:glk-twinkle 1.6s ease-in-out infinite}
+.glk-s2{top:-5px;right:10px;animation:glk-twinkle 1.8s ease-in-out .4s infinite}
+.glk-s3{bottom:-4px;left:28%;animation:glk-twinkle 1.4s ease-in-out .8s infinite}
+.glk-s4{bottom:-5px;right:18%;animation:glk-twinkle 2s ease-in-out 1.1s infinite}
 .glk-d1{animation-delay:.06s}.glk-d2{animation-delay:.12s}.glk-d3{animation-delay:.18s}
 .glk-d4{animation-delay:.24s}.glk-d5{animation-delay:.3s}
 @media (prefers-reduced-motion:reduce){
-.glk-bob,.glk-breathe,.glk-pop,.glk-sheen,.glk-blink,.glk-rise{animation:none}
+.glk-bob,.glk-breathe,.glk-pop,.glk-sheen,.glk-blink,.glk-rise,.glk-star{animation:none}
 }`;

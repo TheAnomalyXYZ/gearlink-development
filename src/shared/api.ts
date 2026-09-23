@@ -173,10 +173,22 @@ export type ChallengeCard = {
   gear: { icon: string; tint: string; name: string }[];
 };
 
+/** The reader of a challenge post, as the card draws them on the open side.
+ *  Null when the feed view is being shown to a logged-out visitor, who gets
+ *  the anonymous placeholder instead of a face. */
+export type ChallengeViewer = {
+  /** Reddit handle, without the u/ prefix. */
+  username: string;
+  /** Snoovatar, or empty when the account has none. */
+  avatar: string;
+};
+
 export type ChallengeResponse = {
   type: 'challengeCard';
   /** Null on an ordinary GearLink post, which shows the plain splash. */
   card: ChallengeCard | null;
+  /** Who is reading, when Reddit says. Null for a logged-out visitor. */
+  viewer: ChallengeViewer | null;
 };
 
 export type DuelResultRequest = {

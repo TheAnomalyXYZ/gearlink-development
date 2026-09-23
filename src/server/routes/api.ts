@@ -645,12 +645,24 @@ api.post('/duel/result', async (c) => {
  * logged-out visitors too, and it exposes nothing the post title does not.
  */
 api.get('/challenge', async (c) => {
-  const { postId } = context;
+  const { postId, username } = context;
   if (!postId)
-    return c.json<ChallengeResponse>({ type: 'challengeCard', card: null });
+    return c.json<ChallengeResponse>({
+      type: 'challengeCard',
+      card: null,
+      viewer: null,
+    });
+  // The reader fills the open side of the plate, so they are looked up with
+  // the card. A logged-out visitor has no handle and gets no face, which the
+  // card already draws as the anonymous seat.
+  const [card, avatar] = await Promise.all([
+    readChallengeCard(postId),
+    username ? snoovatarOf(username) : Promise.resolve(''),
+  ]);
   return c.json<ChallengeResponse>({
     type: 'challengeCard',
-    card: await readChallengeCard(postId),
+    card,
+    viewer: username ? { username, avatar } : null,
   });
 });
 

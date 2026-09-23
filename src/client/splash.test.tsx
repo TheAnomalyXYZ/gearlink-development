@@ -66,6 +66,38 @@ void test('a challenge post shows the duellist, not the game splash', () => {
   );
 });
 
+void test('the reader stands on the open side of the plate', () => {
+  const card = cardFor(900);
+  const html = renderToStaticMarkup(
+    <Challenge card={card} viewer={{ username: 'reader', avatar: '/a.png' }} />
+  );
+  assert.ok(html.includes('u/reader'), 'the reader is not named');
+  assert.ok(html.includes('src="/a.png"'), 'the reader has no face');
+});
+
+void test('a reader with no avatar gets the default snoo, not a blank box', () => {
+  const plain = renderToStaticMarkup(<Challenge card={cardFor(900)} />);
+  assert.ok(plain.includes('/snoo.png'), 'the anonymous seat has no snoo');
+  assert.ok(plain.includes('u/you'), 'the anonymous seat is not labelled');
+  const noAvatar = renderToStaticMarkup(
+    <Challenge
+      card={cardFor(900)}
+      viewer={{ username: 'reader', avatar: '' }}
+    />
+  );
+  assert.ok(noAvatar.includes('/snoo.png'), 'the fallback snoo is missing');
+  assert.ok(noAvatar.includes('u/reader'), 'the reader is not named');
+});
+
+void test('the banner carries the swords icon, not an emoji', () => {
+  const html = renderToStaticMarkup(<Challenge card={cardFor(900)} />);
+  assert.ok(
+    html.includes('/icons/BattlePassIcon.svg'),
+    'the swords icon is missing'
+  );
+  assert.ok(!html.includes('\u2694'), 'the swords emoji is still there');
+});
+
 void test('a missing snoovatar falls back to the character art', () => {
   const html = renderToStaticMarkup(<Challenge card={cardFor(500)} />);
   assert.ok(
