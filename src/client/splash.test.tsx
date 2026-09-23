@@ -70,9 +70,12 @@ void test('the reader stands on the open side of the plate', () => {
   assert.ok(html.includes('src="/a.png"'), 'the reader has no face');
 });
 
-void test('a reader with no avatar gets the default snoo, not a blank box', () => {
+void test('a reader with no avatar gets plain Snoo, not a blank box', () => {
   const plain = renderToStaticMarkup(<Challenge card={cardFor(900)} />);
-  assert.ok(plain.includes('/snoo.png'), 'the anonymous seat has no snoo');
+  assert.ok(
+    plain.includes('/avatars/snoo-default.png'),
+    'the anonymous seat has no snoo'
+  );
   assert.ok(plain.includes('u/you'), 'the anonymous seat is not labelled');
   const noAvatar = renderToStaticMarkup(
     <Challenge
@@ -80,7 +83,10 @@ void test('a reader with no avatar gets the default snoo, not a blank box', () =
       viewer={{ username: 'reader', avatar: '' }}
     />
   );
-  assert.ok(noAvatar.includes('/snoo.png'), 'the fallback snoo is missing');
+  assert.ok(
+    noAvatar.includes('/avatars/snoo-default.png'),
+    "the reader's plain snoo is missing"
+  );
   assert.ok(noAvatar.includes('u/reader'), 'the reader is not named');
 });
 
@@ -100,10 +106,13 @@ void test('the duellist is the poster, snoovatar first', () => {
   assert.ok(html.includes('src="/poster.png"'), 'the poster has no face');
 });
 
-void test('a missing snoovatar falls back to snoo, never the class art', () => {
+void test('a missing snoovatar falls back to plain Snoo, never the class art', () => {
   const card = cardFor(500);
   const html = renderToStaticMarkup(<Challenge card={card} />);
-  assert.ok(html.includes('/snoo.png'), 'the avatar did not fall back to snoo');
+  assert.ok(
+    html.includes('/avatars/snoo-default.png'),
+    'the avatar did not fall back to plain Snoo'
+  );
   assert.ok(
     !html.includes(HERO_PERKS.Archer.img),
     'the class art stood in for the poster'

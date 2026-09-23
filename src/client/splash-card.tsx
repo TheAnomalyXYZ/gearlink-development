@@ -14,11 +14,20 @@ import type { ReactNode } from 'react';
 import type { ChallengeCard, ChallengeViewer } from '../shared/api.js';
 import { ARENA, ARENA_SCRIM, MOTION, PIXEL, TITLE } from './splash-style.js';
 
-/** The crossed swords the game's own duel tab is marked with, and Reddit's
- *  default snoo for a reader with no avatar of their own. Referenced by path
- *  rather than imported, so the feed view carries no extra bytes. */
+/** The crossed swords the game's own duel tab is marked with. Referenced by
+ *  path rather than imported, so the feed view carries no extra bytes. */
 const SWORDS = '/icons/BattlePassIcon.svg';
-const SNOO = '/snoo.png';
+
+/**
+ * Plain Snoo, for an account that never dressed one up.
+ *
+ * Reddit's own bare avatar - no outfit, no square portrait tile - because it
+ * has to stand in the arena next to real snoovatars, which are full-body
+ * figures on a transparent background. Shipped with the app rather than
+ * hotlinked so the feed view does not depend on a third-party fetch to draw a
+ * face.
+ */
+const SNOO = '/avatars/snoo-default.png';
 
 /** The rank sprite with its level numeral over the corner, the way the Neura
  *  Knights battle rank icon draws it. Knight carries no numeral. */
@@ -130,7 +139,9 @@ const Reader = ({
         onError={() => setBroken(true)}
         className="glk-bob relative h-[92%] w-full object-contain object-bottom"
         style={{
-          filter: own
+          // An unclaimed seat is not a person yet, so the placeholder stands
+          // in shadow until the reader takes it.
+          filter: viewer
             ? 'drop-shadow(0 6px 10px rgba(0,0,0,.6))'
             : 'drop-shadow(0 6px 10px rgba(0,0,0,.6)) brightness(.6) saturate(.35)',
         }}
