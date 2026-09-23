@@ -17,12 +17,12 @@ import type { ChallengeCard } from '../shared/api.js';
  * duellist, and it renders from a payload the server built - so the check that
  * matters is that every part of that payload actually reaches the markup.
  */
-const cardFor = (trophies: number): ChallengeCard => {
+const cardFor = (trophies: number, avatar = ''): ChallengeCard => {
   const league = leagueOf(trophies);
   const seen: Record<string, number> = {};
   return {
     username: 'duellist',
-    avatar: '',
+    avatar,
     trophies,
     leagueName: league.name,
     leagueIcon: league.icon,
@@ -30,7 +30,6 @@ const cardFor = (trophies: number): ChallengeCard => {
     leagueColor: league.color,
     leagueShade: league.shade,
     cls: 'Archer',
-    heroImg: HERO_PERKS.Archer.img,
     heroPerk: HERO_PERKS.Archer.line,
     gear: defaultLoadout('Archer').map((id) => {
       const g = GEAR_BY_ID[id]!;
@@ -54,10 +53,6 @@ void test('a challenge post shows the duellist, not the game splash', () => {
   assert.ok(html.includes('II'), 'the league numeral is missing');
   assert.ok(html.includes('1620'), 'the trophy count is missing');
   assert.ok(html.includes('ARCHER'), 'the character is missing');
-  assert.ok(
-    html.includes(HERO_PERKS.Archer.img),
-    'the character art is missing'
-  );
   for (const g of card.gear)
     assert.ok(html.includes(g.icon), 'gear art ' + g.name + ' is missing');
   assert.ok(
@@ -98,11 +93,20 @@ void test('the banner carries the swords icon, not an emoji', () => {
   assert.ok(!html.includes('\u2694'), 'the swords emoji is still there');
 });
 
-void test('a missing snoovatar falls back to the character art', () => {
-  const html = renderToStaticMarkup(<Challenge card={cardFor(500)} />);
+void test('the duellist is the poster, snoovatar first', () => {
+  const html = renderToStaticMarkup(
+    <Challenge card={cardFor(900, '/poster.png')} />
+  );
+  assert.ok(html.includes('src="/poster.png"'), 'the poster has no face');
+});
+
+void test('a missing snoovatar falls back to snoo, never the class art', () => {
+  const card = cardFor(500);
+  const html = renderToStaticMarkup(<Challenge card={card} />);
+  assert.ok(html.includes('/snoo.png'), 'the avatar did not fall back to snoo');
   assert.ok(
-    html.includes(`src="${HERO_PERKS.Archer.img}"`),
-    'the avatar did not fall back'
+    !html.includes(HERO_PERKS.Archer.img),
+    'the class art stood in for the poster'
   );
   // Knight is the only rung with no numeral; Bronze 1 must still show one.
   assert.ok(html.includes('>I<'), 'Bronze 1 lost its numeral');

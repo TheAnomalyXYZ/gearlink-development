@@ -54,14 +54,14 @@ const RankIcon = ({ card }: { card: ChallengeCard }) => (
  * The duellist, at full height.
  *
  * A snoovatar is a full-body figure, so it is drawn as one - contained, stood
- * on the floor of the frame, never cropped into a bust. The class sprite is
- * the fallback when Reddit has no avatar or the image will not load, and it is
- * a pixel sprite, so it switches rendering with it.
+ * on the floor of the frame, never cropped into a bust. When Reddit has no
+ * avatar for them, or the image will not load, the fallback is Reddit's
+ * default snoo and never the game's class art: the card introduces a REDDITOR
+ * who plays GearLink, and a class sprite here reads as a bot, not a person.
  */
 const Duellist = ({ card }: { card: ChallengeCard }) => {
   const [broken, setBroken] = useState(false);
-  const pixel = broken || !card.avatar;
-  const src = pixel ? card.heroImg : card.avatar;
+  const src = broken || !card.avatar ? SNOO : card.avatar;
   return (
     <div className="relative flex h-full w-full items-end justify-center">
       {/* The light they stand in, and the disc they stand on. */}
@@ -85,10 +85,7 @@ const Duellist = ({ card }: { card: ChallengeCard }) => {
         alt={card.username}
         onError={() => setBroken(true)}
         className="glk-bob relative h-[92%] w-full object-contain object-bottom"
-        style={{
-          imageRendering: pixel ? 'pixelated' : 'auto',
-          filter: 'drop-shadow(0 6px 10px rgba(0,0,0,.6))',
-        }}
+        style={{ filter: 'drop-shadow(0 6px 10px rgba(0,0,0,.6))' }}
       />
     </div>
   );

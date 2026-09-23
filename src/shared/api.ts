@@ -156,7 +156,8 @@ export type DuelChallengeResponse = {
 export type ChallengeCard = {
   /** Reddit handle, without the u/ prefix. */
   username: string;
-  /** Snoovatar, or empty when the account has none. */
+  /** Snoovatar, or empty when the account has none - the card then draws
+   *  Reddit's default snoo, never the game's class art. */
   avatar: string;
   trophies: number;
   leagueName: string;
@@ -165,9 +166,8 @@ export type ChallengeCard = {
   leagueNumeral: string;
   leagueColor: string;
   leagueShade: string;
-  /** The duellist's class, and the art and perk line that go with it. */
+  /** The duellist's class and the perk line that goes with it. */
   cls: HeroClass;
-  heroImg: string;
   heroPerk: string;
   /** Their five, as art plus the orb colour each becomes on the board. */
   gear: { icon: string; tint: string; name: string }[];

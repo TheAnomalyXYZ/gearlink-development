@@ -74,6 +74,20 @@ export const createChallengePost = async (
   });
 };
 
+/** The poster's snoovatar, looked up live. The card carries one from the
+ *  moment it was posted, but that lookup can come back empty - a brand-new
+ *  account, a transient failure - and the face is the whole point of the card,
+ *  so a missing one is asked for again when the card is read rather than
+ *  written off. A failure here is not an error: the card falls back to
+ *  Reddit's default snoo, which is still a Reddit face. */
+const snoovatarOf = async (username: string): Promise<string> => {
+  try {
+    return (await reddit.getSnoovatarUrl(username)) ?? '';
+  } catch {
+    return '';
+  }
+};
+
 const isClass = (v: unknown): v is HeroClass =>
   v === 'Hero' || v === 'Archer' || v === 'Mage';
 
@@ -121,9 +135,11 @@ export const readChallengeCard = async (
       };
     });
 
+  const stored = typeof d.avatar === 'string' ? d.avatar : '';
+
   return {
     username: d.username,
-    avatar: typeof d.avatar === 'string' ? d.avatar : '',
+    avatar: stored || (await snoovatarOf(d.username)),
     trophies: Number.isFinite(trophies) ? trophies : 0,
     leagueName: league.name,
     leagueIcon: league.icon,
@@ -131,7 +147,6 @@ export const readChallengeCard = async (
     leagueColor: league.color,
     leagueShade: league.shade,
     cls: d.cls,
-    heroImg: perk.img,
     heroPerk: perk.line,
     gear,
   };
