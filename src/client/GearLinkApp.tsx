@@ -81,7 +81,7 @@ import type {
   Mutators,
   RunState,
 } from '../shared/engine/index.js';
-import type { LeaderboardEntry, Profile } from '../shared/api.js';
+import type { LeaderboardEntry, Profile, QuestBoard } from '../shared/api.js';
 import type { PulledCard } from '../shared/engine/economy.js';
 import { api } from './api.js';
 import {
@@ -104,6 +104,7 @@ type Phase =
   | 'battle'
   | 'end'
   | 'shop'
+  | 'quests'
   | 'inventory'
   | 'opening'
   | 'duelOptIn'
@@ -200,6 +201,12 @@ export type AppState = {
   invTab: 'packs' | 'gear';
   shopMsg: string | null;
   openPack: OpenState | null;
+
+  /** Null until the first read lands; the nav dot and the tab both wait on it. */
+  quests: QuestBoard | null;
+  questTab: 'daily' | 'weekly';
+  /** The quest whose claim is in flight, so a double tap cannot fire twice. */
+  questClaiming: string | null;
 
   /* Which flow the hero and gear steps are serving. They are the same two
      screens either way; what changes is where the five they build ends up -
@@ -386,6 +393,9 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     invTab: 'packs',
     shopMsg: null,
     openPack: null,
+    quests: null,
+    questTab: 'daily',
+    questClaiming: null,
     flow: 'run',
     runSaved: null,
     duelSetup: null,
@@ -470,6 +480,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         leaderboard: res.leaderboard,
         picked: ownedLoadout(this.state.heroClass, res.profile.gear),
       });
+      this.refreshQuests();
     } catch (e) {
       this.setState({
         fatal: e instanceof Error ? e.message : 'Could not load your profile.',
@@ -1188,6 +1199,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         ascended: res.ascended,
         heartPiecesEarned: res.heartPiecesEarned,
       });
+      this.refreshQuests();
     } catch (e) {
       // The run is over on screen either way; say plainly that it did not bank.
       this.setState({ coinsEarned: 0 });
@@ -2107,6 +2119,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
             ? { ...s.duelOutcome, delta: r.profile.trophies - before }
             : s.duelOutcome,
         }));
+        this.refreshQuests();
       })
       .catch(() => undefined);
   }
@@ -2126,6 +2139,41 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     // The result moved the trophy count, so the band the lobby matched against
     // is stale the moment the duel ends.
     void this.loadOpponents(this.state.duelCursor);
+  };
+
+  /* ---------- quests ---------- */
+
+  goQuests = (): void => {
+    this.setState({ phase: 'quests', shopMsg: null, homeMenu: false });
+    this.refreshQuests();
+  };
+  pickQuestTab = (t: 'daily' | 'weekly') => (): void =>
+    this.setState({ questTab: t });
+
+  /** Progress is banked server-side off runs, duels and packs, so the board is
+   *  re-read after each of those rather than counted on the client. A failed
+   *  read keeps the last board - it is only ever behind, never wrong. */
+  private refreshQuests(): void {
+    void api
+      .quests()
+      .then((r) => this.setState({ quests: r.board }))
+      .catch(() => undefined);
+  }
+
+  claimQuest = (id: string) => (): void => {
+    if (this.state.questClaiming) return;
+    this.setState({ questClaiming: id });
+    void api
+      .claimQuest(id)
+      .then((r) => {
+        this.setState({ quests: r.board, questClaiming: null });
+        this.adopt(r.profile, r.message);
+      })
+      .catch((e) => {
+        this.setState({ questClaiming: null });
+        this.fail(e);
+        this.refreshQuests();
+      });
   };
 
   /* ---------- shop / bag / packs ---------- */
@@ -2281,6 +2329,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
           openPack: null,
         });
         this.adopt(r.profile, back ? summary : undefined);
+        this.refreshQuests();
       })
       .catch(this.fail);
   };

@@ -7,6 +7,7 @@ export * from './gear.js';
 export * from './hearts.js';
 export * from './league.js';
 export * from './monsters.js';
+export * from './quests.js';
 export * from './replay.js';
 export * from './rng.js';
 export * from './run.js';

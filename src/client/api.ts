@@ -8,6 +8,7 @@
 import type {
   ApplyHeartRequest,
   ChallengeResponse,
+  ClaimQuestResponse,
   CollectPackRequest,
   DuelChallengeResponse,
   DuelOpponentsResponse,
@@ -17,6 +18,7 @@ import type {
   LeaderboardResponse,
   OpenPackResponse,
   ProfileResponse,
+  QuestsResponse,
   SubmitRunRequest,
   SubmitRunResponse,
 } from '../shared/api.js';
@@ -70,6 +72,9 @@ export const api = {
   duelChallenge: () => call<DuelChallengeResponse>('/duel/challenge', {}),
   /** What this post's inline view should draw. Used by the splash only. */
   challengeCard: () => call<ChallengeResponse>('/challenge'),
+  quests: () => call<QuestsResponse>('/quests'),
+  claimQuest: (questId: string) =>
+    call<ClaimQuestResponse>('/quests/claim', { questId }),
   ftueSeen: (which: 'run' | 'duel' | 'duelSetup') =>
     call<ProfileResponse>('/ftue/seen', { which }),
 };

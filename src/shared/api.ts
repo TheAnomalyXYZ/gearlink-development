@@ -2,6 +2,7 @@ import type { HeroClass } from './engine/types.js';
 import type { Hearts } from './engine/hearts.js';
 import type { PulledCard } from './engine/economy.js';
 import type { DuelFoe } from './engine/duel.js';
+import type { QuestPeriod, QuestReward } from './engine/quests.js';
 
 /** Everything the client needs to boot: who the player is, what they own, and
  *  where this post's ladder currently stands. */
@@ -209,6 +210,40 @@ export type ProfileResponse = {
 export type LeaderboardResponse = {
   type: 'leaderboard';
   leaderboard: LeaderboardEntry[];
+};
+
+/** One row of the quest board, resolved against this player's progress. */
+export type QuestView = {
+  id: string;
+  period: QuestPeriod;
+  title: string;
+  blurb: string;
+  /** Capped at `target`. */
+  progress: number;
+  target: number;
+  reward: QuestReward;
+  claimed: boolean;
+  claimable: boolean;
+};
+
+export type QuestBoard = {
+  /** Sorted: claimable, then in progress, then claimed. */
+  daily: QuestView[];
+  weekly: QuestView[];
+  /** When each set rolls over, in epoch ms (UTC midnight / Monday). */
+  dailyResetAt: number;
+  weeklyResetAt: number;
+};
+
+export type QuestsResponse = { type: 'quests'; board: QuestBoard };
+
+export type ClaimQuestRequest = { questId: string };
+
+export type ClaimQuestResponse = {
+  type: 'questClaim';
+  profile: Profile;
+  board: QuestBoard;
+  message: string;
 };
 
 export type ErrorResponse = { status: 'error'; message: string };

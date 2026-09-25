@@ -40,6 +40,7 @@ import {
   MONSTER_STATUS,
   NO_STATUS,
   PACKS,
+  QUESTS,
   RARITY_ORDER,
   RARITY_OUTLINE,
   RIDERS,
@@ -62,6 +63,7 @@ import {
   packById,
   riderOf,
   rowOf,
+  rewardLabel,
 } from '../../shared/engine/index.js';
 import { BOMB_ICON, GEARLINK_ICON, NAV_ICON } from './assets.js';
 import {
@@ -88,6 +90,12 @@ export const buildView = (app: GearLinkApp): View => {
   const myLeague = leagueOf(st.profile.trophies);
   const upLeague = nextLeague(st.profile.trophies);
   const toNext = toNextLeague(st.profile.trophies);
+  const questBoard = st.quests;
+  const questClaimable = questBoard
+    ? [...questBoard.daily, ...questBoard.weekly].filter(
+        (q: any) => q.claimable
+      ).length
+    : 0;
 
   /** Five read-only gear tiles, for the screens that SHOW a loadout rather
    *  than edit it - the opt-in card and the lobby's own row. */
@@ -1411,6 +1419,117 @@ export const buildView = (app: GearLinkApp): View => {
       };
     })(),
 
+    /* ---------- QUESTS ----------
+
+       Neura Knights' Daily Duties and Weekly Trials, as two tabs of one
+       board. Each row is the quest, a progress bar, its reward, and one
+       button: CLAIM when done, DONE once paid, and GO otherwise, which walks
+       to the screen where the quest is actually played. */
+    isQuests: st.phase === 'quests',
+    ...(() => {
+      const tab = st.questTab || 'daily';
+      const list: any[] = questBoard ? questBoard[tab] : [];
+      const pad = (n: number) => (n < 10 ? '0' + n : String(n));
+      const until = (at: number) => {
+        const ms = Math.max(0, at - Date.now());
+        const h = Math.floor(ms / 3_600_000);
+        const m = Math.floor((ms % 3_600_000) / 60_000);
+        return h >= 24
+          ? Math.floor(h / 24) + 'D ' + (h % 24) + 'H'
+          : h + 'H ' + pad(m) + 'M';
+      };
+      const count = (p: 'daily' | 'weekly') =>
+        questBoard ? questBoard[p].filter((q: any) => q.claimable).length : 0;
+      const goFor = (metric: string) =>
+        metric === 'duels' || metric === 'duelWins'
+          ? app.goDuelLobby
+          : metric === 'packs'
+            ? app.goShop
+            : metric === 'dailies'
+              ? null
+              : app.goMap;
+      const metricOf = (id: string) =>
+        (QUESTS.find((q) => q.id === id) || { metric: '' }).metric;
+      return {
+        questTabs: (['daily', 'weekly'] as const).map((id) => ({
+          label: id === 'daily' ? 'DAILY DUTIES' : 'WEEKLY TRIALS',
+          run: app.pickQuestTab(id),
+          bg: tab === id ? '#428FFB' : 'transparent',
+          fg: tab === id ? '#FFFFFF' : '#8A9BBF',
+          badge: String(count(id)),
+          badgeDisplay: count(id) > 0 ? 'flex' : 'none',
+        })),
+        questLoadingDisplay: questBoard ? 'none' : 'flex',
+        questListDisplay: questBoard ? 'flex' : 'none',
+        questResetLine: questBoard
+          ? 'RESETS IN ' +
+            until(
+              tab === 'daily'
+                ? questBoard.dailyResetAt
+                : questBoard.weeklyResetAt
+            )
+          : '',
+        questRows: list.map((q: any) => {
+          const go = goFor(metricOf(q.id));
+          const busy = st.questClaiming === q.id;
+          const r = q.reward;
+          const pack = r.kind === 'pack' ? packById(r.packId) : null;
+          const state = q.claimable ? 'claim' : q.claimed ? 'done' : 'go';
+          const btn =
+            state === 'claim'
+              ? BTN.primary
+              : state === 'go' && go
+                ? BTN.secondary
+                : BTN.disabled;
+          return {
+            title: q.title,
+            blurb: q.blurb,
+            progressLabel: q.progress + '/' + q.target,
+            barW: Math.round((q.progress / Math.max(1, q.target)) * 100) + '%',
+            barBg: q.claimed ? '#5D6B8A' : q.claimable ? '#AEE45D' : '#428FFB',
+            rowBd: q.claimable ? '#FCE270' : '#3A4C74',
+            opacity: q.claimed ? 0.55 : 1,
+            rewardIcon:
+              r.kind === 'coins'
+                ? COIN_ICON
+                : r.kind === 'gems'
+                  ? GEM_ICON
+                  : pack?.img || '',
+            rewardText:
+              r.kind === 'pack'
+                ? (pack?.name || 'PACK').replace(/ PACK$/, '')
+                : String(r.amount),
+            rewardColor:
+              r.kind === 'coins'
+                ? '#FCE370'
+                : r.kind === 'gems'
+                  ? '#8FE3FF'
+                  : pack?.tint || '#FFF2B0',
+            rewardTitle: rewardLabel(r),
+            btnLabel: busy
+              ? '...'
+              : state === 'claim'
+                ? 'CLAIM'
+                : state === 'done'
+                  ? 'DONE'
+                  : 'GO',
+            run:
+              state === 'claim'
+                ? app.claimQuest(q.id)
+                : state === 'go' && go
+                  ? go
+                  : undefined,
+            btnBg: btn.bg,
+            btnShadow: btn.shadow,
+            cursor:
+              state === 'claim' || (state === 'go' && go)
+                ? 'pointer'
+                : 'default',
+          };
+        }),
+      };
+    })(),
+
     /* ---------- SHOP / BAG / PACKS ---------- */
     isShop: st.phase === 'shop',
     isInventory: st.phase === 'inventory',
@@ -1717,16 +1836,17 @@ export const buildView = (app: GearLinkApp): View => {
         shadow: BTN.primary.shadow,
       },
     ],
-    /* Bottom app bar: Forge Wars left of centre, Fight centre and raised,
-         Duel right of centre. Leaderboard moved into the header menu and How
-         To Play into the header's own control, so the bar stays three modes. */
+    /* Bottom app bar: Shop and Quests left of centre, Fight centre and
+         raised, Duel and Bag right of it. Leaderboard moved into the header
+         menu and How To Play into the header's own control. */
     /* Bottom app bar, matching the game's own Menu/MenuButton: a blurred
          #282A3C panel with #1D1C24 rule, buttons TALLER than the bar so they
          break its top and bottom edge, and the active tab carrying the blue
          fill, the MenuButtonPatten overlay and a stroked label floating above
          it. FIGHT is the active tab here since it is the default action.
          Deviation: the inactive tabs keep a small label, because BattlePass
-         and BossSiege art does not yet read as Duel and Forge Wars. */
+         art does not yet read as Duel. Quests carries Neura Knights' alert
+         dot while anything on the board is waiting to be claimed. */
     navItems: [
       {
         label: 'SHOP',
@@ -1734,6 +1854,14 @@ export const buildView = (app: GearLinkApp): View => {
         img: NAV_ICON.shop,
         icon: '30px',
         active: false,
+      },
+      {
+        label: 'QUESTS',
+        run: app.goQuests,
+        img: NAV_ICON.quests,
+        icon: '30px',
+        active: false,
+        alert: questClaimable > 0,
       },
       {
         label: 'FIGHT',
@@ -1765,6 +1893,7 @@ export const buildView = (app: GearLinkApp): View => {
         subDisplay: n.active ? 'none' : 'block',
         nudge: k === 0 ? '0' : '-2px',
         z: n.active ? 2 : 1,
+        alertDisplay: 'alert' in n && n.alert ? 'block' : 'none',
       })
     ),
     toggleHomeMenu: app.toggleHomeMenu,

@@ -693,6 +693,20 @@ export const Screen = ({ v }: { v: View }) => (
                           <div
                             style={{
                               position: 'absolute',
+                              top: '4px',
+                              right: '6px',
+                              zIndex: '1',
+                              width: '9px',
+                              height: '9px',
+                              borderRadius: '50%',
+                              background: '#FF4D4D',
+                              border: '1.5px solid #1D1C24',
+                              display: n.alertDisplay,
+                            }}
+                          ></div>
+                          <div
+                            style={{
+                              position: 'absolute',
                               inset: '0',
                               display: 'flex',
                               flexDirection: 'column',
@@ -3342,6 +3356,385 @@ export const Screen = ({ v }: { v: View }) => (
               >
                 Coins come from ranked runs. Duplicate gear refunds coins by
                 rarity, so a pull is never wasted.
+              </div>
+            </div>
+          </>
+        ) : null}
+
+        {v.isQuests ? (
+          <>
+            <div
+              style={{
+                flex: '1',
+                minHeight: '0',
+                display: 'flex',
+                flexDirection: 'column',
+                background: '#283C74',
+                padding: '14px',
+                gap: '10px',
+                overflowY: 'auto',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '8px',
+                  flexShrink: '0',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    minWidth: '0',
+                  }}
+                >
+                  <div
+                    onClick={v.goHome}
+                    style={{
+                      cursor: 'pointer',
+                      flexShrink: '0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      height: '26px',
+                      padding: '0 10px',
+                      border: '1px solid #000000',
+                      borderRadius: '8px 2px 8px 2px',
+                      background: '#B5C0FF',
+                      boxShadow:
+                        '0 -2px 0 0 #7E84E6 inset, 0 2px 0 0 #FFF inset',
+                      color: '#000000',
+                      fontFamily: "'Yoster Island',Volter,monospace",
+                      fontSize: '10px',
+                    }}
+                  >
+                    HOME
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: "'Yoster Island',Volter,monospace",
+                      fontSize: '15px',
+                      color: '#FFF2B0',
+                    }}
+                  >
+                    QUESTS
+                  </div>
+                </div>
+                <div
+                  style={{
+                    flexShrink: '0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      background: 'rgba(33,56,84,.85)',
+                      border: '1px solid #213854',
+                      borderRadius: '4px',
+                      padding: '3px 7px',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '14px',
+                        height: '14px',
+                        flexShrink: '0',
+                        backgroundImage: `url(${v.coinIcon})`,
+                        backgroundSize: 'contain',
+                        backgroundRepeat: 'no-repeat',
+                        backgroundPosition: 'center',
+                        imageRendering: 'pixelated',
+                      }}
+                    ></div>
+                    <div
+                      style={{
+                        fontFamily: "'Yoster Island',Volter,monospace",
+                        fontSize: '12px',
+                        color: '#FCE370',
+                      }}
+                    >
+                      {v.coins}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      background: 'rgba(33,56,84,.85)',
+                      border: '1px solid #213854',
+                      borderRadius: '4px',
+                      padding: '3px 7px',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '14px',
+                        height: '14px',
+                        flexShrink: '0',
+                        backgroundImage: `url(${v.gemIcon})`,
+                        backgroundSize: 'contain',
+                        backgroundRepeat: 'no-repeat',
+                        backgroundPosition: 'center',
+                        imageRendering: 'pixelated',
+                      }}
+                    ></div>
+                    <div
+                      style={{
+                        fontFamily: "'Yoster Island',Volter,monospace",
+                        fontSize: '12px',
+                        color: '#8FE3FF',
+                      }}
+                    >
+                      {v.gems}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  height: '30px',
+                  width: '100%',
+                  background: '#141D2E',
+                  borderRadius: '4px',
+                  padding: '2px',
+                  gap: '2px',
+                  flexShrink: '0',
+                }}
+              >
+                {(v.questTabs || []).map((t: any, tI: number) => (
+                  <Fragment key={tI}>
+                    <div
+                      onClick={t.run}
+                      style={{
+                        cursor: 'pointer',
+                        flex: '1',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '5px',
+                        borderRadius: '3px',
+                        background: t.bg,
+                        fontFamily: "'Yoster Island',Volter,monospace",
+                        fontSize: '10px',
+                        color: t.fg,
+                      }}
+                    >
+                      <span>{t.label}</span>
+                      <div
+                        style={{
+                          display: t.badgeDisplay,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minWidth: '14px',
+                          height: '14px',
+                          padding: '0 3px',
+                          borderRadius: '7px',
+                          background: '#FF4D4D',
+                          color: '#FFFFFF',
+                          fontSize: '8px',
+                        }}
+                      >
+                        {t.badge}
+                      </div>
+                    </div>
+                  </Fragment>
+                ))}
+              </div>
+
+              <div
+                style={{
+                  display: v.shopMsgDisplay,
+                  background: '#1D2956',
+                  border: '1px solid #3A4C74',
+                  borderRadius: '4px',
+                  padding: '7px 9px',
+                  fontSize: '9px',
+                  color: '#FFF2B0',
+                  flexShrink: '0',
+                }}
+              >
+                {v.shopMsg}
+              </div>
+
+              <div
+                style={{
+                  display: v.questLoadingDisplay,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '24px 0',
+                  fontFamily: "'Yoster Island',Volter,monospace",
+                  fontSize: '11px',
+                  color: '#8A9BBF',
+                }}
+              >
+                LOADING QUESTS...
+              </div>
+
+              <div
+                style={{
+                  display: v.questListDisplay,
+                  flexDirection: 'column',
+                  gap: '8px',
+                }}
+              >
+                <div
+                  style={{
+                    alignSelf: 'flex-end',
+                    fontFamily: "'Yoster Island',Volter,monospace",
+                    fontSize: '9px',
+                    color: '#8A9BBF',
+                  }}
+                >
+                  {v.questResetLine}
+                </div>
+                {(v.questRows || []).map((q: any, qI: number) => (
+                  <Fragment key={qI}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        background: '#1D2956',
+                        border: `2px solid ${q.rowBd}`,
+                        borderRadius: '8px 0 8px 0',
+                        padding: '9px',
+                        opacity: q.opacity,
+                      }}
+                    >
+                      <div
+                        title={q.rewardTitle}
+                        style={{
+                          width: '44px',
+                          flexShrink: '0',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: '3px',
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: '30px',
+                            height: '30px',
+                            backgroundImage: `url(${q.rewardIcon})`,
+                            backgroundSize: 'contain',
+                            backgroundRepeat: 'no-repeat',
+                            backgroundPosition: 'center',
+                            imageRendering: 'pixelated',
+                          }}
+                        ></div>
+                        <div
+                          style={{
+                            fontFamily: "'Yoster Island',Volter,monospace",
+                            fontSize: '9px',
+                            color: q.rewardColor,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {q.rewardText}
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          flex: '1',
+                          minWidth: '0',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '4px',
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontFamily: "'Yoster Island',Volter,monospace",
+                            fontSize: '12px',
+                            color: '#FFF2B0',
+                          }}
+                        >
+                          {q.title}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: '9px',
+                            color: '#CBD9EC',
+                            lineHeight: '1.4',
+                          }}
+                        >
+                          {q.blurb}
+                        </div>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                          }}
+                        >
+                          <div
+                            style={{
+                              flex: '1',
+                              height: '8px',
+                              background: '#141D2E',
+                              border: '1px solid #000000',
+                              borderRadius: '2px',
+                              overflow: 'hidden',
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: q.barW,
+                                height: '100%',
+                                background: q.barBg,
+                              }}
+                            ></div>
+                          </div>
+                          <div
+                            style={{
+                              flexShrink: '0',
+                              fontFamily: "'Yoster Island',Volter,monospace",
+                              fontSize: '9px',
+                              color: '#CBD9EC',
+                            }}
+                          >
+                            {q.progressLabel}
+                          </div>
+                        </div>
+                      </div>
+                      <div
+                        onClick={q.run}
+                        style={{
+                          cursor: q.cursor,
+                          flexShrink: '0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minWidth: '58px',
+                          height: '34px',
+                          padding: '0 10px',
+                          border: '2px solid #000000',
+                          borderRadius: '8px 2px 8px 2px',
+                          background: q.btnBg,
+                          boxShadow: q.btnShadow,
+                          color: '#000000',
+                          fontFamily: "'Yoster Island',Volter,monospace",
+                          fontSize: '11px',
+                        }}
+                      >
+                        {q.btnLabel}
+                      </div>
+                    </div>
+                  </Fragment>
+                ))}
               </div>
             </div>
           </>

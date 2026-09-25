@@ -7,6 +7,8 @@ import type {
   BuyPackRequest,
   CollectPackRequest,
   ChallengeResponse,
+  ClaimQuestRequest,
+  ClaimQuestResponse,
   DuelChallengeResponse,
   DuelListedRequest,
   DuelOpponentsResponse,
@@ -19,6 +21,7 @@ import type {
   OpenPackResponse,
   Profile,
   ProfileResponse,
+  QuestsResponse,
   SubmitRunRequest,
   SubmitRunResponse,
 } from '../../shared/api.js';
@@ -31,6 +34,11 @@ import {
   syncPoolScore,
 } from '../core/duelpool.js';
 import { createChallengePost, readChallengeCard } from '../core/post.js';
+import {
+  claimQuest,
+  loadQuestBoard,
+  recordQuestEvents,
+} from '../core/quests.js';
 import {
   COINS_PER_SCORE,
   COIN_BUNDLES,
@@ -49,6 +57,7 @@ import {
   loadoutIsLegal,
   packById,
   rollPack,
+  runQuestEvents,
   TROPHY_FLOOR,
   verifyRun,
 } from '../../shared/engine/index.js';
@@ -204,6 +213,16 @@ api.post('/run', async (c) => {
     progress,
     heartPieces: profile.heartPieces + heartPiecesEarned,
   });
+  await recordQuestEvents(
+    me.userId,
+    runQuestEvents({
+      won,
+      king: isKing,
+      waves: state.wavesCleared,
+      chain: state.maxChain,
+      coins: coinsEarned,
+    })
+  );
   const { isBest, rank } = await recordScore(
     me.postId,
     me.userId,
@@ -457,6 +476,7 @@ api.post('/shop/collect', async (c) => {
     [held.packId]: Math.max(0, (profile.packs[held.packId] ?? 0) - 1),
   };
   await saveProfile(me.userId, { gear, packs, coins: profile.coins + refund });
+  await recordQuestEvents(me.userId, [{ metric: 'packs', amount: 1 }]);
   return c.json(profileJson(await loadProfile(me.userId, me.username)));
 });
 
@@ -635,6 +655,13 @@ api.post('/duel/result', async (c) => {
   // band this player is matched in - otherwise a climber keeps being offered to
   // the rung they left.
   if (delta !== 0) await syncPoolScore(me.userId, trophies);
+  // Quests count the same bounded result the trophies do, so an implausible
+  // duel advances neither.
+  if (credible)
+    await recordQuestEvents(me.userId, [
+      { metric: 'duels', amount: 1 },
+      { metric: 'duelWins', amount: body.won ? 1 : 0 },
+    ]);
   return c.json(profileJson(await loadProfile(me.userId, me.username)));
 });
 
@@ -679,4 +706,41 @@ api.post('/ftue/seen', async (c) => {
     await saveProfile(me.userId, { seenDuelSetup: true });
   else await saveProfile(me.userId, { seenFtue: true });
   return c.json(profileJson(await loadProfile(me.userId, me.username)));
+});
+
+/* ---------- quests ---------- */
+
+api.get('/quests', async (c) => {
+  const me = who();
+  if (!me) return unauthorised(c);
+  return c.json<QuestsResponse>({
+    type: 'quests',
+    board: await loadQuestBoard(me.userId),
+  });
+});
+
+/** Pay out one finished quest. Progress is the server's own count, so the only
+ *  thing the client names is which quest. */
+api.post('/quests/claim', async (c) => {
+  const me = who();
+  if (!me) return unauthorised(c);
+  const body = (await c.req
+    .json()
+    .catch(() => null)) as ClaimQuestRequest | null;
+  const res = await claimQuest(me.userId, me.username, body?.questId ?? '');
+  if (!res.ok)
+    return c.json<ErrorResponse>(
+      { status: 'error', message: res.message },
+      400
+    );
+  const [profile, board] = await Promise.all([
+    loadProfile(me.userId, me.username),
+    loadQuestBoard(me.userId),
+  ]);
+  return c.json<ClaimQuestResponse>({
+    type: 'questClaim',
+    profile,
+    board,
+    message: res.message,
+  });
 });

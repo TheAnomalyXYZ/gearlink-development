@@ -10,7 +10,7 @@ export const GEARLINK_ICON =
 
 export const NAV_ICON = {
   duel: '/icons/BattlePassIcon.svg',
-  forge: '/icons/BossSiegeIcon.svg',
+  quests: '/art/NeuraKnights/gui/Quest_V2.png',
   fight: '/icons/NameChangeIcon.svg',
   shop: '/art/NeuraKnights/gui/Shop_V2.png',
   bag: '/art/NeuraKnights/gui/Bag_V2.png',

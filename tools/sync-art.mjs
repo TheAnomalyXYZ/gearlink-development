@@ -38,6 +38,7 @@ const HARDCODED = [
   '/art/NeuraKnights/Fonts/yosterislandreg.ttf',
   '/art/NeuraKnights/Fonts/Volter__28Goldfish_29.ttf',
   '/art/NeuraKnights/gui/Shop_V2.png',
+  '/art/NeuraKnights/gui/Quest_V2.png',
   '/art/NeuraKnights/gui/Bag_V2.png',
   '/art/PocketKnights/Map/Base.png',
   '/art/PocketKnights/Pattern/MenuButtonPatten.svg',

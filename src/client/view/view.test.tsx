@@ -14,8 +14,10 @@ import {
   foeLoadout,
   makeDuelSide,
   mulberry32,
+  QUESTS,
+  questStatus,
 } from '../../shared/engine/index.js';
-import type { Profile } from '../../shared/api.js';
+import type { Profile, QuestBoard } from '../../shared/api.js';
 
 /**
  * Renders every screen the app can be in. The view model is a bag of hundreds
@@ -45,6 +47,36 @@ const profile: Profile = {
   duelCls: 'Hero',
   duelPicked: defaultLoadout('Hero'),
   duelListed: true,
+};
+
+/** One of each row state: claimable, in progress, claimed. */
+const questProgress = {
+  metrics: { battles: 3, wins: 1, packs: 1, duelWins: 10 },
+  claimed: ['d_packs'],
+};
+const questBoard: QuestBoard = {
+  ...(['daily', 'weekly'] as const).reduce(
+    (b, p) => ({
+      ...b,
+      [p]: QUESTS.filter((q) => q.period === p).map((q) => {
+        const s = questStatus(q, questProgress);
+        return {
+          id: q.id,
+          period: q.period,
+          title: q.title,
+          blurb: q.blurb,
+          progress: s.progress,
+          target: q.target,
+          reward: q.reward,
+          claimed: s.claimed,
+          claimable: s.claimable,
+        };
+      }),
+    }),
+    { daily: [], weekly: [] }
+  ),
+  dailyResetAt: Date.now() + 5 * 3_600_000,
+  weeklyResetAt: Date.now() + 3 * 86_400_000,
 };
 
 const run = new Run({
@@ -134,6 +166,9 @@ const fakeApp = (over: Record<string, unknown>): GearLinkApp => {
     invTab: 'packs',
     shopMsg: null,
     openPack: null,
+    quests: questBoard,
+    questTab: 'daily',
+    questClaiming: null,
     flow: 'run',
     runSaved: null,
     duelSetup: null,
@@ -235,6 +270,8 @@ const fakeApp = (over: Record<string, unknown>): GearLinkApp => {
     endAction: noop,
     startDuel: curried,
     pickShopTab: curried,
+    pickQuestTab: curried,
+    claimQuest: curried,
     pickInvTab: curried,
     inspectCard: curried,
     buyCoins: curried,
@@ -253,6 +290,7 @@ const fakeApp = (over: Record<string, unknown>): GearLinkApp => {
     goLoadout: noop,
     goHome: noop,
     goShop: noop,
+    goQuests: noop,
     goInventory: noop,
     goDuelLobby: noop,
     goDuelOptIn: noop,
@@ -354,6 +392,10 @@ void test('every screen renders', () => {
   renders('shop', { phase: 'shop' });
   renders('shop coins tab', { phase: 'shop', shopTab: 'coins' });
   renders('shop gems tab', { phase: 'shop', shopTab: 'gems' });
+  renders('quests', { phase: 'quests' });
+  renders('quests weekly tab', { phase: 'quests', questTab: 'weekly' });
+  renders('quests loading', { phase: 'quests', quests: null });
+  renders('quests mid-claim', { phase: 'quests', questClaiming: 'd_battles' });
   renders('bag', { phase: 'inventory' });
   renders('collection', { phase: 'inventory', invTab: 'gear' });
   renders('duel lobby', { phase: 'duelLobby' });
@@ -510,4 +552,20 @@ void test('a pack open renders sealed, revealed and collectable', () => {
       from: 'shop',
     },
   });
+});
+
+void test('the quest tab carries an alert dot only while something is claimable', () => {
+  const dot = 'background:#FF4D4D;border:1.5px solid #1D1C24;display:block';
+  assert.ok(renders('home with claimable', { phase: 'home' }).includes(dot));
+  const none: QuestBoard = {
+    ...questBoard,
+    daily: questBoard.daily.map((q) => ({ ...q, claimable: false })),
+    weekly: questBoard.weekly.map((q) => ({ ...q, claimable: false })),
+  };
+  assert.ok(
+    !renders('home with nothing to claim', {
+      phase: 'home',
+      quests: none,
+    }).includes(dot)
+  );
 });
