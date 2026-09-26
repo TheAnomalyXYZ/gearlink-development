@@ -1,16 +1,24 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * The app: all state, all behaviour, all animation timing.
  *
  * It stays a class component because the design's flow is built out of chained
  * timers - a link clears, the board settles, the monster winds up, the swing
- * lands - and each beat reads its own `this.tN` handle. Hooks would scatter
- * that across refs without making any of it clearer.
+ * lands - and each beat is a named slot in `timers`. Hooks would scatter that
+ * across refs without making any of it clearer.
  *
  * The rule that shapes everything else: the CLIENT plays, the SERVER decides.
  * A run records the seed it was dealt and every move made on it, then submits
  * both; the score, the coins and the ladder position all come back from the
  * replay. The wallet is never edited locally.
+ *
+ * What lives elsewhere, so this file stays about behaviour:
+ * - `state/appState.ts`  the state shape, its initial value, the reset groups
+ * - `state/feedback.ts`  link previews, damage floats, duel log lines (pure)
+ * - `state/packs.ts`     pack-open cards and summaries (pure)
+ * - `state/mapPan.ts`    map cover-scale and pan clamping (pure)
+ * - `state/dom.ts`       ResizeObserver swapping and board-budget measuring
+ * - `state/timers.ts`    named, self-replacing timeouts and intervals
+ * - `state/boot.ts`      the first reads, fired before React mounts
  */
 import { Component } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
@@ -20,70 +28,59 @@ import {
   DUEL_FTUE_STEPS,
   DUEL_LOBBY_SIZE,
   DUEL_LOSS_TROPHIES,
-  DUEL_MATCH_SECONDS,
   DUEL_THINK_MIN,
   DUEL_THINK_SKILL,
   DUEL_THINK_SPREAD,
   DUEL_SETUP_STEPS,
   DUEL_WIN_TROPHIES,
   DUEL_STACK_MIN_H,
-  EFFECT_LABEL,
   FOE_CLEAR_MS,
   FOE_LAND_MS,
   FOE_LINK_MS,
-  GEAR,
+  GEAR_BY_ID,
   GEM_BUNDLES,
   GRID_COLS,
   GRID_ROWS,
   HERO_PERKS,
+  MAP_ART,
   MIN_LINK,
   NO_STATUS,
-  RARITY_ORDER,
-  RIDERS,
   Run,
-  SUPER_MIN_LINK,
   areAdjacent,
   bundleById,
+  canApplyHeart,
   duelBestMove,
   duelStep,
   enemyDisplayFor,
   fallDistances,
+  foeLoadout,
   hasAnyMove,
+  heartsFor,
   isJunk,
   isSuper,
-  junkFor,
-  magnitudeFor,
   loadoutIsLegal,
-  makeDuelSide,
-  markMultX100,
-  mulberry32,
-  foeLoadout,
-  FIRST_LOCATION,
-  MAP_ART,
-  NO_HEARTS,
-  canApplyHeart,
-  heartsFor,
-  maxHpFor,
   locationById,
   locationIndex,
+  makeDuelSide,
+  maxHpFor,
+  mulberry32,
   orbTypeOf,
   ownedLoadout,
   resolveLoadout,
-  riderOf,
   scoreOf,
-  REFILL_WEIGHT,
 } from '../shared/engine/index.js';
 import type {
   DuelFoe,
-  DuelState,
+  Enemy,
   Gear,
   HeroClass,
   Mutators,
   RunState,
+  StepResult,
 } from '../shared/engine/index.js';
-import type { LeaderboardEntry, Profile, QuestBoard } from '../shared/api.js';
-import type { PulledCard } from '../shared/engine/economy.js';
+import type { Profile, SubmitRunRequest } from '../shared/api.js';
 import { api } from './api.js';
+import { Booting, Fatal } from './components/BootScreens.js';
 import {
   FTUE_ARROW_GAP,
   FTUE_DOING,
@@ -93,215 +90,111 @@ import {
   findAttackLink,
   type FtueStep,
 } from './ftue.js';
+import {
+  BATTLE_RESET,
+  DUEL_RESET,
+  INITIAL_STATE,
+  MUTATORS,
+} from './state/appState.js';
+import type {
+  AppState,
+  DuelEndKind,
+  GearTab,
+  InvTab,
+  OpenState,
+  Phase,
+  Place,
+  QuestTab,
+  ShopTab,
+} from './state/appState.js';
+import { bootData } from './state/boot.js';
+import {
+  panelChrome,
+  reobserve,
+  safeToast,
+  siblingFloors,
+} from './state/dom.js';
+import {
+  duelLogLine,
+  duelPops,
+  foeAnnouncement,
+  linkPreview,
+  runPops,
+  swingPop,
+  type Preview,
+} from './state/feedback.js';
+import { DRAG_SLOP, clampPan, panBounds } from './state/mapPan.js';
+import { packSummary, toOpenCards } from './state/packs.js';
+import { Timers } from './state/timers.js';
 import { buildView } from './view/buildView.js';
 import { Screen } from './view/Screen.js';
 
-type Phase =
-  | 'splash'
-  | 'home'
-  | 'hero'
-  | 'gear'
-  | 'battle'
-  | 'end'
-  | 'shop'
-  | 'quests'
-  | 'inventory'
-  | 'opening'
-  | 'duelOptIn'
-  | 'duelLobby'
-  | 'duel';
+export type { AppState } from './state/appState.js';
 
-type Pop = { text: string; color: string; top: string };
-type Place = {
-  side: 'above' | 'below';
-  offset: number;
-  hole: { top: number; left: number; w: number; h: number };
-};
-type OpenState = {
-  id: string;
-  token: string;
-  cards: { gear: Gear; isNew: boolean; refund: number }[];
-  shown: number;
-  torn: boolean;
-  from: 'shop' | 'inventory';
-};
-type DuelOutcome = { kind: string; won: boolean; delta: number };
+/** Everything a run is built from, and exactly what the transcript carries -
+ *  so the board the player sees and the board the server replays share one
+ *  source. */
+type RunSpec = Omit<SubmitRunRequest, 'moves'>;
 
-export type AppState = {
-  ready: boolean;
-  fatal: string | null;
-  profile: Profile;
-  leaderboard: LeaderboardEntry[];
+type TimerKey =
+  // gauntlet beats
+  | 'link'
+  | 'land'
+  | 'reject'
+  | 'blast'
+  | 'spawn'
+  | 'swing'
+  | 'ftue'
+  | 'endRoll'
+  | 'hpRoll'
+  // duel
+  | 'duelTick'
+  | 'duelBot'
+  | 'foeLink'
+  | 'foeClear'
+  | 'foeLand'
+  // chrome
+  | 'shopMsg';
 
-  phase: Phase;
-  heroClass: HeroClass;
-  tab: 'attack' | 'block' | 'effect';
-  picked: string[];
-  bs: RunState | null;
+/** Every timer that drives the duel's clock and its bot. */
+const DUEL_TIMERS: TimerKey[] = [
+  'duelTick',
+  'duelBot',
+  'foeLink',
+  'foeClear',
+  'foeLand',
+];
 
-  endT: number;
-  coinsEarned: number;
-  endReason: 'dead' | 'stuck' | 'ended' | 'won' | null;
+const SHOP_MSG_MS = 3200;
+const REJECT_MS = 300;
 
-  /** The map node the next run is for. Chosen on the map, kept through the
-   *  hero and gear steps, and sent with the transcript. */
-  locationId: string;
-  /** What the last submission said about the map: whether the boss fell, and
-   *  whether that kill was The King's. */
-  runWon: boolean;
-  ascended: boolean;
-  /** The pin whose detail panel is open on the map. Null is the bare map. */
-  openLocation: string | null;
-  /** Map viewport: the container's measured size, and how far the artwork has
-   *  been panned within it. */
-  mapW: number;
-  mapH: number;
-  mapX: number;
-  mapY: number;
+type Stopper = { stopPropagation?: () => void };
 
-  /** Pieces the last win dropped, for the end screen's readout. */
-  heartPiecesEarned: number;
-  /** An upgrade is in flight; the button stays inert until it lands. */
-  heartUpgrading: boolean;
-
-  boardW: number;
-  boardH: number;
-  chain: number[];
-  busy: boolean;
-  clearing: number[];
-  hitWho: 'monster' | 'player' | null;
-  drop: { dist: number[]; gen: number; spawn: number | null } | null;
-  pops: Pop[];
-  arming: number[];
-  detonating: number[];
-  blasting: number[];
-  rejecting: number[];
-  kick: boolean;
-  slashGen: number;
-  hpShown: number | null;
-  pHpShown: number | null;
-  monPhase: 'dying' | 'empty' | 'spawning' | null;
-  dying: { name: string; url: string; bg: string } | null;
-  swing: 'attack' | 'heavy' | 'landed' | null;
-  lastSwing: { damage: number; blocked: number } | null;
-  hoverStatus: string | null;
-
-  ftueStep: FtueStep | null;
-  ftuePlace: Place | null;
-  ftueSample: { damage: number; killed: boolean };
-
-  preview: { text: string; color: string } | null;
-  modal: 'pause' | 'how' | 'board' | null;
-  homeMenu: boolean;
-
-  lastGear: string | null;
-  peek: string | null;
-  cardInfo: string | null;
-  shopTab: 'packs' | 'coins' | 'gems';
-  invTab: 'packs' | 'gear';
-  shopMsg: string | null;
-  openPack: OpenState | null;
-
-  /** Null until the first read lands; the nav dot and the tab both wait on it. */
-  quests: QuestBoard | null;
-  questTab: 'daily' | 'weekly';
-  /** The quest whose claim is in flight, so a double tap cannot fire twice. */
-  questClaiming: string | null;
-
-  /* Which flow the hero and gear steps are serving. They are the same two
-     screens either way; what changes is where the five they build ends up -
-     in the run about to start, or in the duel loadout the ladder keeps. */
-  flow: 'run' | 'duel';
-  /** The run's own five, parked while the duel flow borrows the screens. */
-  runSaved: { cls: HeroClass; picked: string[] } | null;
-  duelSetup: number | null;
-  duelSaving: boolean;
-  duelOpponents: DuelFoe[];
-  duelCursor: number;
-  duelLoading: boolean;
-  duelPadded: boolean;
-  challengeUrl: string | null;
-
-  duel: DuelState | null;
-  duelFoe: DuelFoe | null;
-  duelOutcome: DuelOutcome | null;
-  duelClock: number;
-  duelTurns: number;
-  duelLog: string[];
-  duelFtue: number | null;
-  duelW: number;
-  duelH: number;
-  duelMini: number;
-  duelStacked: boolean;
-  duelHit: 'me' | 'foe' | null;
-  foeBeat: 'thinking' | 'linking' | 'clearing' | 'landed' | 'idle';
-  foeChain: number[];
-  foeClearing: number[];
-  foeDrop: { dist: number[]; gen: number; spawn: number | null } | null;
-  foePops: Pop[];
-  foeSaid: string;
-  foeJunk: number;
-  foeHitFor: number;
-};
-
-const EMPTY_PROFILE: Profile = {
-  username: '',
-  coins: 0,
-  gems: 0,
-  trophies: 0,
-  gear: {},
-  packs: {},
-  best: null,
-  ascension: 0,
-  progress: 0,
-  heartPieces: 0,
-  hearts: { ...NO_HEARTS },
-  seenFtue: true,
-  seenDuelFtue: true,
-  seenDuelSetup: true,
-  duelCls: null,
-  duelPicked: [],
-  duelListed: false,
-};
-
-/** The design ships mutators as authoring knobs; this build runs the base rules. */
-const MUTATORS: Mutators = {
-  swiftEnemy: false,
-  noSupers: false,
-  brittleBlock: false,
-  chainFrenzy: false,
-  glassKnight: false,
-};
+const newSeed = (): number => Math.floor(Math.random() * 0xffffffff) >>> 0;
 
 export class GearLinkApp extends Component<Record<string, never>, AppState> {
   /** The run in flight. Holds the RNG, so it is the only thing that can advance
    *  the board - and `moves` is the transcript the server will replay. */
   private run: Run | null = null;
+  private runSpec: RunSpec | null = null;
   private moves: number[][] = [];
-  private seed = 0;
 
   private duelRngs: Record<string, () => number> = {};
   private duelStartedAt = 0;
-
-  private t1?: ReturnType<typeof setTimeout>;
-  private t2?: ReturnType<typeof setTimeout>;
-  private t3?: ReturnType<typeof setTimeout>;
-  private t4?: ReturnType<typeof setTimeout>;
-  private t5?: ReturnType<typeof setTimeout>;
-  private t6?: ReturnType<typeof setTimeout>;
-  private shopT?: ReturnType<typeof setTimeout>;
-  private roll?: ReturnType<typeof setInterval>;
-  private hpRoll?: ReturnType<typeof setInterval>;
-  private duelTickT?: ReturnType<typeof setInterval>;
-  private duelBot?: ReturnType<typeof setTimeout>;
-  private foeT1?: ReturnType<typeof setTimeout>;
-  private foeT2?: ReturnType<typeof setTimeout>;
-  private foeT3?: ReturnType<typeof setTimeout>;
   private pendingMe = false;
+
+  private timers = new Timers<TimerKey>();
 
   private wrap: HTMLElement | null = null;
   private mapWrap: HTMLElement | null = null;
+  private foeWrap: HTMLElement | null = null;
+  private arena: HTMLElement | null = null;
+  private ro: ResizeObserver | null = null;
   private mro: ResizeObserver | null = null;
+  private fro: ResizeObserver | null = null;
+  private aro: ResizeObserver | null = null;
+  private cardObs: ResizeObserver | null = null;
+
   /** Pan bookkeeping. Held on the instance, not in state, so a pointer move
    *  only re-renders when the offset actually changes - and `moved` is what
    *  tells a drag apart from a tap on a pin. */
@@ -313,12 +206,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     originY: 0,
     moved: false,
   };
-  private foeWrap: HTMLElement | null = null;
-  private arena: HTMLElement | null = null;
-  private ro: ResizeObserver | null = null;
-  private fro: ResizeObserver | null = null;
-  private aro: ResizeObserver | null = null;
-  private cardObs: ResizeObserver | null = null;
+
   private trim = 0;
   /** Standing correction to the height budget, in px, learned by trimBoard. */
   private trimPx = 0;
@@ -326,107 +214,15 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   private measuredColumnH = 0;
   private prevPhase: Phase | null = null;
 
+  /** Resolved gear for the current `picked`, reused until `picked` changes. */
+  private loadoutMemo: { picked: string[]; gear: Gear[] } | null = null;
+
   private ftueRoot: HTMLElement | null = null;
   private ftueCard: HTMLElement | null = null;
-  private ftueBoardEl: HTMLElement | null = null;
-  private ftueEnemyEl: HTMLElement | null = null;
-  private ftueTrackEl: HTMLElement | null = null;
-  private ftueMapEl: HTMLElement | null = null;
-  private ftueHeroEl: HTMLElement | null = null;
-  private ftueGearEl: HTMLElement | null = null;
-  private ftueSlotsEl: HTMLElement | null = null;
+  /** Coach-mark targets, keyed by FTUE_TARGET's `target` names. */
+  private ftueEls: Record<string, HTMLElement | null> = {};
 
-  override state: AppState = {
-    ready: false,
-    fatal: null,
-    profile: EMPTY_PROFILE,
-    leaderboard: [],
-    phase: 'splash',
-    heroClass: 'Hero',
-    tab: 'attack',
-    picked: [],
-    bs: null,
-    endT: 1,
-    coinsEarned: 0,
-    endReason: null,
-    locationId: FIRST_LOCATION,
-    runWon: false,
-    ascended: false,
-    openLocation: null,
-    mapW: 0,
-    mapH: 0,
-    mapX: 0,
-    mapY: 0,
-    heartPiecesEarned: 0,
-    heartUpgrading: false,
-    boardW: 0,
-    boardH: 0,
-    chain: [],
-    busy: false,
-    clearing: [],
-    hitWho: null,
-    drop: null,
-    pops: [],
-    arming: [],
-    detonating: [],
-    blasting: [],
-    rejecting: [],
-    kick: false,
-    slashGen: 0,
-    hpShown: null,
-    pHpShown: null,
-    monPhase: null,
-    dying: null,
-    swing: null,
-    lastSwing: null,
-    hoverStatus: null,
-    ftueStep: null,
-    ftuePlace: null,
-    ftueSample: { damage: 0, killed: false },
-    preview: null,
-    modal: null,
-    homeMenu: false,
-    lastGear: null,
-    peek: null,
-    cardInfo: null,
-    shopTab: 'packs',
-    invTab: 'packs',
-    shopMsg: null,
-    openPack: null,
-    quests: null,
-    questTab: 'daily',
-    questClaiming: null,
-    flow: 'run',
-    runSaved: null,
-    duelSetup: null,
-    duelSaving: false,
-    duelOpponents: [],
-    duelCursor: 0,
-    duelLoading: false,
-    duelPadded: false,
-    challengeUrl: null,
-
-    duel: null,
-    duelFoe: null,
-    duelOutcome: null,
-    duelClock: DUEL_MATCH_SECONDS,
-    duelTurns: 0,
-    duelLog: [],
-    duelFtue: null,
-    duelW: 0,
-    duelH: 0,
-    duelMini: 18,
-    duelStacked: false,
-    duelHit: null,
-    foeBeat: 'thinking',
-    foeChain: [],
-    foeClearing: [],
-    foeDrop: null,
-    foePops: [],
-    foeSaid: '',
-    foeJunk: 0,
-    foeHitFor: 0,
-  };
+  override state: AppState = INITIAL_STATE;
 
   override componentDidMount(): void {
     void this.boot();
@@ -446,46 +242,42 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   }
 
   override componentWillUnmount(): void {
-    this.clearAllTimers();
+    this.timers.clearAll();
     for (const o of [this.ro, this.fro, this.aro, this.cardObs, this.mro])
       o?.disconnect();
     window.removeEventListener('resize', this.measureFtue);
     window.removeEventListener('orientationchange', this.measureFtue);
   }
 
-  private clearAllTimers(): void {
-    for (const t of [
-      this.t1,
-      this.t2,
-      this.t3,
-      this.t4,
-      this.t5,
-      this.t6,
-      this.shopT,
-      this.duelBot,
-      this.foeT1,
-      this.foeT2,
-      this.foeT3,
-    ])
-      clearTimeout(t);
-    for (const i of [this.roll, this.hpRoll, this.duelTickT]) clearInterval(i);
-  }
-
+  /** The profile and the quest board were requested before React mounted (see
+   *  `state/boot.ts`); this only waits on them. */
   private async boot(): Promise<void> {
+    const { init, quests } = bootData();
     try {
-      const res = await api.init();
-      this.setState({
+      const res = await init;
+      this.setState((s) => ({
         ready: true,
         profile: res.profile,
         leaderboard: res.leaderboard,
-        picked: ownedLoadout(this.state.heroClass, res.profile.gear),
-      });
-      this.refreshQuests();
+        picked: ownedLoadout(s.heroClass, res.profile.gear),
+      }));
     } catch (e) {
       this.setState({
         fatal: e instanceof Error ? e.message : 'Could not load your profile.',
       });
+      return;
     }
+    const q = await quests;
+    if (q) this.setState({ quests: q.board });
+    else this.refreshQuests();
+  }
+
+  /* ---------- wallet + messages ---------- */
+
+  private clearShopMsgSoon(): void {
+    this.timers.after('shopMsg', SHOP_MSG_MS, () =>
+      this.setState({ shopMsg: null })
+    );
   }
 
   /** Adopt whatever the server now says the wallet is, and surface its note. */
@@ -497,22 +289,14 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       // owned, so the loadout is repaired against every profile that arrives.
       picked: this.repairPicked(s.picked, s.heroClass, profile),
     }));
-    if (message) {
-      clearTimeout(this.shopT);
-      this.shopT = setTimeout(() => this.setState({ shopMsg: null }), 3200);
-    }
+    if (message) this.clearShopMsgSoon();
   };
 
   private fail = (e: unknown): void => {
     const msg = e instanceof Error ? e.message : 'Something went wrong.';
     this.setState({ shopMsg: msg });
-    try {
-      showToast(msg);
-    } catch {
-      /* a toast is a nicety; the inline message is the real report */
-    }
-    clearTimeout(this.shopT);
-    this.shopT = setTimeout(() => this.setState({ shopMsg: null }), 3200);
+    safeToast(showToast, msg);
+    this.clearShopMsgSoon();
   };
 
   private repairPicked = (
@@ -525,6 +309,15 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       picked.some((id) => !((profile.gear[id] ?? 0) > 0));
     return bad ? ownedLoadout(cls, profile.gear) : picked;
   };
+
+  /** Record a primer as seen. Best-effort: a failed write only means it shows
+   *  again next time. */
+  private markSeen(which: 'run' | 'duel' | 'duelSetup'): void {
+    void api
+      .ftueSeen(which)
+      .then((r) => this.adopt(r.profile))
+      .catch(() => undefined);
+  }
 
   /* ---------- derived ---------- */
 
@@ -567,29 +360,33 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   perk() {
     return HERO_PERKS[this.state.heroClass] ?? HERO_PERKS.Hero;
   }
+  /** Memoised on the `picked` array: the view and the input handlers ask for
+   *  this many times per render, and it only changes when `picked` does. */
   loadout(): Gear[] {
-    return this.state.picked
-      .map((id) => GEAR.find((g) => g.id === id))
-      .filter((g): g is Gear => !!g);
-  }
-  weights(): number[] {
-    return this.loadout().map((o) => REFILL_WEIGHT[o.effect]);
+    const picked = this.state.picked;
+    if (this.loadoutMemo?.picked !== picked)
+      this.loadoutMemo = { picked, gear: resolveLoadout(picked) };
+    return this.loadoutMemo.gear;
   }
   scoreOf = (bs: RunState): number => scoreOf(bs);
 
+  /** The spec a run started now would be built from. */
+  private currentRunSpec(seed: number): RunSpec {
+    const st = this.state;
+    return {
+      seed,
+      heroClass: st.heroClass,
+      picked: st.picked,
+      locationId: st.locationId,
+      ascension: st.profile.ascension,
+      hearts: this.heartsOfClass(),
+    };
+  }
+
   /** The wave the HUD should describe. Everything routes through the live Run,
    *  so the UI can never disagree with the engine about a wave's stats. */
-  enemyAt(_base: unknown, wave: number) {
-    return this.run
-      ? this.run.enemyForWave(wave)
-      : new Run({
-          seed: 1,
-          heroClass: this.state.heroClass,
-          picked: this.state.picked,
-          locationId: this.state.locationId,
-          ascension: this.state.profile.ascension,
-          hearts: this.heartsOfClass(),
-        }).enemyForWave(wave);
+  enemyAt(_base: unknown, wave: number): Enemy {
+    return (this.run ?? new Run(this.currentRunSpec(1))).enemyForWave(wave);
   }
 
   /** How many waves the battle in flight holds. Before it starts, the map
@@ -618,10 +415,10 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     const name = this.run ? this.run.planFor(wave).name : loc.mobs[0]!;
     return enemyDisplayFor(name, loc.region);
   }
-  blockCapFor = (e: any) => (this.run ? this.run.blockCapFor(e) : 0);
-  swingStrength = (e: any, hits: number) =>
+  blockCapFor = (e: Enemy) => (this.run ? this.run.blockCapFor(e) : 0);
+  swingStrength = (e: Enemy, hits: number) =>
     this.run ? this.run.swingStrength(e, hits) : e.strength;
-  intentFor = (e: any, meter: number, hits: number) =>
+  intentFor = (e: Enemy, meter: number, hits: number) =>
     this.run ? this.run.intentFor(e, meter, hits) : 'charge';
 
   /* ---------- measurement ---------- */
@@ -632,12 +429,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     // Re-observe on every NEW node: the duel screen mounts its own wrapper, and
     // a one-shot observer would stay pinned to the gauntlet's element and leave
     // the duel board measured at zero.
-    this.ro?.disconnect();
-    this.ro = null;
-    if (el && typeof ResizeObserver !== 'undefined') {
-      this.ro = new ResizeObserver(() => this.measureBoard());
-      this.ro.observe(el);
-    }
+    this.ro = reobserve(this.ro, el, this.measureBoard);
     this.measureBoard();
     if (el) requestAnimationFrame(this.measureBoard);
   };
@@ -652,40 +444,12 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     const panel = el.parentElement;
     const column = panel?.parentElement;
     const w = el.clientWidth;
-    if (!w || !column || !column.clientHeight) return;
+    if (!w || !panel || !column || !column.clientHeight) return;
     /* The board panel is sized FROM the board, so its available height must come
-       from the column's other children - and from their min-heights, not their
-       rendered heights, since the monster stage flexes into whatever the board
-       leaves. Measuring rendered heights here would be circular. */
-    const px = (v: string) => {
-      const n = parseFloat(v);
-      return Number.isFinite(n) ? n : 0;
-    };
-    let used = 0;
-    for (const c of Array.from(column.children)) {
-      if (c === panel) continue;
-      const cs = getComputedStyle(c);
-      // `min-height: auto` parses to NaN, which is the important case: it means
-      // the sibling never declared a floor, NOT that it can collapse to zero.
-      const declared = parseFloat(cs.minHeight);
-      const floor = Number.isFinite(declared) ? declared : null;
-      const rendered = c.getBoundingClientRect().height;
-      // A sibling that can shrink is charged the floor it declared, since the
-      // board is what it shrinks to make room for. One that cannot shrink - or
-      // never declared a floor - is charged what it occupies, because that
-      // height IS its floor. Charging an undeclared floor as zero was what made
-      // the board size itself too tall and then get trimmed back every resize.
-      const shrinkable = parseFloat(cs.flexShrink) > 0;
-      used +=
-        shrinkable && floor !== null ? floor : Math.max(floor ?? 0, rendered);
-    }
-    const pcs = getComputedStyle(panel);
-    let chrome =
-      px(pcs.paddingTop) +
-      px(pcs.paddingBottom) +
-      px(pcs.rowGap) * Math.max(0, panel.children.length - 1);
-    for (const c of Array.from(panel.children))
-      if (c !== el) chrome += c.getBoundingClientRect().height;
+       from the column's other children - see siblingFloors for why floors and
+       not rendered heights. */
+    const used = siblingFloors(column, panel);
+    const chrome = panelChrome(panel, el);
     /* A correction learned against a different column height is stale - a
        rotation or a resize gets a fresh budget. Otherwise the correction is
        kept, which is what makes this converge: without it, trimBoard shrinks
@@ -748,12 +512,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   foeWrapRef = (el: HTMLElement | null): void => {
     if (this.foeWrap === el) return;
     this.foeWrap = el;
-    this.fro?.disconnect();
-    this.fro = null;
-    if (el && typeof ResizeObserver !== 'undefined') {
-      this.fro = new ResizeObserver(() => this.measureDuelBoards());
-      this.fro.observe(el);
-    }
+    this.fro = reobserve(this.fro, el, this.measureDuelBoards);
     this.measureDuelBoards();
     if (el) requestAnimationFrame(this.measureDuelBoards);
   };
@@ -764,12 +523,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   duelArenaRef = (el: HTMLElement | null): void => {
     if (this.arena === el) return;
     this.arena = el;
-    this.aro?.disconnect();
-    this.aro = null;
-    if (el && typeof ResizeObserver !== 'undefined') {
-      this.aro = new ResizeObserver(() => this.measureDuelArena());
-      this.aro.observe(el);
-    }
+    this.aro = reobserve(this.aro, el, this.measureDuelArena);
     this.measureDuelArena();
   };
 
@@ -818,31 +572,32 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   rollUp = (v: number): number => Math.round(v * (this.state.endT ?? 1));
 
   runEndRoll(): void {
-    clearInterval(this.roll);
     this.setState({ endT: 0 });
     const t0 = Date.now();
-    this.roll = setInterval(() => {
+    this.timers.every('endRoll', 40, () => {
       const p = Math.min(1, (Date.now() - t0) / 700);
       this.setState({ endT: p });
-      if (p >= 1) clearInterval(this.roll);
-    }, 40);
+      if (p >= 1) this.timers.clear('endRoll');
+    });
   }
 
   /** Roll the HP figure toward its new value instead of snapping, so a hit
-   *  reads as damage taken rather than a number swap. */
+   *  reads as damage taken rather than a number swap. Ticks that would show
+   *  the same integer skip the render. */
   rollHp(to: number): void {
-    clearInterval(this.hpRoll);
+    this.timers.clear('hpRoll');
     const from = this.state.hpShown ?? to;
     if (from === to) {
       this.setState({ hpShown: to });
       return;
     }
     const t0 = Date.now();
-    this.hpRoll = setInterval(() => {
+    this.timers.every('hpRoll', 30, () => {
       const p = Math.min(1, (Date.now() - t0) / 420);
-      this.setState({ hpShown: Math.round(from + (to - from) * p) });
-      if (p >= 1) clearInterval(this.hpRoll);
-    }, 30);
+      const shown = Math.round(from + (to - from) * p);
+      if (shown !== this.state.hpShown) this.setState({ hpShown: shown });
+      if (p >= 1) this.timers.clear('hpRoll');
+    });
   }
 
   /* ---------- navigation ---------- */
@@ -883,11 +638,8 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   /* ---------- the map ---------- */
 
   mapWrapRef = (el: HTMLElement | null): void => {
-    this.mro?.disconnect();
     this.mapWrap = el;
-    if (!el) return;
-    this.mro = new ResizeObserver(this.measureMap);
-    this.mro.observe(el);
+    this.mro = reobserve(this.mro, el, this.measureMap);
     this.measureMap();
   };
 
@@ -900,38 +652,23 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     const h = el.clientHeight;
     if (!w || !h) return;
     this.setState((s) => {
-      const { x, y } = this.clampPan(s.mapX, s.mapY, w, h);
+      const { x, y } = clampPan(s.mapX, s.mapY, w, h);
       // Open centred on the vertical overflow rather than pinned to the top,
       // so the first thing on screen is the middle of the road.
       const started = s.mapW > 0 || s.mapH > 0;
-      const min = this.panBounds(w, h);
-      const y0 = started ? y : min.minY / 2;
-      return { mapW: w, mapH: h, mapX: x, mapY: started ? y : y0 };
+      return {
+        mapW: w,
+        mapH: h,
+        mapX: x,
+        mapY: started ? y : panBounds(w, h).minY / 2,
+      };
     });
   };
 
-  private panBounds(w: number, h: number) {
-    const scale = Math.max(w / MAP_ART.w, h / MAP_ART.h) || 1;
-    return {
-      scale,
-      minX: Math.min(w - MAP_ART.w * scale, 0),
-      minY: Math.min(h - MAP_ART.h * scale, 0),
-    };
-  }
-  private clampPan(x: number, y: number, w: number, h: number) {
-    const { minX, minY } = this.panBounds(w, h);
-    return {
-      x: Math.max(minX, Math.min(0, x)),
-      y: Math.max(minY, Math.min(0, y)),
-    };
-  }
   /** The artwork's drawn size and offset, for the view. */
   mapFrame(): { w: number; h: number; x: number; y: number } {
     const st = this.state;
-    const { scale } = this.panBounds(
-      st.mapW || MAP_ART.w,
-      st.mapH || MAP_ART.h
-    );
+    const { scale } = panBounds(st.mapW || MAP_ART.w, st.mapH || MAP_ART.h);
     return {
       w: MAP_ART.w * scale,
       h: MAP_ART.h * scale,
@@ -939,10 +676,6 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       y: st.mapY,
     };
   }
-
-  /** Movement past this many px is a drag, not a tap - which is what stops a
-   *  pan that ends over a pin from opening it. */
-  private static readonly DRAG_SLOP = 6;
 
   onMapDown = (e: ReactPointerEvent): void => {
     this.mapDrag = {
@@ -959,18 +692,13 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     if (!d.active) return;
     const dx = e.clientX - d.startX;
     const dy = e.clientY - d.startY;
-    if (!d.moved && Math.abs(dx) + Math.abs(dy) > GearLinkApp.DRAG_SLOP) {
+    if (!d.moved && Math.abs(dx) + Math.abs(dy) > DRAG_SLOP) {
       d.moved = true;
       e.currentTarget.setPointerCapture?.(e.pointerId);
     }
     if (!d.moved) return;
     const st = this.state;
-    const { x, y } = this.clampPan(
-      d.originX + dx,
-      d.originY + dy,
-      st.mapW,
-      st.mapH
-    );
+    const { x, y } = clampPan(d.originX + dx, d.originY + dy, st.mapW, st.mapH);
     if (x !== st.mapX || y !== st.mapY) this.setState({ mapX: x, mapY: y });
   };
   onMapUp = (e: ReactPointerEvent): void => {
@@ -1029,48 +757,41 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       peek: null,
     }));
 
-  pickTab = (t: 'attack' | 'block' | 'effect') => (): void =>
-    this.setState({ tab: t });
+  pickTab = (t: GearTab) => (): void => this.setState({ tab: t });
 
   toggleGear = (id: string) => (): void => {
     this.setState((s) => {
-      const picked = s.picked.slice();
-      const i = picked.indexOf(id);
-      // Equipping hands the piece to the slots readout and dismisses the preview.
-      if (i >= 0) {
-        picked.splice(i, 1);
-        return { lastGear: id, peek: null, picked };
-      }
-      if (picked.length >= 5)
-        return { lastGear: id, peek: null, picked: s.picked };
-      const g = GEAR.find((x) => x.id === id);
-      if (!g) return { lastGear: id, peek: null, picked: s.picked };
-      const sameEffect = picked
-        .map((p) => GEAR.find((x) => x.id === p))
-        .filter((x) => x && x.effect === g.effect).length;
-      if (sameEffect >= 2)
-        return { lastGear: id, peek: null, picked: s.picked };
-      picked.push(id);
-      return { lastGear: id, peek: null, picked };
+      // Any tap hands the piece to the slots readout and dismisses the preview.
+      const unchanged = { lastGear: id, peek: null, picked: s.picked };
+      const i = s.picked.indexOf(id);
+      if (i >= 0)
+        return { ...unchanged, picked: s.picked.filter((_, j) => j !== i) };
+      const g = GEAR_BY_ID[id];
+      if (!g || s.picked.length >= 5) return unchanged;
+      const sameEffect = s.picked.filter(
+        (p) => GEAR_BY_ID[p]?.effect === g.effect
+      ).length;
+      if (sameEffect >= 2) return unchanged;
+      return { ...unchanged, picked: s.picked.concat(id) };
     });
   };
 
   selectGear =
     (id: string) =>
-    (e?: { stopPropagation?: () => void }): void => {
+    (e?: Stopper): void => {
       e?.stopPropagation?.();
       this.setState({ lastGear: id, peek: null });
     };
   clearSlot =
     (id: string) =>
-    (e?: { stopPropagation?: () => void }): void => {
+    (e?: Stopper): void => {
       e?.stopPropagation?.();
       this.toggleGear(id)();
     };
   /** Step through the equipped slots, so reading each piece is arrow-key cheap. */
   pageSlot =
     (dir: number) =>
-    (e?: { stopPropagation?: () => void }): void => {
+    (e?: Stopper): void => {
       e?.stopPropagation?.();
       const picked = this.state.picked.filter(Boolean);
       if (!picked.length) return;
@@ -1087,7 +808,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
    *  equipped readout or the slots pager. */
   inspectGear =
     (id: string) =>
-    (e?: { stopPropagation?: () => void }): void => {
+    (e?: Stopper): void => {
       e?.stopPropagation?.();
       this.setState((s) =>
         s.picked.indexOf(id) >= 0
@@ -1103,57 +824,29 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   };
   toggleStatusTip = (k: string) => (): void =>
     this.setState((s) => ({ hoverStatus: s.hoverStatus === k ? null : k }));
-  intentEnter = (): void => this.hoverStatus('intent')();
-  intentLeave = (): void => this.hoverStatus(null)();
-  intentTap = (): void => this.toggleStatusTip('intent')();
+  intentEnter = this.hoverStatus('intent');
+  intentLeave = this.hoverStatus(null);
+  intentTap = this.toggleStatusTip('intent');
 
   /* ---------- the run ---------- */
 
+  /** Build the run from a spec. The seed is the run's whole identity: it is
+   *  what the server replays, so the spec kept here is what gets submitted. */
+  private adoptRun(spec: RunSpec): RunState {
+    this.runSpec = spec;
+    this.run = new Run({ ...spec, mutators: MUTATORS });
+    return this.run.start();
+  }
+
   startRun = (): void => {
     if (this.state.picked.length !== 5) return;
-    // The seed is the run's whole identity: it is what the server replays, so it
-    // is drawn once here and never regenerated.
-    this.seed = Math.floor(Math.random() * 0xffffffff) >>> 0;
-    this.run = new Run({
-      seed: this.seed,
-      heroClass: this.state.heroClass,
-      picked: this.state.picked,
-      mutators: MUTATORS,
-      locationId: this.state.locationId,
-      ascension: this.state.profile.ascension,
-      hearts: this.heartsOfClass(),
-    });
     this.moves = [];
-    const bs = this.run.start();
+    const bs = this.adoptRun(this.currentRunSpec(newSeed()));
     this.setState({
+      ...BATTLE_RESET,
       phase: 'battle',
       bs,
-      chain: [],
-      busy: false,
-      clearing: [],
-      preview: null,
-      endReason: null,
-      hitWho: null,
-      drop: null,
-      pops: [],
-      arming: [],
-      detonating: [],
-      blasting: [],
-      rejecting: [],
-      kick: false,
-      slashGen: 0,
-      hpShown: null,
-      pHpShown: null,
-      monPhase: null,
-      dying: null,
-      swing: null,
-      coinsEarned: 0,
-      runWon: false,
-      ascended: false,
-      heartPiecesEarned: 0,
       ftueStep: this.state.profile.seenFtue ? null : 'orbs',
-      ftuePlace: null,
-      ftueSample: { damage: 0, killed: false },
     });
   };
 
@@ -1166,7 +859,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       modal: null,
     });
     this.runEndRoll();
-    void this.submitRun(this.state.bs);
+    void this.submitRun();
   };
 
   /**
@@ -1174,23 +867,16 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
    * comes back is the server's, computed by replaying these same moves through
    * the same engine, and that is what the ladder and the wallet record.
    */
-  private async submitRun(bs: RunState): Promise<void> {
-    if (!this.run || !this.moves.length) {
+  private async submitRun(): Promise<void> {
+    const spec = this.runSpec;
+    if (!this.run || !spec || !this.moves.length) {
       this.setState({ coinsEarned: 0 });
       return;
     }
     const moves = this.moves;
     this.moves = [];
     try {
-      const res = await api.submitRun({
-        seed: this.seed,
-        heroClass: this.state.heroClass,
-        picked: this.state.picked,
-        moves,
-        locationId: this.state.locationId,
-        ascension: this.state.profile.ascension,
-        hearts: this.heartsOfClass(),
-      });
+      const res = await api.submitRun({ ...spec, moves });
       this.setState({
         profile: res.profile,
         leaderboard: res.leaderboard,
@@ -1204,7 +890,6 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       // The run is over on screen either way; say plainly that it did not bank.
       this.setState({ coinsEarned: 0 });
       this.fail(e);
-      void bs;
     }
   }
 
@@ -1222,16 +907,19 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     if (this.state.phase === 'duel') return this.state.duel?.me.board ?? null;
     return this.state.bs?.board ?? null;
   }
-  private liveLoadout(): Gear[] {
-    if (this.state.phase === 'duel' && this.state.duel)
-      return this.state.duel.me.loadout;
-    return this.loadout();
-  }
   private boardIsLive(): boolean {
     const st = this.state;
     if (st.phase === 'duel')
       return !!st.duel && !st.duelOutcome && !st.busy && !this.duelFtuePaused();
     return st.phase === 'battle';
+  }
+
+  /** Shake a link the rules refused, then let it go. */
+  private reject(move: number[]): void {
+    this.setState({ rejecting: move.slice(), chain: [], preview: null });
+    this.timers.after('reject', REJECT_MS, () =>
+      this.setState({ rejecting: [] })
+    );
   }
 
   onDown = (e: ReactPointerEvent): void => {
@@ -1283,353 +971,269 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     const chain = this.state.chain;
     const board = this.liveBoard();
     if (chain.length === 0 || !board) return;
-    const fire = (move: number[]) => {
-      if (this.state.phase === 'duel') this.resolveDuel('me', move);
-      else this.resolve(move);
-    };
-    if (
-      chain.length === 1 &&
-      board[chain[0]!] != null &&
-      isSuper(board[chain[0]!]!)
-    ) {
-      fire(chain.slice());
+    const lone = chain.length === 1 && isSuper(board[chain[0]!]!);
+    if (!lone && chain.length < MIN_LINK) {
+      this.reject(chain);
       return;
     }
-    if (chain.length < MIN_LINK) {
-      this.setState({ rejecting: chain.slice(), chain: [], preview: null });
-      clearTimeout(this.t3);
-      this.t3 = setTimeout(() => this.setState({ rejecting: [] }), 300);
-      return;
-    }
-    fire(chain.slice());
+    if (this.state.phase === 'duel') this.resolveDuel('me', chain.slice());
+    else this.resolve(chain.slice());
   };
 
-  /** What this link will land, buffs and Mark included - the number the player
-   *  is about to commit to, not the raw payout. */
-  previewFor(chain: number[]): { text: string; color: string } | null {
-    const duelling = this.state.phase === 'duel';
+  /** The preview for a link on whichever board is live. */
+  previewFor(chain: number[]): Preview | null {
+    const st = this.state;
     const board = this.liveBoard();
     if (!board) return null;
-    const sx = duelling
-      ? { ...NO_STATUS, ...this.state.duel!.me.stx }
-      : { ...NO_STATUS, ...(this.state.bs?.stx ?? {}) };
-    const foeSx = duelling ? { ...NO_STATUS, ...this.state.duel!.foe.stx } : sx;
-    if (chain.length === 1 && isSuper(board[chain[0]!]!))
-      return { text: 'RELEASE TO DETONATE', color: '#FFC24B' };
-    const orb = this.liveLoadout()[orbTypeOf(board[chain[0]!]!)];
-    if (!orb) return null;
-    if (chain.length < MIN_LINK)
-      return {
-        text: 'LINK ' + chain.length + ' / ' + MIN_LINK,
-        color: '#9DB4D4',
-      };
-    const perk = duelling
-      ? (HERO_PERKS[this.state.duel!.me.cls] ?? HERO_PERKS.Hero)
-      : this.perk();
-    const raw = magnitudeFor(orb.power, chain.length, MUTATORS);
-    const x =
-      orb.effect === 'attack'
-        ? perk.attackX100
-        : orb.effect === 'block'
-          ? perk.blockX100
-          : perk.healX100;
-    let val = Math.max(1, Math.floor((raw * x) / 100));
-    if (orb.effect === 'attack' && sx.strength > 0) val += sx.strength;
-    if (orb.effect === 'block' && sx.grit > 0) val += sx.grit;
-    let mark = '';
-    if (orb.effect === 'attack' && foeSx.mark > 0) {
-      val = Math.ceil((val * markMultX100(foeSx.mark)) / 100);
-      mark = ' MARKED';
+    if (st.phase === 'duel' && st.duel) {
+      const me = st.duel.me;
+      return linkPreview({
+        chain,
+        board,
+        loadout: me.loadout,
+        perk: HERO_PERKS[me.cls] ?? HERO_PERKS.Hero,
+        sx: { ...NO_STATUS, ...me.stx },
+        foeSx: { ...NO_STATUS, ...st.duel.foe.stx },
+        duelling: true,
+        mutators: MUTATORS,
+      });
     }
-    const bomb = chain.length >= SUPER_MIN_LINK ? '  +BOMB' : '';
-    const rd = riderOf(orb.id);
-    let rider = '';
-    if (rd) {
-      const R = RIDERS[rd.r]!;
-      rider =
-        chain.length >= rd.at
-          ? '  +' + R.label + ' ' + rd.v
-          : '  ' + R.label + ' in ' + (rd.at - chain.length);
-    }
-    // Junk is the duel's whole second axis, so the preview must price it.
-    let junk = '';
-    if (duelling) {
-      const n = sx.frost > 0 ? 0 : junkFor(chain.length);
-      junk =
-        n > 0
-          ? '  +' + n + ' JUNK'
-          : chain.length < 5
-            ? '  JUNK in ' + (5 - chain.length)
-            : '';
-    }
-    return {
-      text:
-        EFFECT_LABEL[orb.effect] +
-        ' ' +
-        val +
-        '  from ' +
-        chain.length +
-        ' orbs' +
-        mark +
-        bomb +
-        rider +
-        junk,
-      color:
-        orb.effect === 'attack'
-          ? '#E75757'
-          : orb.effect === 'block'
-            ? '#4F92F0'
-            : '#3FAF6E',
-    };
+    const sx = { ...NO_STATUS, ...(st.bs?.stx ?? {}) };
+    return linkPreview({
+      chain,
+      board,
+      loadout: this.loadout(),
+      perk: this.perk(),
+      sx,
+      // A gauntlet Mark sits on the linker's own status block.
+      foeSx: sx,
+      duelling: false,
+      mutators: MUTATORS,
+    });
   }
 
   /* ---------- resolving a turn ---------- */
 
   resolve(move: number[]): void {
-    if (!this.run || !this.state.bs) return;
-    const out = this.run.step(this.state.bs, move);
+    const bs = this.state.bs;
+    if (!this.run || !bs) return;
+    const out = this.run.step(bs, move);
     if (!out) {
-      this.setState({ rejecting: move.slice(), chain: [], preview: null });
-      clearTimeout(this.t3);
-      this.t3 = setTimeout(() => this.setState({ rejecting: [] }), 300);
+      this.reject(move);
       return;
     }
     // Recorded only once the engine has accepted it, so the transcript and the
     // board can never drift apart.
     this.moves.push(move.slice());
 
-    const isBlast = out.detonators.length > 0;
     // The drag step is completed by DOING it: record what the taught link
     // actually dealt, then move to the step that points at the HP bar.
     if (this.state.ftueStep === 'drag') {
       this.setState({
         ftueSample: { damage: out.attackDealt, killed: out.waveCleared },
       });
-      this.t6 = setTimeout(this.advanceFtue, 900);
+      this.timers.after('ftue', 900, this.advanceFtue);
     }
-    const prevWave = this.state.bs.wave;
-    const prevMon = this.waveDisplay(prevWave);
+    const prevMon = this.waveDisplay(bs.wave);
+    const land = () => this.landTurn(out, prevMon);
 
-    const land = () => {
-      const pops: Pop[] = [];
-      if (out.attackDealt > 0)
-        pops.push({ text: '-' + out.attackDealt, color: '#F08686', top: '4%' });
-      if (out.burnDealt > 0)
-        pops.push({
-          text: '-' + out.burnDealt,
-          color: RIDERS['burn']!.color,
-          top: '16%',
-        });
-      if (out.blockGained > 0)
-        pops.push({
-          text: '+' + out.blockGained,
-          color: '#89BCFF',
-          top: '30%',
-        });
-      if (out.healed > 0)
-        pops.push({ text: '+' + out.healed, color: '#C5F47D', top: '30%' });
-      const lastStage = out.stages.length
-        ? out.stages[out.stages.length - 1]!
-        : null;
-      const allCleared = lastStage ? lastStage.cleared : out.cleared;
-      const struck = out.attackDealt > 0 || out.burnDealt > 0;
-      if (out.waveCleared) {
-        clearInterval(this.hpRoll);
-        this.setState({ hpShown: 0 });
-      } else this.rollHp(Math.max(0, out.bs.enemyHp));
+    this.timers.clear('link');
+    if (out.detonators.length > 0) {
+      this.playBlastStage(out, 0, land);
+      return;
+    }
+    this.setState({
+      busy: true,
+      clearing: out.cleared,
+      chain: [],
+      preview: null,
+    });
+    this.timers.after('link', 420, land);
+  }
 
-      this.setState((s) => ({
-        bs: out.bs,
-        clearing: [],
-        detonating: [],
-        blasting: [],
-        arming: [],
-        slashGen: struck ? s.slashGen + 1 : s.slashGen,
-        monPhase: out.waveCleared ? 'dying' : s.monPhase,
-        dying: out.waveCleared ? prevMon : s.dying,
-        drop: {
-          dist: fallDistances(allCleared),
-          gen: (s.drop ? s.drop.gen : 0) + 1,
-          spawn: out.superAfter,
-        },
-        kick: isBlast,
-        pops,
-        // The swing is its own beat, so the player's HP readout is held at its
-        // pre-swing value until that beat actually plays.
-        pHpShown: out.enemyAttacked ? out.bs.playerHp + out.enemyDamage : null,
-        hitWho: out.attackDealt > 0 ? 'monster' : null,
-      }));
-
-      const tail = () => {
-        const stuck = !out.over && !out.battleWon && !hasAnyMove(out.bs.board);
-        if (out.battleWon || out.over || stuck) {
-          this.setState({
-            phase: 'end',
-            endReason: out.battleWon ? 'won' : out.over ? 'dead' : 'stuck',
-            busy: false,
-            hitWho: null,
-            pops: [],
-            drop: null,
-            kick: false,
-            monPhase: null,
-            dying: null,
-            swing: null,
-            pHpShown: null,
-          });
-          this.runEndRoll();
-          void this.submitRun(out.bs);
-        } else if (out.waveCleared) {
-          // The kill lands, the fallen enemy plays out, the stage sits empty a
-          // beat, then the next one walks in.
-          this.setState({ pops: [], drop: null, kick: false });
-          clearTimeout(this.t5);
-          this.t5 = setTimeout(() => {
-            this.setState({ monPhase: 'empty', dying: null });
-            this.t5 = setTimeout(() => {
-              this.setState({ monPhase: 'spawning' });
-              this.rollHp(this.enemyAt(null, out.bs.wave).hp);
-              this.t5 = setTimeout(
-                () =>
-                  this.setState({ monPhase: null, busy: false, hitWho: null }),
-                460
-              );
-            }, 260);
-          }, 240);
-        } else {
-          this.setState({
-            busy: false,
-            hitWho: null,
-            pops: [],
-            drop: null,
-            kick: false,
-            swing: null,
-            pHpShown: null,
-          });
-        }
-      };
-
-      clearTimeout(this.t2);
-      this.t2 = setTimeout(() => {
-        /* The monster's turn is a SEPARATE, announced beat: wind-up, then the
-           hit. Resolving it inside the player's payout made the swing invisible
-           - the HP just dropped with everything else. */
-        if (!out.enemyAttacked) {
-          tail();
-          return;
-        }
-        this.setState({
-          pops: [],
-          drop: null,
-          kick: false,
-          swing: out.enemyHeavy ? 'heavy' : 'attack',
-        });
-        clearTimeout(this.t6);
-        this.t6 = setTimeout(() => {
-          const hit: Pop[] =
-            out.enemyDamage > 0
-              ? [{ text: '-' + out.enemyDamage, color: '#FF9EA1', top: '58%' }]
-              : [{ text: 'BLOCKED', color: '#89BCFF', top: '58%' }];
-          this.setState({
-            hitWho: 'player',
-            pops: hit,
-            pHpShown: null,
-            swing: 'landed',
-            lastSwing: { damage: out.enemyDamage, blocked: out.enemyBlocked },
-          });
-          clearTimeout(this.t6);
-          this.t6 = setTimeout(tail, 560);
-        }, 620);
-      }, 520);
-    };
-
-    clearTimeout(this.t1);
-    if (isBlast) {
-      /* Play the cascade STAGE BY STAGE. Each stage arms its detonators, blows
-         them, then drops the survivors, so a blast that catches another bomb
-         reads as a chain instead of resolving invisibly in one frame. The board
-         shown between beats is that stage's recorded board; out.bs is applied
-         once at the end, so the engine stays the single source of truth. */
-      const stages = out.stages.length
-        ? out.stages
-        : [
-            {
-              detonators: out.detonators,
-              blasted: out.blasted,
-              cleared: out.cleared,
-              before: [],
-              after: [],
-            },
-          ];
-      const playStage = (n: number) => {
-        if (n >= stages.length) {
-          land();
-          return;
-        }
-        const stg = stages[n]!;
-        this.setState({
-          busy: true,
-          arming: stg.detonators,
-          blasting: [],
-          detonating: [],
-          clearing: n === 0 ? out.cleared : [],
-          chain: [],
-          preview: null,
-        });
-        this.t1 = setTimeout(() => {
-          this.setState({
-            arming: [],
-            detonating: stg.detonators,
-            blasting: stg.blasted,
-            clearing: [],
-          });
-          clearTimeout(this.t4);
-          this.t4 = setTimeout(() => {
-            const last = n === stages.length - 1;
-            if (last || !stg.after.length) {
-              playStage(n + 1);
-              return;
-            }
-            // Settle this stage's collapse before the next bomb arms.
-            this.setState((s) => ({
-              bs: s.bs ? { ...s.bs, board: stg.after } : s.bs,
-              arming: [],
-              detonating: [],
-              blasting: [],
-              clearing: [],
-              kick: true,
-              drop: {
-                dist: fallDistances(stg.cleared),
-                gen: (s.drop ? s.drop.gen : 0) + 1,
-                spawn: null,
-              },
-            }));
-            this.t4 = setTimeout(() => {
-              this.setState({ kick: false });
-              playStage(n + 1);
-            }, 300);
-          }, 420);
-        }, 320);
-      };
-      playStage(0);
-    } else {
+  /* Play the cascade STAGE BY STAGE. Each stage arms its detonators, blows
+     them, then drops the survivors, so a blast that catches another bomb reads
+     as a chain instead of resolving invisibly in one frame. The board shown
+     between beats is that stage's recorded board; out.bs is applied once at the
+     end, so the engine stays the single source of truth. */
+  private playBlastStage(out: StepResult, n: number, land: () => void): void {
+    const stages = out.stages.length
+      ? out.stages
+      : [
+          {
+            detonators: out.detonators,
+            blasted: out.blasted,
+            cleared: out.cleared,
+            before: [],
+            after: [],
+          },
+        ];
+    if (n >= stages.length) {
+      land();
+      return;
+    }
+    const stg = stages[n]!;
+    const next = () => this.playBlastStage(out, n + 1, land);
+    this.setState({
+      busy: true,
+      arming: stg.detonators,
+      blasting: [],
+      detonating: [],
+      clearing: n === 0 ? out.cleared : [],
+      chain: [],
+      preview: null,
+    });
+    this.timers.after('link', 320, () => {
       this.setState({
-        busy: true,
-        clearing: out.cleared,
-        chain: [],
-        preview: null,
+        arming: [],
+        detonating: stg.detonators,
+        blasting: stg.blasted,
+        clearing: [],
       });
-      this.t1 = setTimeout(land, 420);
+      this.timers.after('blast', 420, () => {
+        if (n === stages.length - 1 || !stg.after.length) {
+          next();
+          return;
+        }
+        // Settle this stage's collapse before the next bomb arms.
+        this.setState((s) => ({
+          bs: s.bs ? { ...s.bs, board: stg.after } : s.bs,
+          arming: [],
+          detonating: [],
+          blasting: [],
+          clearing: [],
+          kick: true,
+          drop: {
+            dist: fallDistances(stg.cleared),
+            gen: (s.drop ? s.drop.gen : 0) + 1,
+            spawn: null,
+          },
+        }));
+        this.timers.after('blast', 300, () => {
+          this.setState({ kick: false });
+          next();
+        });
+      });
+    });
+  }
+
+  /** The player's payout lands; then, as its own announced beat, the swing. */
+  private landTurn(
+    out: StepResult,
+    prevMon: ReturnType<typeof enemyDisplayFor>
+  ): void {
+    const lastStage = out.stages.length
+      ? out.stages[out.stages.length - 1]!
+      : null;
+    const allCleared = lastStage ? lastStage.cleared : out.cleared;
+    const struck = out.attackDealt > 0 || out.burnDealt > 0;
+    if (out.waveCleared) {
+      this.timers.clear('hpRoll');
+      this.setState({ hpShown: 0 });
+    } else this.rollHp(Math.max(0, out.bs.enemyHp));
+
+    this.setState((s) => ({
+      bs: out.bs,
+      clearing: [],
+      detonating: [],
+      blasting: [],
+      arming: [],
+      slashGen: struck ? s.slashGen + 1 : s.slashGen,
+      monPhase: out.waveCleared ? 'dying' : s.monPhase,
+      dying: out.waveCleared ? prevMon : s.dying,
+      drop: {
+        dist: fallDistances(allCleared),
+        gen: (s.drop ? s.drop.gen : 0) + 1,
+        spawn: out.superAfter,
+      },
+      kick: out.detonators.length > 0,
+      pops: runPops(out),
+      // The swing is its own beat, so the player's HP readout is held at its
+      // pre-swing value until that beat actually plays.
+      pHpShown: out.enemyAttacked ? out.bs.playerHp + out.enemyDamage : null,
+      hitWho: out.attackDealt > 0 ? 'monster' : null,
+    }));
+
+    this.timers.after('land', 520, () => {
+      /* The monster's turn is a SEPARATE, announced beat: wind-up, then the
+         hit. Resolving it inside the player's payout made the swing invisible
+         - the HP just dropped with everything else. */
+      if (!out.enemyAttacked) {
+        this.finishTurn(out);
+        return;
+      }
+      this.setState({
+        pops: [],
+        drop: null,
+        kick: false,
+        swing: out.enemyHeavy ? 'heavy' : 'attack',
+      });
+      this.timers.after('swing', 620, () => {
+        this.setState({
+          hitWho: 'player',
+          pops: [swingPop(out.enemyDamage)],
+          pHpShown: null,
+          swing: 'landed',
+          lastSwing: { damage: out.enemyDamage, blocked: out.enemyBlocked },
+        });
+        this.timers.after('swing', 560, () => this.finishTurn(out));
+      });
+    });
+  }
+
+  /** After the turn has played out: end the run, walk in the next wave, or
+   *  hand the board back. */
+  private finishTurn(out: StepResult): void {
+    const stuck = !out.over && !out.battleWon && !hasAnyMove(out.bs.board);
+    if (out.battleWon || out.over || stuck) {
+      this.setState({
+        phase: 'end',
+        endReason: out.battleWon ? 'won' : out.over ? 'dead' : 'stuck',
+        busy: false,
+        hitWho: null,
+        pops: [],
+        drop: null,
+        kick: false,
+        monPhase: null,
+        dying: null,
+        swing: null,
+        pHpShown: null,
+      });
+      this.runEndRoll();
+      void this.submitRun();
+      return;
     }
+    if (out.waveCleared) {
+      // The kill lands, the fallen enemy plays out, the stage sits empty a
+      // beat, then the next one walks in.
+      this.setState({ pops: [], drop: null, kick: false });
+      this.timers.after('spawn', 240, () => {
+        this.setState({ monPhase: 'empty', dying: null });
+        this.timers.after('spawn', 260, () => {
+          this.setState({ monPhase: 'spawning' });
+          this.rollHp(this.enemyAt(null, out.bs.wave).hp);
+          this.timers.after('spawn', 460, () =>
+            this.setState({ monPhase: null, busy: false, hitWho: null })
+          );
+        });
+      });
+      return;
+    }
+    this.setState({
+      busy: false,
+      hitWho: null,
+      pops: [],
+      drop: null,
+      kick: false,
+      swing: null,
+      pHpShown: null,
+    });
   }
 
   /* ---------- duel ---------- */
 
   private duelRng(side: string): () => number {
-    if (!this.duelRngs[side])
-      this.duelRngs[side] = mulberry32(
-        Math.floor(Math.random() * 0xffffffff) >>> 0
-      );
-    return this.duelRngs[side]!;
+    return (this.duelRngs[side] ??= mulberry32(newSeed()));
   }
 
   /* ---------- duel setup ---------- */
@@ -1711,10 +1315,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
 
   skipDuelSetup = (): void => {
     this.setState({ duelSetup: null });
-    void api
-      .ftueSeen('duelSetup')
-      .then((r) => this.adopt(r.profile))
-      .catch(() => undefined);
+    this.markSeen('duelSetup');
   };
 
   /** The opt-in itself. Listing puts the five in the pool at this account's
@@ -1751,9 +1352,8 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
 
   /** Toggle listing from the lobby, without walking the build again. */
   toggleListed = (): void => {
-    const next = !this.state.profile.duelListed;
     void api
-      .setDuelListed(next)
+      .setDuelListed(!this.state.profile.duelListed)
       .then((r) => this.adopt(r.profile, r.message))
       .catch(this.fail);
   };
@@ -1766,11 +1366,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       .duelChallenge()
       .then((r) => {
         this.setState({ challengeUrl: r.url });
-        try {
-          showToast('Challenge posted. Tap VIEW POST to open it.');
-        } catch {
-          /* toast is a nicety; the url is on screen either way */
-        }
+        safeToast(showToast, 'Challenge posted. Tap VIEW POST to open it.');
       })
       .catch(this.fail);
   };
@@ -1813,30 +1409,15 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     }
     this.duelRngs = {};
     this.duelStartedAt = Date.now();
+    const p = this.state.profile;
     this.setState({
+      ...DUEL_RESET,
       phase: 'duel',
       duelFoe: foe,
-      duelOutcome: null,
-      duelTurns: 0,
-      duelClock: DUEL_MATCH_SECONDS,
-      duelLog: [],
-      chain: [],
-      preview: null,
-      busy: false,
-      clearing: [],
-      drop: null,
-      pops: [],
-      duelHit: null,
-      foeBeat: 'thinking',
-      foeChain: [],
-      foeClearing: [],
-      foeDrop: null,
-      foePops: [],
-      foeSaid: '',
-      duelFtue: this.state.profile.seenDuelFtue ? null : 0,
+      duelFtue: p.seenDuelFtue ? null : 0,
       duel: {
         me: makeDuelSide(
-          this.state.profile.duelCls ?? this.state.heroClass,
+          p.duelCls ?? this.state.heroClass,
           mine,
           1,
           this.duelRng('me')
@@ -1849,8 +1430,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         ),
       },
     });
-    clearInterval(this.duelTickT);
-    this.duelTickT = setInterval(this.duelTick, 1000);
+    this.timers.every('duelTick', 1000, this.duelTick);
     this.scheduleFoe();
   };
 
@@ -1861,34 +1441,22 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   nextDuelFtue = (): void => {
     const i = this.state.duelFtue;
     if (i === null) return;
-    if (i + 1 >= DUEL_FTUE_STEPS.length) {
-      this.setState({ duelFtue: null });
-      void api
-        .ftueSeen('duel')
-        .then((r) => this.adopt(r.profile))
-        .catch(() => undefined);
-      this.scheduleFoe();
-      return;
-    }
-    this.setState({ duelFtue: i + 1 });
+    if (i + 1 >= DUEL_FTUE_STEPS.length) this.skipDuelFtue();
+    else this.setState({ duelFtue: i + 1 });
   };
   skipDuelFtue = (): void => {
     this.setState({ duelFtue: null });
-    void api
-      .ftueSeen('duel')
-      .then((r) => this.adopt(r.profile))
-      .catch(() => undefined);
+    this.markSeen('duel');
     this.scheduleFoe();
   };
 
   duelTick = (): void => {
     const st = this.state;
-    if (st.phase !== 'duel' || st.duelOutcome || this.duelFtuePaused()) return;
+    if (st.phase !== 'duel' || !st.duel || st.duelOutcome) return;
+    if (this.duelFtuePaused()) return;
     const clock = st.duelClock - 1;
     if (clock <= 0) {
-      this.endDuel(
-        st.duel!.me.hp >= st.duel!.foe.hp ? 'time-win' : 'time-loss'
-      );
+      this.endDuel(st.duel.me.hp >= st.duel.foe.hp ? 'time-win' : 'time-loss');
       return;
     }
     this.setState({ duelClock: clock });
@@ -1896,7 +1464,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
 
   /* The foe runs on its own timer, independent of anything the player does. */
   private scheduleFoe(): void {
-    clearTimeout(this.duelBot);
+    this.timers.clear('duelBot');
     if (this.state.phase !== 'duel' || this.state.duelOutcome) return;
     const skill = this.state.duelFoe?.skill ?? 0.85;
     const wait =
@@ -1904,16 +1472,15 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       Math.random() * DUEL_THINK_SPREAD +
       (1 - skill) * DUEL_THINK_SKILL;
     this.setState({ foeBeat: 'thinking', foeChain: [], foeSaid: '' });
-    this.duelBot = setTimeout(this.runFoeMove, wait);
+    this.timers.after('duelBot', wait, this.runFoeMove);
   }
 
   runFoeMove = (): void => {
     const st = this.state;
     if (st.phase !== 'duel' || st.duelOutcome || !st.duel) return;
-    // Board writes are serialised: if the player's move is mid-flight the foe
-    // waits a beat rather than resolving against a stale board.
+    // The primer holds the foe; check back rather than moving while it shows.
     if (this.duelFtuePaused()) {
-      this.duelBot = setTimeout(this.runFoeMove, 320);
+      this.timers.after('duelBot', 320, this.runFoeMove);
       return;
     }
     const move = duelBestMove(st.duel, 'foe', MUTATORS);
@@ -1934,40 +1501,8 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     }
 
     const name = st.duelFoe?.name ?? 'Foe';
-    const who = side === 'me' ? 'You' : name;
-    const what =
-      out.attack > 0
-        ? ' hit for ' + out.attack
-        : out.blockGain > 0
-          ? ' raised ' + out.blockGain + ' block'
-          : out.heal > 0
-            ? ' healed ' + out.heal
-            : ' cleared';
-    const line =
-      who + what + (out.junkSend > 0 ? ', sent ' + out.junkSend + ' junk' : '');
-
-    // Floats sit over whoever they happened TO: damage over the struck side,
-    // block and heal over the side that gained them.
-    const mine: Pop[] = [];
-    const theirs: Pop[] = [];
-    const struckSide = side === 'me' ? theirs : mine;
-    const gainSide = side === 'me' ? mine : theirs;
-    if (out.attack > 0)
-      struckSide.push({ text: '-' + out.attack, color: '#F08686', top: '10%' });
-    if (out.burnDealt > 0)
-      struckSide.push({
-        text: '-' + out.burnDealt,
-        color: RIDERS['burn']!.color,
-        top: '26%',
-      });
-    if (out.blockGain > 0)
-      gainSide.push({
-        text: '+' + out.blockGain,
-        color: '#89BCFF',
-        top: '38%',
-      });
-    if (out.heal > 0)
-      gainSide.push({ text: '+' + out.heal, color: '#C5F47D', top: '38%' });
+    const line = duelLogLine(out, side === 'me' ? 'You' : name);
+    const { mine, theirs } = duelPops(out, side);
 
     const finish = () => {
       if (out.over) {
@@ -1997,8 +1532,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         preview: null,
         duelHit: 'foe',
       });
-      clearTimeout(this.t1);
-      this.t1 = setTimeout(() => {
+      this.timers.after('link', 400, () => {
         this.pendingMe = false;
         this.setState((s) => ({
           duel: out.state,
@@ -2017,80 +1551,65 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         // Resolved at commit, not after the drop, so a kill or a burial is never
         // sitting behind an animation the player can already play through.
         finish();
-        clearTimeout(this.t2);
-        this.t2 = setTimeout(
-          () =>
-            this.setState({ pops: [], foePops: [], drop: null, duelHit: null }),
-          520
+        this.timers.after('land', 520, () =>
+          this.setState({ pops: [], foePops: [], drop: null, duelHit: null })
         );
-      }, 400);
+      });
       return;
     }
 
     /* A foe move plays in three announced beats - draw the link, clear it, then
        land the damage - so its play can actually be read. The board is locked
        for the duration, which is what keeps the two sides' writes serial. */
-    const orb = out.chainOrb;
-    const said =
-      out.chainLen >= MIN_LINK
-        ? name +
-          ' links ' +
-          out.chainLen +
-          (orb ? ' ' + EFFECT_LABEL[orb.effect] : '') +
-          (out.junkSend > 0 ? ' - ' + out.junkSend + ' junk incoming' : '')
-        : name + ' detonates a bomb';
     this.setState({
       foeBeat: 'linking',
       foeChain: move.slice(),
-      foeSaid: said,
+      foeSaid: foeAnnouncement(out, name),
       foeJunk: out.junkSend,
       foeHitFor: out.attack,
     });
-    clearTimeout(this.foeT1);
-    this.foeT1 = setTimeout(() => {
+    const land = () => {
+      // Board writes are serialised: if the player's move is mid-flight the
+      // foe waits a beat rather than landing on a stale board.
+      if (this.pendingMe) {
+        this.timers.after('foeClear', 90, land);
+        return;
+      }
+      this.setState((s) => ({
+        duel: out.state,
+        foeBeat: 'landed',
+        foeChain: [],
+        foeClearing: [],
+        pops: mine,
+        foePops: theirs,
+        duelHit: 'me',
+        duelTurns: s.duelTurns + 1,
+        duelLog: [line].concat(s.duelLog).slice(0, 3),
+        foeDrop: {
+          dist: fallDistances(out.cleared),
+          gen: (s.foeDrop ? s.foeDrop.gen : 0) + 1,
+          spawn: out.superAfter,
+        },
+      }));
+      this.timers.after('foeLand', FOE_LAND_MS, () => {
+        this.setState({
+          pops: [],
+          foePops: [],
+          foeDrop: null,
+          duelHit: null,
+          foeBeat: 'idle',
+        });
+        finish();
+      });
+    };
+    this.timers.after('foeLink', FOE_LINK_MS, () => {
       this.setState({ foeBeat: 'clearing', foeClearing: out.cleared });
-      clearTimeout(this.foeT2);
-      const land = () => {
-        if (this.pendingMe) {
-          this.foeT2 = setTimeout(land, 90);
-          return;
-        }
-        this.setState((s) => ({
-          duel: out.state,
-          foeBeat: 'landed',
-          foeChain: [],
-          foeClearing: [],
-          pops: mine,
-          foePops: theirs,
-          duelHit: 'me',
-          duelTurns: s.duelTurns + 1,
-          duelLog: [line].concat(s.duelLog).slice(0, 3),
-          foeDrop: {
-            dist: fallDistances(out.cleared),
-            gen: (s.foeDrop ? s.foeDrop.gen : 0) + 1,
-            spawn: out.superAfter,
-          },
-        }));
-        clearTimeout(this.foeT3);
-        this.foeT3 = setTimeout(() => {
-          this.setState({
-            pops: [],
-            foePops: [],
-            foeDrop: null,
-            duelHit: null,
-            foeBeat: 'idle',
-          });
-          finish();
-        }, FOE_LAND_MS);
-      };
-      this.foeT2 = setTimeout(land, FOE_CLEAR_MS);
-    }, FOE_LINK_MS);
+      this.timers.after('foeClear', FOE_CLEAR_MS, land);
+    });
   }
 
-  private endDuel(kind: string): void {
-    clearInterval(this.duelTickT);
-    for (const t of [this.duelBot, this.foeT1, this.foeT2, this.foeT3])
-      clearTimeout(t);
+  private endDuel(kind: DuelEndKind): void {
+    this.timers.clear(...DUEL_TIMERS);
     const won = kind === 'win' || kind === 'time-win' || kind === 'win-buried';
     const seconds = Math.round((Date.now() - this.duelStartedAt) / 1000);
     // Shown immediately off the local result; the server's number replaces it
@@ -2126,15 +1645,12 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
 
   duelAgain = (): void => {
     const f = this.state.duelFoe;
-    const out = this.state.duelOutcome;
-    if (!f || out?.won) return;
+    if (!f || this.state.duelOutcome?.won) return;
     this.startDuel(f)();
   };
 
   leaveDuel = (): void => {
-    clearInterval(this.duelTickT);
-    for (const t of [this.duelBot, this.foeT1, this.foeT2, this.foeT3])
-      clearTimeout(t);
+    this.timers.clear(...DUEL_TIMERS);
     this.setState({ phase: 'duelLobby', duelOutcome: null });
     // The result moved the trophy count, so the band the lobby matched against
     // is stale the moment the duel ends.
@@ -2147,8 +1663,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     this.setState({ phase: 'quests', shopMsg: null, homeMenu: false });
     this.refreshQuests();
   };
-  pickQuestTab = (t: 'daily' | 'weekly') => (): void =>
-    this.setState({ questTab: t });
+  pickQuestTab = (t: QuestTab) => (): void => this.setState({ questTab: t });
 
   /** Progress is banked server-side off runs, duels and packs, so the board is
    *  re-read after each of those rather than counted on the client. A failed
@@ -2182,9 +1697,9 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     this.setState({ phase: 'shop', shopMsg: null, homeMenu: false });
   goInventory = (): void =>
     this.setState({ phase: 'inventory', homeMenu: false });
-  pickShopTab = (t: 'packs' | 'coins' | 'gems') => (): void =>
+  pickShopTab = (t: ShopTab) => (): void =>
     this.setState({ shopTab: t, shopMsg: null });
-  pickInvTab = (t: 'packs' | 'gear') => (): void =>
+  pickInvTab = (t: InvTab) => (): void =>
     this.setState({ invTab: t, cardInfo: null });
   inspectCard = (id: string) => (): void => this.setState({ cardInfo: id });
   closeCardInfo = (): void => this.setState({ cardInfo: null });
@@ -2252,74 +1767,48 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   private openPackFrom(id: string, from: 'shop' | 'inventory'): void {
     void api
       .openPack(id)
-      .then((r) => {
-        const cards = r.cards
-          .map((c: PulledCard) => {
-            const gear = GEAR.find((g) => g.id === c.id);
-            return gear ? { gear, isNew: c.isNew, refund: c.refund } : null;
-          })
-          .filter(
-            (c): c is { gear: Gear; isNew: boolean; refund: number } => !!c
-          );
+      .then((r) =>
         this.setState({
           phase: 'opening',
-          openPack: { id, token: r.token, cards, shown: 0, torn: false, from },
-        });
-      })
+          openPack: {
+            id,
+            token: r.token,
+            cards: toOpenCards(r.cards),
+            shown: 0,
+            torn: false,
+            from,
+          },
+        })
+      )
       .catch(this.fail);
   }
 
-  tearPack = (): void => {
+  private updatePack(fn: (op: OpenState) => OpenState | null): void {
     const op = this.state.openPack;
-    if (!op || op.torn) return;
-    this.setState({ openPack: { ...op, torn: true, shown: 1 } });
-  };
-  revealNext = (): void => {
-    const op = this.state.openPack;
-    if (!op) return;
-    if (!op.torn) {
-      this.tearPack();
-      return;
-    }
-    if (op.shown >= op.cards.length) return;
-    this.setState({ openPack: { ...op, shown: op.shown + 1 } });
-  };
-  revealAll = (): void => {
-    const op = this.state.openPack;
-    if (!op) return;
-    this.setState({ openPack: { ...op, torn: true, shown: op.cards.length } });
-  };
+    const next = op ? fn(op) : null;
+    if (next) this.setState({ openPack: next });
+  }
 
-  /** One line naming what the open was worth. */
-  packSummary = (op: OpenState): string => {
-    const nw = op.cards.filter((c) => c.isNew).length;
-    const refund = op.cards.reduce((n, c) => n + c.refund, 0);
-    const best = op.cards
-      .slice()
-      .sort(
-        (a, b) =>
-          RARITY_ORDER.indexOf(b.gear.rarity) -
-          RARITY_ORDER.indexOf(a.gear.rarity)
-      )[0];
-    if (op.cards.length === 1) {
-      const c = op.cards[0]!;
-      return c.isNew
-        ? 'New gear - ' + c.gear.rarity
-        : 'Duplicate - refunded ' + c.refund + ' coins';
-    }
-    const parts = [
-      nw > 0 ? nw + (nw === 1 ? ' new piece' : ' new pieces') : 'No new gear',
-    ];
-    if (refund > 0) parts.push('+' + refund + ' coins from duplicates');
-    if (best) parts.push('best: ' + best.gear.rarity);
-    return parts.join('  -  ');
-  };
+  tearPack = (): void =>
+    this.updatePack((op) => (op.torn ? null : { ...op, torn: true, shown: 1 }));
+  revealNext = (): void =>
+    this.updatePack((op) =>
+      !op.torn
+        ? { ...op, torn: true, shown: 1 }
+        : op.shown >= op.cards.length
+          ? null
+          : { ...op, shown: op.shown + 1 }
+    );
+  revealAll = (): void =>
+    this.updatePack((op) => ({ ...op, torn: true, shown: op.cards.length }));
+
+  packSummary = packSummary;
 
   collectPack = (): void => {
     const op = this.state.openPack;
     if (!op) return;
     const back = op.from === 'shop';
-    const summary = this.packSummary(op);
+    const summary = packSummary(op);
     void api
       .collectPack({ token: op.token })
       .then((r) => {
@@ -2336,16 +1825,10 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
 
   /* ---------- FTUE ---------- */
 
-  private ftueSeen(): boolean {
-    return this.state.profile.seenFtue;
-  }
   private markFtueSeen(): void {
     if (this.state.profile.seenFtue) return;
     this.setState((s) => ({ profile: { ...s.profile, seenFtue: true } }));
-    void api
-      .ftueSeen('run')
-      .then((r) => this.adopt(r.profile))
-      .catch(() => undefined);
+    this.markSeen('run');
   }
 
   /** Hint cells for the drag step - null when the board holds no attack link,
@@ -2363,7 +1846,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   /** Pre-battle steps follow the phase, so back-navigation re-points the card
    *  instead of stranding it on a screen that is no longer showing. */
   private syncFtueToPhase(): void {
-    if (this.ftueSeen()) {
+    if (this.state.profile.seenFtue) {
       if (this.state.ftueStep !== null)
         this.setState({ ftueStep: null, ftuePlace: null });
       return;
@@ -2382,30 +1865,22 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
    *  because this particular deal had none. Only reachable before the player's
    *  first move, so nothing recorded is disturbed. */
   private dealTeachableBoard(): boolean {
-    const bs = this.state.bs;
-    if (!bs || !this.run || this.moves.length) return false;
-    const weights = this.weights();
+    const spec = this.runSpec;
+    if (!this.state.bs || !this.run || !spec || this.moves.length) return false;
     const loadout = this.loadout();
     if (!loadout.some((o) => o.effect === 'attack')) return false;
     // A re-deal consumes the run's RNG, so the seed must be re-rolled with it -
-    // otherwise the server would replay the board the player never saw.
+    // otherwise the server would replay the board the player never saw. Only
+    // the seed changes: location, ascension and hearts must match what is
+    // submitted.
     for (let tries = 0; tries < 80; tries++) {
-      const seed = Math.floor(Math.random() * 0xffffffff) >>> 0;
-      const candidate = new Run({
-        seed,
-        heroClass: this.state.heroClass,
-        picked: this.state.picked,
-        mutators: MUTATORS,
-      });
-      const start = candidate.start();
+      const candidate = { ...spec, seed: newSeed() };
+      const start = new Run({ ...candidate, mutators: MUTATORS }).start();
       if (findAttackLink(start.board, loadout)) {
-        this.run = candidate;
-        this.seed = seed;
-        this.setState({ bs: start });
+        this.setState({ bs: this.adoptRun(candidate) });
         return true;
       }
     }
-    void weights;
     return false;
   }
 
@@ -2424,42 +1899,27 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     this.setState({ ftueStep: next, ftuePlace: null });
   };
 
-  setFtueMap = (el: HTMLElement | null): void => {
-    this.ftueMapEl = el;
-  };
-  setFtueHero = (el: HTMLElement | null): void => {
-    this.ftueHeroEl = el;
-  };
-  setFtueGear = (el: HTMLElement | null): void => {
-    this.ftueGearEl = el;
-  };
-  setFtueSlots = (el: HTMLElement | null): void => {
-    this.ftueSlotsEl = el;
-  };
+  private ftueRef =
+    (target: string) =>
+    (el: HTMLElement | null): void => {
+      this.ftueEls[target] = el;
+    };
+  setFtueMap = this.ftueRef('map');
+  setFtueHero = this.ftueRef('hero');
+  setFtueGear = this.ftueRef('gear');
+  setFtueSlots = this.ftueRef('slots');
+  setFtueBoard = this.ftueRef('board');
+  setFtueEnemy = this.ftueRef('enemyHp');
+  setFtueTrack = this.ftueRef('track');
   setFtueRoot = (el: HTMLElement | null): void => {
     this.ftueRoot = el;
   };
-  setFtueBoard = (el: HTMLElement | null): void => {
-    this.ftueBoardEl = el;
-  };
-  setFtueEnemy = (el: HTMLElement | null): void => {
-    this.ftueEnemyEl = el;
-  };
-  setFtueTrack = (el: HTMLElement | null): void => {
-    this.ftueTrackEl = el;
-  };
   setFtueCard = (el: HTMLElement | null): void => {
     this.ftueCard = el;
-    this.cardObs?.disconnect();
-    this.cardObs = null;
-    if (!el) return;
     // The card's own height settles a frame late (web fonts, the legend's gear
     // art), so re-measure whenever it changes size rather than trusting one shot.
-    if (typeof ResizeObserver !== 'undefined') {
-      this.cardObs = new ResizeObserver(() => this.measureFtue());
-      this.cardObs.observe(el);
-    }
-    requestAnimationFrame(this.measureFtue);
+    this.cardObs = reobserve(this.cardObs, el, this.measureFtue);
+    if (el) requestAnimationFrame(this.measureFtue);
   };
 
   /** The card is MEASURED into place, not parked at a fixed offset: the monster
@@ -2469,20 +1929,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     const step = this.state.ftueStep;
     if (!step || !this.ftueRoot || !this.ftueCard) return;
     const spec = FTUE_TARGET[step]!;
-    const el =
-      spec.target === 'board'
-        ? this.ftueBoardEl
-        : spec.target === 'enemyHp'
-          ? this.ftueEnemyEl
-          : spec.target === 'track'
-            ? this.ftueTrackEl
-            : spec.target === 'map'
-              ? this.ftueMapEl
-              : spec.target === 'hero'
-                ? this.ftueHeroEl
-                : spec.target === 'slots'
-                  ? this.ftueSlotsEl
-                  : this.ftueGearEl;
+    const el = this.ftueEls[spec.target];
     if (!el) return;
     const arena = this.ftueRoot.getBoundingClientRect();
     const rect = el.getBoundingClientRect();
@@ -2533,54 +1980,3 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     return <Screen v={buildView(this)} />;
   }
 }
-
-const Booting = () => (
-  <div style={shellStyle}>
-    <div
-      style={{
-        fontFamily: "'Yoster Island',Volter,monospace",
-        fontSize: 16,
-        color: '#FFF2B0',
-      }}
-    >
-      LOADING THE FORGE...
-    </div>
-  </div>
-);
-
-const Fatal = ({ message }: { message: string }) => (
-  <div style={shellStyle}>
-    <div
-      style={{
-        maxWidth: '36ch',
-        textAlign: 'center',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 10,
-      }}
-    >
-      <div
-        style={{
-          fontFamily: "'Yoster Island',Volter,monospace",
-          fontSize: 16,
-          color: '#FF9EA1',
-        }}
-      >
-        CANNOT OPEN THE FORGE
-      </div>
-      <div style={{ fontSize: 12, color: '#CBD9EC', lineHeight: 1.6 }}>
-        {message}
-      </div>
-    </div>
-  </div>
-);
-
-const shellStyle = {
-  minHeight: '100vh',
-  background: '#0B1020',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: 24,
-  fontFamily: 'Volter,ui-monospace,monospace',
-} as const;
