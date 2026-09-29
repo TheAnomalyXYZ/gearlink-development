@@ -2,6 +2,7 @@ import type { HeroClass } from './engine/types.js';
 import type { Hearts } from './engine/hearts.js';
 import type { PulledCard } from './engine/economy.js';
 import type { DuelFoe } from './engine/duel.js';
+import type { SeasonPrize } from './engine/season.js';
 import type { QuestPeriod, QuestReward } from './engine/quests.js';
 
 /** Everything the client needs to boot: who the player is, what they own, and
@@ -39,6 +40,10 @@ export type Profile = {
   /** Listed in the opponent pool: other players can draw you as a foe. Opting
    *  out does not stop you duelling, it only hides you from their lobbies. */
   duelListed: boolean;
+  /** Duels reported this week - the weekly prize needs SEASON_MIN_DUELS. */
+  duelWeekDuels: number;
+  /** Last week's league prize, already paid, until the notice is dismissed. */
+  duelPrize: SeasonPrize | null;
 };
 
 export type BestRun = {

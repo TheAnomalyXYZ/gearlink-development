@@ -1428,6 +1428,17 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   pickFoe = (foe: DuelFoe) => (): void =>
     this.setState({ phase: 'duelConfirm', duelFoe: foe, duelOutcome: null });
 
+  /** COLLECT on the weekly prize. The payout already landed at the reset, so
+   *  this only clears the notice - optimistically, since a failed write just
+   *  means it shows once more. */
+  dismissPrize = (): void => {
+    this.setState((s) => ({ profile: { ...s.profile, duelPrize: null } }));
+    void api
+      .prizeSeen()
+      .then((r) => this.adopt(r.profile))
+      .catch(() => undefined);
+  };
+
   openDuelRules = (): void => this.setState({ duelRulesOpen: true });
   closeDuelRules = (): void => this.setState({ duelRulesOpen: false });
 

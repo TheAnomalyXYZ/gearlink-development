@@ -1,0 +1,81 @@
+/**
+ * Weekly league prizes.
+ *
+ * Every weekly reset pays out for the league a player FINISHED the week in -
+ * read before promotion or demotion moves them - so holding Bronze 3 at the
+ * reset pays Bronze 3's prize and then promotes. A prize is only earned by a
+ * week actually played: an account that never duelled does not collect for
+ * sitting on Bronze 1.
+ */
+import { LEAGUES, leagueOf } from './league.js';
+import type { QuestReward } from './quests.js';
+import { rewardLabel } from './quests.js';
+
+/** Duels a week needs before its league pays out. */
+export const SEASON_MIN_DUELS = 3;
+
+/** One bundle per league, Bronze 1 up to Knight, in LEAGUES order. Each level
+ *  pays more than the one below, and each tier adds a kind of reward - gems
+ *  from Silver, a pack from Gold 3 - so a promotion is felt in the payout. */
+const PRIZES: QuestReward[][] = [
+  // Bronze 1-3
+  [{ kind: 'coins', amount: 80 }],
+  [{ kind: 'coins', amount: 120 }],
+  [{ kind: 'coins', amount: 160 }],
+  // Silver 1-3
+  [{ kind: 'coins', amount: 220 }, { kind: 'gems', amount: 2 }],
+  [{ kind: 'coins', amount: 280 }, { kind: 'gems', amount: 3 }],
+  [{ kind: 'coins', amount: 340 }, { kind: 'gems', amount: 5 }],
+  // Gold 1-3
+  [{ kind: 'coins', amount: 420 }, { kind: 'gems', amount: 6 }],
+  [{ kind: 'coins', amount: 500 }, { kind: 'gems', amount: 8 }],
+  [{ kind: 'coins', amount: 580 }, { kind: 'gems', amount: 10 }, { kind: 'pack', packId: 'base' }],
+  // Platinum 1-3
+  [{ kind: 'coins', amount: 680 }, { kind: 'gems', amount: 12 }, { kind: 'pack', packId: 'base' }],
+  [{ kind: 'coins', amount: 780 }, { kind: 'gems', amount: 14 }, { kind: 'pack', packId: 'bronze' }],
+  [{ kind: 'coins', amount: 880 }, { kind: 'gems', amount: 16 }, { kind: 'pack', packId: 'bronze' }],
+  // Diamond 1-3
+  [{ kind: 'coins', amount: 1000 }, { kind: 'gems', amount: 18 }, { kind: 'pack', packId: 'silver' }],
+  [{ kind: 'coins', amount: 1150 }, { kind: 'gems', amount: 20 }, { kind: 'pack', packId: 'silver' }],
+  [{ kind: 'coins', amount: 1300 }, { kind: 'gems', amount: 24 }, { kind: 'pack', packId: 'silver' }],
+  // Knight
+  [{ kind: 'coins', amount: 1600 }, { kind: 'gems', amount: 30 }, { kind: 'pack', packId: 'silver' }],
+];
+
+/** The prize for finishing a week on this trophy count. */
+export const seasonPrizeFor = (trophies: number): QuestReward[] =>
+  PRIZES[leagueOf(trophies).idx] ?? PRIZES[0]!;
+
+/** A prize waiting to be collected. */
+export type SeasonPrize = {
+  /** The duel week it was earned in. */
+  week: number;
+  /** The league it was earned at, e.g. "Silver 2". */
+  league: string;
+  rewards: QuestReward[];
+};
+
+/** What the week that just ended paid, or null when it was not played enough. */
+export const settlePrize = (
+  week: number,
+  trophies: number,
+  duels: number
+): SeasonPrize | null =>
+  duels >= SEASON_MIN_DUELS
+    ? {
+        week,
+        league: leagueOf(trophies).name,
+        rewards: seasonPrizeFor(trophies),
+      }
+    : null;
+
+/** "+340 coins, +12 gems" - one line for a whole bundle. */
+export const prizeLabel = (rewards: QuestReward[]): string =>
+  rewards.map(rewardLabel).join(', ');
+
+/** Every league's prize, for the table in the lobby's info sheet. */
+export const PRIZE_TABLE = LEAGUES.map((l) => ({
+  league: l.name,
+  color: l.color,
+  rewards: PRIZES[l.idx] ?? [],
+}));

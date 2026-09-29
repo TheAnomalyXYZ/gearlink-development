@@ -77,6 +77,7 @@ export const api = {
     call<ClaimQuestResponse>('/quests/claim', { questId }),
   ftueSeen: (which: 'run' | 'duel' | 'duelSetup') =>
     call<ProfileResponse>('/ftue/seen', { which }),
+  prizeSeen: () => call<ProfileResponse>('/duel/prize/seen', {}),
 };
 
 export { ApiError };

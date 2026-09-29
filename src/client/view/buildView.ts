@@ -7,6 +7,7 @@
  * between them, so neither side has to know anything about the other.
  */
 import type { GearLinkApp } from '../GearLinkApp.js';
+import type { QuestReward } from '../../shared/engine/quests.js';
 import {
   AFFIX_BLURB,
   AFFIX_TINT,
@@ -45,6 +46,10 @@ import {
   RARITY_OUTLINE,
   RIDERS,
   colOf,
+  PRIZE_TABLE,
+  SEASON_MIN_DUELS,
+  prizeLabel,
+  seasonPrizeFor,
   DEMOTE_LEVEL,
   LEAGUES,
   duelSeasonEndsAt,
@@ -1115,6 +1120,45 @@ export const buildView = (app: GearLinkApp): View => {
     editDuelForFoe: app.editDuelForFoe,
     backToLobby: app.backToLobby,
     confirmDuel: app.confirmDuel,
+    /* ---------- weekly prizes ---------- */
+    leaguePrizeLine:
+      (myLeague.level === 0 ? 'Weekly prize: ' : 'Prize at the reset: ') +
+      prizeLabel(seasonPrizeFor(st.profile.trophies)) +
+      (st.profile.duelWeekDuels >= SEASON_MIN_DUELS
+        ? ' - qualified.'
+        : ' - ' +
+          st.profile.duelWeekDuels +
+          '/' +
+          SEASON_MIN_DUELS +
+          ' duels to qualify.'),
+    leaguePrizeColor:
+      st.profile.duelWeekDuels >= SEASON_MIN_DUELS ? '#AEE45D' : '#FCE370',
+    prizeTable: PRIZE_TABLE.map((p) => ({
+      league: p.league.toUpperCase(),
+      color: p.color,
+      label: prizeLabel(p.rewards),
+      mine: p.league === myLeague.name,
+      bg: p.league === myLeague.name ? 'rgba(252,227,112,.14)' : 'transparent',
+    })),
+    ...(() => {
+      const prize = st.profile.duelPrize;
+      const show =
+        !!prize && st.ready && st.phase !== 'duel' && st.phase !== 'battle';
+      return {
+        prizeDisplay: show ? 'flex' : 'none',
+        prizeLeague: prize ? prize.league.toUpperCase() : '',
+        prizeRewards: (prize ? prize.rewards : []).map((r: QuestReward) => ({
+          label: rewardLabel(r),
+          icon:
+            r.kind === 'coins'
+              ? COIN_ICON
+              : r.kind === 'gems'
+                ? GEM_ICON
+                : (packById(r.packId)?.img ?? ''),
+        })),
+      };
+    })(),
+    dismissPrize: app.dismissPrize,
     openDuelRules: app.openDuelRules,
     closeDuelRules: app.closeDuelRules,
     duelRulesDisplay: st.duelRulesOpen ? 'flex' : 'none',

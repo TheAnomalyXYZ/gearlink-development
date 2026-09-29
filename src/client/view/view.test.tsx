@@ -47,6 +47,8 @@ const profile: Profile = {
   duelCls: 'Hero',
   duelPicked: defaultLoadout('Hero'),
   duelListed: true,
+  duelWeekDuels: 1,
+  duelPrize: null,
 };
 
 /** One of each row state: claimable, in progress, claimed. */
@@ -463,6 +465,33 @@ void test('the pre-fight screen shows both fives and a start', () => {
     phase: 'duelConfirm',
     duelFoe: { ...foe, kind: 'bot', id: 'bot:voss', name: 'Voss' },
   });
+});
+
+void test("last week's league prize shows over the app until collected", () => {
+  const html = renders('prize', {
+    phase: 'home',
+    ready: true,
+    profile: {
+      ...profile,
+      duelPrize: {
+        week: 1,
+        league: 'Gold 3',
+        rewards: [
+          { kind: 'coins', amount: 580 },
+          { kind: 'pack', packId: 'base' },
+        ],
+      },
+    },
+  });
+  assert.ok(html.includes('WEEKLY LEAGUE PRIZE'));
+  assert.ok(html.includes('GOLD 3'));
+  assert.ok(html.includes('COLLECT'));
+  const lobby = renders('lobby prize table', {
+    phase: 'duelLobby',
+    duelRulesOpen: true,
+  });
+  assert.ok(lobby.includes('WEEKLY PRIZES'));
+  assert.ok(lobby.includes('duels to qualify'));
 });
 
 void test('the battle HUD renders through a whole turn cycle', () => {

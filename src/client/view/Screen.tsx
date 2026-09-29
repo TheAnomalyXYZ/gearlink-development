@@ -5138,6 +5138,15 @@ export const Screen = ({ v }: { v: View }) => (
                 <div style={{ fontSize: '9px', color: '#E8EEF8' }}>
                   {v.leagueNextLine}
                 </div>
+                <div
+                  style={{
+                    fontSize: '9px',
+                    color: v.leaguePrizeColor,
+                    lineHeight: '1.5',
+                  }}
+                >
+                  {v.leaguePrizeLine}
+                </div>
               </div>
 
               {/* Your own listing: the five other people's lobbies hand their
@@ -5594,6 +5603,71 @@ export const Screen = ({ v }: { v: View }) => (
                           }}
                         >
                           {r.t}
+                        </div>
+                      </div>
+                    </Fragment>
+                  ))}
+                </div>
+                <div
+                  style={{
+                    fontFamily: PIXEL,
+                    fontSize: '11px',
+                    color: '#FFFFFF',
+                    flexShrink: '0',
+                  }}
+                >
+                  WEEKLY PRIZES
+                </div>
+                <div
+                  style={{
+                    fontSize: '9px',
+                    color: '#CBD9EC',
+                    lineHeight: '1.6',
+                    flexShrink: '0',
+                  }}
+                >
+                  Paid at every Monday reset for the league you finish the week
+                  in, once you have played enough duels that week.
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px',
+                    flexShrink: '0',
+                  }}
+                >
+                  {(v.prizeTable || []).map((p: any, pI: number) => (
+                    <Fragment key={pI}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: '7px',
+                          alignItems: 'baseline',
+                          padding: '2px 4px',
+                          borderRadius: '4px',
+                          background: p.bg,
+                        }}
+                      >
+                        <div
+                          style={{
+                            flex: '0 0 70px',
+                            fontSize: '8px',
+                            color: p.color,
+                            letterSpacing: '.08em',
+                          }}
+                        >
+                          {p.league}
+                        </div>
+                        <div
+                          style={{
+                            flex: '1',
+                            fontSize: '8px',
+                            color: '#E8EEF8',
+                            lineHeight: '1.5',
+                          }}
+                        >
+                          {p.label}
                         </div>
                       </div>
                     </Fragment>
@@ -7548,6 +7622,128 @@ export const Screen = ({ v }: { v: View }) => (
               >
                 NEXT
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Last week's league prize. It was paid at the reset; this is the
+            moment the player finds out, so it sits over whatever screen the
+            app opened on. */}
+        <div
+          onClick={v.dismissPrize}
+          style={{
+            position: 'absolute',
+            inset: '0',
+            zIndex: '40',
+            display: v.prizeDisplay,
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+            background: 'rgba(6,27,62,.75)',
+            backdropFilter: 'blur(4px)',
+          }}
+        >
+          <div
+            onClick={v.stop}
+            style={{
+              width: '100%',
+              maxWidth: '320px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '12px',
+              background: '#1D2956',
+              border: '2px solid #FCE370',
+              borderRadius: '8px 0 8px 0',
+              padding: '16px',
+              animation: 'glPop 240ms ease-out',
+            }}
+          >
+            <div
+              style={{
+                fontSize: '9px',
+                color: '#9DB4D4',
+                letterSpacing: '.14em',
+              }}
+            >
+              WEEKLY LEAGUE PRIZE
+            </div>
+            <div
+              style={{
+                fontFamily: PIXEL,
+                fontSize: '18px',
+                color: '#FCE370',
+                textAlign: 'center',
+              }}
+            >
+              {v.prizeLeague}
+            </div>
+            <div
+              style={{
+                fontSize: '9px',
+                color: '#CBD9EC',
+                textAlign: 'center',
+                lineHeight: '1.6',
+              }}
+            >
+              You finished last week here. Your prize is already in your bag.
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                justifyContent: 'center',
+                gap: '8px',
+              }}
+            >
+              {(v.prizeRewards || []).map((r: any, rI: number) => (
+                <Fragment key={rI}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '4px',
+                      width: '80px',
+                      padding: '8px 4px',
+                      borderRadius: '8px 0 8px 0',
+                      background: 'rgba(0,0,0,.3)',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '36px',
+                        height: '36px',
+                        backgroundImage: `url(${r.icon})`,
+                        backgroundSize: 'contain',
+                        backgroundRepeat: 'no-repeat',
+                        backgroundPosition: 'center',
+                        imageRendering: 'pixelated',
+                      }}
+                    ></div>
+                    <div
+                      style={{
+                        fontSize: '8px',
+                        color: '#FFFFFF',
+                        textAlign: 'center',
+                      }}
+                    >
+                      {r.label}
+                    </div>
+                  </div>
+                </Fragment>
+              ))}
+            </div>
+            <div
+              onClick={v.dismissPrize}
+              style={{
+                ...btn('#FCE270', '#FF961D'),
+                alignSelf: 'stretch',
+                height: '40px',
+                fontSize: '13px',
+              }}
+            >
+              COLLECT
             </div>
           </div>
         </div>

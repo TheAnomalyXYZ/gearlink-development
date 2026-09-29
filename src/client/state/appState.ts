@@ -203,6 +203,8 @@ export const EMPTY_PROFILE: Profile = {
   duelCls: null,
   duelPicked: [],
   duelListed: false,
+  duelWeekDuels: 0,
+  duelPrize: null,
 };
 
 /** The design ships mutators as authoring knobs; this build runs the base rules. */

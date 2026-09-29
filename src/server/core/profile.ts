@@ -14,6 +14,8 @@ import {
   duelWeekOf,
   settleWeeks,
 } from '../../shared/engine/league.js';
+import { settlePrize } from '../../shared/engine/season.js';
+import type { SeasonPrize } from '../../shared/engine/season.js';
 import { syncPoolScore } from './duelpool.js';
 import { MAP_LENGTH, MAX_ASCENSION } from '../../shared/engine/campaign.js';
 import { normaliseHearts } from '../../shared/engine/hearts.js';
@@ -128,6 +130,21 @@ const normalisePacks = (
   return out;
 };
 
+const parsePrize = (raw: string | undefined): SeasonPrize | null => {
+  if (!raw) return null;
+  try {
+    const p = JSON.parse(raw) as Partial<SeasonPrize>;
+    if (typeof p.week !== 'number' || typeof p.league !== 'string') return null;
+    return {
+      week: p.week,
+      league: p.league,
+      rewards: Array.isArray(p.rewards) ? p.rewards : [],
+    };
+  } catch {
+    return null;
+  }
+};
+
 export const loadProfile = async (
   userId: string,
   username: string
@@ -141,18 +158,48 @@ export const loadProfile = async (
 
   const duelCls = parseCls(h['duelCls']);
 
+  let coins = num(h['coins'], STARTING_COINS);
+  let gems = num(h['gems'], STARTING_GEMS);
+  let packs = normalisePacks(obj(h['packs']));
+  let prize = parsePrize(h['duelPrize']);
+
   // The weekly reset is applied lazily, the first time a profile is read in a
-  // new week: promotions, holds and drops for every reset it missed.
+  // new week: the prize for the league the last week ended in, then the
+  // promotions, holds and drops for every reset it missed.
   const week = duelWeekOf(Date.now());
   const lastWeek = num(h['duelWeek'], week);
   const stored = num(h['trophies'], STARTING_TROPHIES);
   const trophies =
     lastWeek < week ? settleWeeks(stored, week - lastWeek) : stored;
+  let duels = num(h['duelWeekDuels'], 0);
   if (h['duelWeek'] !== String(week)) {
-    await redis.hSet(profileKey(userId), {
+    const fields: Record<string, string> = {
       duelWeek: String(week),
       trophies: String(trophies),
-    });
+      duelWeekDuels: '0',
+    };
+    // Only a week that was actually recorded can pay: an account from before
+    // weeks were tracked starts counting now.
+    const earned =
+      h['duelWeek'] !== undefined && lastWeek < week
+        ? settlePrize(lastWeek, stored, duels)
+        : null;
+    // Paid once however many reads race the reset: the first to take the
+    // week's key pays, the rest only see the result.
+    if (earned && (await claimPrizeWeek(userId, earned.week))) {
+      for (const r of earned.rewards) {
+        if (r.kind === 'coins') coins += r.amount;
+        else if (r.kind === 'gems') gems += r.amount;
+        else packs = { ...packs, [r.packId]: (packs[r.packId] ?? 0) + 1 };
+      }
+      prize = earned;
+      fields['coins'] = String(coins);
+      fields['gems'] = String(gems);
+      fields['packs'] = JSON.stringify(packs);
+      fields['duelPrize'] = JSON.stringify(earned);
+    }
+    duels = 0;
+    await redis.hSet(profileKey(userId), fields);
     // The profile is the authority: its first read of the week puts the pool
     // row on the same number, whatever the sweep did with it.
     await syncPoolScore(userId, trophies);
@@ -160,11 +207,11 @@ export const loadProfile = async (
 
   return {
     username,
-    coins: num(h['coins'], STARTING_COINS),
-    gems: num(h['gems'], STARTING_GEMS),
+    coins,
+    gems,
     trophies,
     gear,
-    packs: normalisePacks(obj(h['packs'])),
+    packs,
     best: parseBest(h['best']),
     ascension: clamp(num(h['ascension'], 0), 0, MAX_ASCENSION),
     heartPieces: Math.max(0, Math.floor(num(h['heartPieces'], 0))),
@@ -176,7 +223,30 @@ export const loadProfile = async (
     duelCls,
     duelPicked: parsePicked(h['duelPicked'], duelCls),
     duelListed: h['duelListed'] === '1',
+    duelWeekDuels: duels,
+    duelPrize: prize,
   };
+};
+
+const prizeKey = (userId: string, week: number) =>
+  `duelprize:${userId}:${week}`;
+
+/** True for exactly one caller per player and week. */
+const claimPrizeWeek = async (userId: string, week: number) => {
+  const key = prizeKey(userId, week);
+  const first = (await redis.incrBy(key, 1)) === 1;
+  if (first) await redis.expire(key, 30 * 86_400);
+  return first;
+};
+
+/** One more duel toward this week's prize. */
+export const countDuel = async (userId: string): Promise<void> => {
+  await redis.hIncrBy(profileKey(userId), 'duelWeekDuels', 1);
+};
+
+/** The prize notice has been seen; the payout itself landed at the reset. */
+export const dismissPrize = async (userId: string): Promise<void> => {
+  await redis.hDel(profileKey(userId), ['duelPrize']);
 };
 
 export type ProfilePatch = Partial<

@@ -25,7 +25,12 @@ import type {
   SubmitRunRequest,
   SubmitRunResponse,
 } from '../../shared/api.js';
-import { loadProfile, saveProfile } from '../core/profile.js';
+import {
+  countDuel,
+  dismissPrize,
+  loadProfile,
+  saveProfile,
+} from '../core/profile.js';
 import { getLeaderboard, recordScore } from '../core/leaderboard.js';
 import {
   listInPool,
@@ -667,6 +672,7 @@ api.post('/duel/result', async (c) => {
   if (trophies !== profile.trophies) await syncPoolScore(me.userId, trophies);
   // Quests count the same bounded result the trophies do, so an implausible
   // duel advances neither.
+  if (credible) await countDuel(me.userId);
   if (credible)
     await recordQuestEvents(me.userId, [
       { metric: 'duels', amount: 1 },
@@ -701,6 +707,14 @@ api.get('/challenge', async (c) => {
     card,
     viewer: username ? { username, avatar } : null,
   });
+});
+
+/** The weekly prize was paid at the reset; this only clears its notice. */
+api.post('/duel/prize/seen', async (c) => {
+  const me = who();
+  if (!me) return unauthorised(c);
+  await dismissPrize(me.userId);
+  return c.json(profileJson(await loadProfile(me.userId, me.username)));
 });
 
 /** The two coaching flows are each seen once per ACCOUNT, not once per device. */
