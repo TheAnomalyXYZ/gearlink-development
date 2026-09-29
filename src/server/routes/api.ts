@@ -33,7 +33,11 @@ import {
   removeFromPool,
   syncPoolScore,
 } from '../core/duelpool.js';
-import { createChallengePost, readChallengeCard } from '../core/post.js';
+import {
+  createChallengePost,
+  readChallengeCard,
+  readChallengeFoe,
+} from '../core/post.js';
 import {
   claimQuest,
   loadQuestBoard,
@@ -85,15 +89,18 @@ const unauthorised = (c: HonoContext) =>
 api.get('/init', async (c) => {
   const me = who();
   if (!me) return unauthorised(c);
-  const [profile, leaderboard] = await Promise.all([
+  const [profile, leaderboard, challenger] = await Promise.all([
     loadProfile(me.userId, me.username),
     getLeaderboard(me.postId, me.userId),
+    // A failed read only means the post opens like any other.
+    readChallengeFoe(me.postId, me.userId, me.username).catch(() => null),
   ]);
   return c.json<InitResponse>({
     type: 'init',
     postId: me.postId,
     profile,
     leaderboard,
+    challenger,
   });
 });
 
@@ -600,6 +607,7 @@ api.post('/duel/challenge', async (c) => {
     );
   try {
     const post = await createChallengePost(
+      me.userId,
       me.username,
       profile.trophies,
       profile.duelCls,

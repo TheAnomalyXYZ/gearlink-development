@@ -255,12 +255,24 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     const { init, quests } = bootData();
     try {
       const res = await init;
-      this.setState((s) => ({
-        ready: true,
-        profile: res.profile,
-        leaderboard: res.leaderboard,
-        picked: ownedLoadout(s.heroClass, res.profile.gear),
-      }));
+      this.setState(
+        (s) => ({
+          ready: true,
+          profile: res.profile,
+          leaderboard: res.leaderboard,
+          picked: ownedLoadout(s.heroClass, res.profile.gear),
+          challenger: res.challenger,
+        }),
+        // Opened from a challenge post: ACCEPT goes straight to the pre-fight
+        // screen against its poster - by way of the duel build if there is no
+        // loadout yet, which hands back to that screen once it is saved.
+        () => {
+          const foe = res.challenger;
+          if (!foe) return;
+          if (this.duelLoadout()) this.pickFoe(foe)();
+          else this.openDuelSetup(foe);
+        }
+      );
     } catch (e) {
       this.setState({
         fatal: e instanceof Error ? e.message : 'Could not load your profile.',
@@ -1262,7 +1274,13 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
 
   /** Borrow the hero and gear screens for the duel build, parking the run's own
    *  five so a duel rebuild never costs the player the run they had set up. */
-  enterDuelSetup = (): void => {
+  enterDuelSetup = (): void => this.openDuelSetup(null);
+
+  /** EDIT on the pre-fight screen: the same build, but it hands back to that
+   *  screen with the same opponent rather than dropping them in the lobby. */
+  editDuelForFoe = (): void => this.openDuelSetup(this.state.duelFoe);
+
+  private openDuelSetup(foe: DuelFoe | null): void {
     const p = this.state.profile;
     const cls = p.duelCls ?? this.state.heroClass;
     const picked =
@@ -1280,8 +1298,9 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       peek: null,
       duelSetup: p.seenDuelSetup ? null : 0,
       homeMenu: false,
+      duelFoe: foe,
     }));
-  };
+  }
 
   /** Hand the screens back to the run, with the five it had before. */
   private restoreRunLoadout(): Pick<
@@ -1299,7 +1318,11 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   }
 
   leaveDuelSetup = (): void =>
-    this.setState({ ...this.restoreRunLoadout(), phase: 'home', peek: null });
+    this.setState((s) => ({
+      ...this.restoreRunLoadout(),
+      phase: s.duelFoe ? 'duelConfirm' : 'home',
+      peek: null,
+    }));
 
   goDuelOptIn = (): void => {
     if (this.state.picked.length !== 5) return;
@@ -1331,13 +1354,12 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       .saveDuelLoadout({ cls, picked, listed })
       .then((r) => {
         this.adopt(r.profile);
-        this.setState({
+        this.setState((s) => ({
           ...this.restoreRunLoadout(),
           duelSaving: false,
-          phase: 'duelLobby',
-          duelFoe: null,
+          phase: s.duelFoe ? 'duelConfirm' : 'duelLobby',
           duelOutcome: null,
-        });
+        }));
         void this.loadOpponents(0);
         if (listed) this.postChallenge();
       })
@@ -1401,37 +1423,62 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     void this.loadOpponents(this.state.duelCursor + DUEL_LOBBY_SIZE);
   };
 
+  /** Tapping a lobby row picks the opponent; the fight starts from the
+   *  pre-fight screen, where both fives are laid side by side. */
+  pickFoe = (foe: DuelFoe) => (): void =>
+    this.setState({ phase: 'duelConfirm', duelFoe: foe, duelOutcome: null });
+
+  openDuelRules = (): void => this.setState({ duelRulesOpen: true });
+  closeDuelRules = (): void => this.setState({ duelRulesOpen: false });
+
+  backToLobby = (): void => {
+    this.setState({ phase: 'duelLobby', duelFoe: null });
+    // Arriving from a challenge post skips the lobby, so it may never have loaded.
+    if (!this.state.duelOpponents.length) void this.loadOpponents(0);
+  };
+
+  confirmDuel = (): void => {
+    const foe = this.state.duelFoe;
+    if (foe) this.startDuel(foe)();
+  };
+
   startDuel = (foe: DuelFoe) => (): void => {
     const mine = this.duelLoadout();
     if (!mine) {
-      this.enterDuelSetup();
+      this.openDuelSetup(foe);
       return;
     }
     this.duelRngs = {};
     this.duelStartedAt = Date.now();
     const p = this.state.profile;
-    this.setState({
-      ...DUEL_RESET,
-      phase: 'duel',
-      duelFoe: foe,
-      duelFtue: p.seenDuelFtue ? null : 0,
-      duel: {
-        me: makeDuelSide(
-          p.duelCls ?? this.state.heroClass,
-          mine,
-          1,
-          this.duelRng('me')
-        ),
-        foe: makeDuelSide(
-          foe.cls,
-          foeLoadout(foe.cls, foe.picked),
-          foe.skill,
-          this.duelRng('foe')
-        ),
+    this.setState(
+      {
+        ...DUEL_RESET,
+        phase: 'duel',
+        duelFoe: foe,
+        duelFtue: p.seenDuelFtue ? null : 0,
+        duel: {
+          me: makeDuelSide(
+            p.duelCls ?? this.state.heroClass,
+            mine,
+            1,
+            this.duelRng('me')
+          ),
+          foe: makeDuelSide(
+            foe.cls,
+            foeLoadout(foe.cls, foe.picked),
+            foe.skill,
+            this.duelRng('foe')
+          ),
+        },
       },
-    });
-    this.timers.every('duelTick', 1000, this.duelTick);
-    this.scheduleFoe();
+      // After commit: scheduleFoe reads `phase`, which is still the lobby's
+      // until this update lands.
+      () => {
+        this.timers.every('duelTick', 1000, this.duelTick);
+        this.scheduleFoe();
+      }
+    );
   };
 
   /* The primer pauses the clock and the foe, so nobody loses HP while reading. */
@@ -1651,7 +1698,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
 
   leaveDuel = (): void => {
     this.timers.clear(...DUEL_TIMERS);
-    this.setState({ phase: 'duelLobby', duelOutcome: null });
+    this.setState({ phase: 'duelLobby', duelFoe: null, duelOutcome: null });
     // The result moved the trophy count, so the band the lobby matched against
     // is stale the moment the duel ends.
     void this.loadOpponents(this.state.duelCursor);

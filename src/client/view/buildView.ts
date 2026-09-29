@@ -45,6 +45,7 @@ import {
   RARITY_OUTLINE,
   RIDERS,
   colOf,
+  foeLoadout,
   leagueOf,
   leagueProgress,
   nextLeague,
@@ -917,6 +918,7 @@ export const buildView = (app: GearLinkApp): View => {
     gearlinkIcon: GEARLINK_ICON,
     /* ---------- DUEL ---------- */
     isDuelLobby: st.phase === 'duelLobby',
+    isDuelConfirm: st.phase === 'duelConfirm',
     isDuel: st.phase === 'duel',
     // Both boards need this, and the ranked view model only exists when a wave
     // does - so it belongs at the top level, not inside `battle`.
@@ -1013,8 +1015,18 @@ export const buildView = (app: GearLinkApp): View => {
     /* Reddit handles and snoovatars, not the game's class art: the row has to
        read as a PERSON you are challenging. Class art is the fallback for the
        house bots, which have no Reddit account behind them. */
-    duelFoes: (st.duelOpponents as any[]).map((f) => {
+    duelFoes: (() => {
+      const { challenger, duelOpponents } = app.state;
+      return challenger
+        ? [challenger].concat(
+            duelOpponents.filter(
+              (o) => o.id !== challenger.id && o.name !== challenger.name
+            )
+          )
+        : duelOpponents;
+    })().map((f) => {
       const lg = leagueOf(f.rating);
+      const isChallenger = f.id === app.state.challenger?.id;
       return {
         name: f.kind === 'player' ? 'u/' + f.name : f.name,
         blurb: f.blurb,
@@ -1026,10 +1038,48 @@ export const buildView = (app: GearLinkApp): View => {
         badgeColor: lg.color,
         badgeBg: lg.shade,
         tagDisplay: f.kind === 'bot' ? 'flex' : 'none',
+        challengerDisplay: isChallenger ? 'flex' : 'none',
+        rowBorder: isChallenger ? '2px solid #FCE370' : '2px solid #3A4C74',
         perk: (PERKS[f.cls] || PERKS['Hero']!).line,
-        run: app.startDuel(f),
+        run: app.pickFoe(f),
       };
     }),
+    /* The pre-fight screen: your five against theirs. A bot, or a listing
+       whose five no longer resolve, shows the class default it will use. */
+    ...(() => {
+      const f = app.state.duelFoe;
+      const myCls = st.profile.duelCls ?? st.heroClass;
+      if (!f) return { confirmFoeSlots: [], confirmFoeName: '' };
+      const lg = leagueOf(f.rating);
+      return {
+        confirmMeName: st.profile.username ? 'u/' + st.profile.username : 'YOU',
+        confirmMeCls: myCls.toUpperCase(),
+        confirmMeImg: (PERKS[myCls] || PERKS['Hero']!).img,
+        confirmMePerk: (PERKS[myCls] || PERKS['Hero']!).line,
+        confirmMeRating: st.profile.trophies,
+        confirmMeSlots: duelSlotTiles(st.profile.duelPicked ?? []),
+        confirmFoeName: f.kind === 'player' ? 'u/' + f.name : f.name,
+        confirmFoeCls: f.cls.toUpperCase(),
+        confirmFoeImg: f.avatar || (PERKS[f.cls] || PERKS['Hero']!).img,
+        confirmFoeFit: f.avatar ? 'cover' : 'contain',
+        confirmFoePerk: (PERKS[f.cls] || PERKS['Hero']!).line,
+        confirmFoeRating: f.rating,
+        confirmFoeBadge: lg.name.toUpperCase(),
+        confirmFoeBadgeColor: lg.color,
+        confirmFoeBadgeBg: lg.shade,
+        confirmFoeBotDisplay: f.kind === 'bot' ? 'flex' : 'none',
+        confirmFoeBlurb: f.blurb,
+        confirmFoeSlots: duelSlotTiles(
+          foeLoadout(f.cls, f.picked).map((g) => g.id)
+        ),
+      };
+    })(),
+    editDuelForFoe: app.editDuelForFoe,
+    backToLobby: app.backToLobby,
+    confirmDuel: app.confirmDuel,
+    openDuelRules: app.openDuelRules,
+    closeDuelRules: app.closeDuelRules,
+    duelRulesDisplay: st.duelRulesOpen ? 'flex' : 'none',
     duelRules: [
       {
         k: 'ATTACK',

@@ -36,6 +36,7 @@ export type Phase =
   | 'opening'
   | 'duelOptIn'
   | 'duelLobby'
+  | 'duelConfirm'
   | 'duel';
 
 export type Pop = { text: string; color: string; top: string };
@@ -156,6 +157,11 @@ export type AppState = {
   duelLoading: boolean;
   duelPadded: boolean;
   challengeUrl: string | null;
+  /** The poster of the challenge post this app was opened from. Pinned to the
+   *  top of the lobby for as long as the app is open. */
+  challenger: DuelFoe | null;
+  /** The lobby's how-duels-work sheet. */
+  duelRulesOpen: boolean;
 
   duel: DuelState | null;
   duelFoe: DuelFoe | null;
@@ -303,6 +309,8 @@ export const INITIAL_STATE: AppState = {
   duelLoading: false,
   duelPadded: false,
   challengeUrl: null,
+  challenger: null,
+  duelRulesOpen: false,
   duel: null,
   duelFoe: null,
   duelFtue: null,

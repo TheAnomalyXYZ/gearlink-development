@@ -6,7 +6,10 @@ import {
   HERO_PERKS,
   getGearImageUrl,
   leagueOf,
+  loadoutIsLegal,
+  skillForTrophies,
 } from '../../shared/engine/index.js';
+import type { DuelFoe } from '../../shared/engine/duel.js';
 import type { HeroClass } from '../../shared/engine/types.js';
 
 export const createPost = async () => {
@@ -20,6 +23,9 @@ export const createPost = async () => {
  *  still draws whatever that gear looks like now. */
 type ChallengeData = {
   challenge: number;
+  /** Reddit id of the poster. Missing on posts made before it was recorded,
+   *  which are resolved by handle instead. */
+  userId?: string;
   username: string;
   avatar: string;
   trophies: number;
@@ -36,6 +42,7 @@ type ChallengeData = {
  * the card survives without a lookup against the pool.
  */
 export const createChallengePost = async (
+  userId: string,
   username: string,
   trophies: number,
   cls: HeroClass,
@@ -45,6 +52,7 @@ export const createChallengePost = async (
   const league = leagueOf(trophies);
   const data: ChallengeData = {
     challenge: 1,
+    userId,
     username,
     avatar,
     trophies,
@@ -91,15 +99,10 @@ const snoovatarOf = async (username: string): Promise<string> => {
 const isClass = (v: unknown): v is HeroClass =>
   v === 'Hero' || v === 'Archer' || v === 'Mage';
 
-/**
- * Read a post's challenge card, or null if it is an ordinary GearLink post.
- *
- * Everything the feed view draws is finished here - image paths, tints, the
- * rank sprite - because the inline view carries no engine and no card table.
- */
-export const readChallengeCard = async (
+/** A post's challenge data, normalised, or null for an ordinary post. */
+const readChallengeData = async (
   postId: string
-): Promise<ChallengeCard | null> => {
+): Promise<(ChallengeData & { trophies: number }) | null> => {
   let raw: unknown;
   try {
     const post = await reddit.getPostById(postId as never);
@@ -111,18 +114,39 @@ export const readChallengeCard = async (
   const d = raw as Partial<ChallengeData>;
   if (!d.challenge || typeof d.username !== 'string' || !isClass(d.cls))
     return null;
-
   const trophies = Number(d.trophies);
-  const league = leagueOf(Number.isFinite(trophies) ? trophies : 0);
+  return {
+    challenge: 1,
+    ...(typeof d.userId === 'string' ? { userId: d.userId } : {}),
+    username: d.username,
+    avatar: typeof d.avatar === 'string' ? d.avatar : '',
+    trophies: Number.isFinite(trophies) ? trophies : 0,
+    cls: d.cls,
+    picked: Array.isArray(d.picked)
+      ? d.picked.filter((x): x is string => typeof x === 'string')
+      : [],
+  };
+};
+
+/**
+ * Read a post's challenge card, or null if it is an ordinary GearLink post.
+ *
+ * Everything the feed view draws is finished here - image paths, tints, the
+ * rank sprite - because the inline view carries no engine and no card table.
+ */
+export const readChallengeCard = async (
+  postId: string
+): Promise<ChallengeCard | null> => {
+  const d = await readChallengeData(postId);
+  if (!d) return null;
+
+  const league = leagueOf(d.trophies);
   const perk = HERO_PERKS[d.cls];
-  const picked = Array.isArray(d.picked)
-    ? d.picked.filter((x): x is string => typeof x === 'string')
-    : [];
 
   // Same rule the gear slots use: the tint is per archetype, darkening for the
   // second and third piece of a kind, so two attack orbs never read as one.
   const seen: Record<string, number> = {};
-  const gear = picked
+  const gear = d.picked
     .map((id) => GEAR_BY_ID[id])
     .filter((g): g is NonNullable<typeof g> => !!g)
     .map((g) => {
@@ -135,12 +159,10 @@ export const readChallengeCard = async (
       };
     });
 
-  const stored = typeof d.avatar === 'string' ? d.avatar : '';
-
   return {
     username: d.username,
-    avatar: stored || (await snoovatarOf(d.username)),
-    trophies: Number.isFinite(trophies) ? trophies : 0,
+    avatar: d.avatar || (await snoovatarOf(d.username)),
+    trophies: d.trophies,
     leagueName: league.name,
     leagueIcon: league.icon,
     leagueNumeral: league.numeral,
@@ -149,5 +171,40 @@ export const readChallengeCard = async (
     cls: d.cls,
     heroPerk: perk.line,
     gear,
+  };
+};
+
+/**
+ * The poster of a challenge post as a duel opponent, so ACCEPT lands the
+ * reader in the lobby with that exact duellist waiting. They fight with the
+ * five the post was made with - the kit the card showed is the kit you face.
+ * Null for an ordinary post, and for the poster reading their own challenge.
+ */
+export const readChallengeFoe = async (
+  postId: string,
+  viewerId: string,
+  viewerName: string
+): Promise<DuelFoe | null> => {
+  const d = await readChallengeData(postId);
+  if (!d) return null;
+  if (d.userId === viewerId || d.username === viewerName) return null;
+  let id = d.userId ?? '';
+  if (!id) {
+    try {
+      id = (await reddit.getUserByUsername(d.username))?.id ?? '';
+    } catch {
+      id = '';
+    }
+  }
+  return {
+    kind: 'player',
+    id: id || 'post:' + postId,
+    name: d.username,
+    cls: d.cls,
+    rating: d.trophies,
+    skill: skillForTrophies(d.trophies),
+    blurb: leagueOf(d.trophies).name + ' - duels as ' + d.cls,
+    avatar: d.avatar || (await snoovatarOf(d.username)),
+    picked: loadoutIsLegal(d.picked, d.cls) ? d.picked : [],
   };
 };

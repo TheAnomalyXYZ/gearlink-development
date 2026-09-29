@@ -269,6 +269,7 @@ const fakeApp = (over: Record<string, unknown>): GearLinkApp => {
     goMap: noop,
     endAction: noop,
     startDuel: curried,
+    pickFoe: curried,
     pickShopTab: curried,
     pickQuestTab: curried,
     claimQuest: curried,
@@ -399,6 +400,7 @@ void test('every screen renders', () => {
   renders('bag', { phase: 'inventory' });
   renders('collection', { phase: 'inventory', invTab: 'gear' });
   renders('duel lobby', { phase: 'duelLobby' });
+  renders('duel lobby rules', { phase: 'duelLobby', duelRulesOpen: true });
   renders('duel opt-in', { phase: 'duelOptIn', flow: 'duel' });
   renders('duel hero picker', { phase: 'hero', flow: 'duel' });
   renders('hero picker with no pieces', {
@@ -431,6 +433,36 @@ void test('a lobby with nobody listed still fills with bots', () => {
     duelLoading: true,
   });
   assert.ok(html.includes('REFRESH'), 'the refresh control went missing');
+});
+
+void test('the pre-fight screen shows both fives and a start', () => {
+  const foe = {
+    kind: 'player',
+    id: 't2_xyz',
+    name: 'emberwright',
+    cls: 'Mage',
+    rating: 1240,
+    skill: 0.94,
+    blurb: 'Silver - duels as Mage',
+    avatar: '',
+    picked: [],
+  };
+  const html = renders('duel confirm', {
+    phase: 'duelConfirm',
+    duelFoe: foe,
+    profile: {
+      ...profile,
+      duelCls: 'Hero',
+      duelPicked: defaultLoadout('Hero'),
+    },
+  });
+  assert.ok(html.includes('START DUEL'), 'no start button');
+  assert.ok(html.includes('CHANGE'), 'no way to change the loadout');
+  assert.ok(html.includes('u/emberwright'), 'the opponent is not named');
+  renders('duel confirm vs bot', {
+    phase: 'duelConfirm',
+    duelFoe: { ...foe, kind: 'bot', id: 'bot:voss', name: 'Voss' },
+  });
 });
 
 void test('the battle HUD renders through a whole turn cycle', () => {
