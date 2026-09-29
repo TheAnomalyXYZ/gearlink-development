@@ -12,18 +12,26 @@
  */
 import { redis, reddit } from '@devvit/web/server';
 import {
-  DUEL_BOTS,
   DUEL_LOBBY_SIZE,
-  DUEL_MATCH_BAND,
+  botsInTier,
   skillForTrophies,
 } from '../../shared/engine/duel.js';
 import type { DuelFoe } from '../../shared/engine/duel.js';
-import { leagueOf } from '../../shared/engine/league.js';
+import {
+  duelWeekOf,
+  leagueOf,
+  settleWeeks,
+  tierRange,
+} from '../../shared/engine/league.js';
 import { loadoutIsLegal } from '../../shared/engine/gear.js';
 import type { HeroClass } from '../../shared/engine/types.js';
 
 const POOL_KEY = 'duelpool';
 const POOL_META = 'duelpoolmeta';
+/** member -> the duel week its pool score was last true for. */
+const POOL_WEEK = 'duelpoolweek';
+/** The last week the whole pool was swept to. */
+const POOL_SWEPT = 'duelpoolswept';
 
 type PoolMeta = {
   username: string;
@@ -79,11 +87,13 @@ export const listInPool = async (
   const meta: PoolMeta = { username, cls, picked, avatar };
   await redis.zAdd(POOL_KEY, { member: userId, score: trophies });
   await redis.hSet(POOL_META, { [userId]: JSON.stringify(meta) });
+  await redis.hSet(POOL_WEEK, { [userId]: String(duelWeekOf(Date.now())) });
 };
 
 export const removeFromPool = async (userId: string): Promise<void> => {
   await redis.zRem(POOL_KEY, [userId]);
   await redis.hDel(POOL_META, [userId]);
+  await redis.hDel(POOL_WEEK, [userId]);
 };
 
 /** Keep a listed player's pool score in step with their trophies, so the bands
@@ -96,45 +106,66 @@ export const syncPoolScore = async (
   const at = await redis.zScore(POOL_KEY, userId);
   if (at === undefined) return;
   await redis.zAdd(POOL_KEY, { member: userId, score: trophies });
+  await redis.hSet(POOL_WEEK, { [userId]: String(duelWeekOf(Date.now())) });
 };
 
-/** Bots nearest a rating, closest first. The house roster is what keeps a lobby
- *  from being empty in a subreddit where nobody has listed yet. */
-const botsNear = (trophies: number): DuelFoe[] =>
-  DUEL_BOTS.slice()
-    .sort(
-      (a, b) => Math.abs(a.rating - trophies) - Math.abs(b.rating - trophies)
-    )
-    .map((b) => ({ ...b, blurb: leagueOf(b.rating).name + ' - ' + b.blurb }));
+/**
+ * Apply the weekly reset to every row still scored for an older week, once per
+ * week. A listed player who is not playing has no profile read to settle them,
+ * and without this they would sit in last week's tier in everyone's lobby.
+ * Settling is a pure function of the score, so a row that races a profile read
+ * lands on the same number either way.
+ */
+const sweepPool = async (): Promise<void> => {
+  const week = duelWeekOf(Date.now());
+  const swept = Number(await redis.get(POOL_SWEPT));
+  if (swept === week) return;
+  // First caller this week does the sweep; everyone else carries on.
+  const lock = POOL_SWEPT + ':' + week;
+  if ((await redis.incrBy(lock, 1)) !== 1) return;
+  await redis.expire(lock, 8 * 86_400);
+  const rows = await redis.zRange(POOL_KEY, 0, -1);
+  const weeks = rows.length ? await redis.hGetAll(POOL_WEEK) : {};
+  // Rows from before weeks were recorded are taken as current: their profiles
+  // start counting from this week too, so the two stay in step.
+  const base = Number.isFinite(swept) && swept > 0 ? swept : week;
+  const stamp: Record<string, string> = {};
+  for (const r of rows) {
+    const from = Number(weeks[r.member] ?? base);
+    stamp[r.member] = String(week);
+    if (from >= week) continue;
+    const next = settleWeeks(r.score, week - from);
+    if (next !== r.score)
+      await redis.zAdd(POOL_KEY, { member: r.member, score: next });
+  }
+  if (Object.keys(stamp).length) await redis.hSet(POOL_WEEK, stamp);
+  await redis.set(POOL_SWEPT, String(week));
+};
 
 /**
- * Five opponents near `trophies`, excluding the asker.
+ * Up to five opponents in the asker's TIER - any of its three levels - never
+ * the asker. Real duellists always come first; the tier's house bots only pad
+ * a lobby the pool cannot fill, and there are more of them in the low tiers
+ * where a player most needs someone to climb against.
  *
- * The band widens rather than returning nothing: a subreddit with six listed
- * players should still fill a lobby, even if none of them are within 250. The
- * cursor is what REFRESH moves - it rotates the window through everyone the
- * widened band found, so pressing it walks the neighbourhood instead of
- * reshuffling the same five.
+ * The cursor is what REFRESH moves - it rotates the window through everyone in
+ * the tier, so pressing it walks the list instead of reshuffling the same five.
  */
-export const opponentsNear = async (
+export const opponentsInTier = async (
   userId: string,
   trophies: number,
   cursor: number
 ): Promise<{ opponents: DuelFoe[]; padded: boolean }> => {
-  let rows: { member: string; score: number }[] = [];
-  for (const mult of [1, 3, 10]) {
-    const band = DUEL_MATCH_BAND * mult;
-    rows = await redis.zRange(
-      POOL_KEY,
-      Math.max(0, trophies - band),
-      trophies + band,
-      { by: 'score' }
-    );
-    rows = rows.filter((r) => r.member !== userId);
-    if (rows.length >= DUEL_LOBBY_SIZE) break;
-  }
-
-  // Closest first, so a widened band still leads with the fairest matches.
+  await sweepPool();
+  const { min, max } = tierRange(trophies);
+  let rows = await redis.zRange(
+    POOL_KEY,
+    min,
+    Number.isFinite(max) ? max : '+inf',
+    { by: 'score' }
+  );
+  rows = rows.filter((r) => r.member !== userId);
+  // Closest first, so the list leads with the fairest matches in the tier.
   rows.sort(
     (a, b) => Math.abs(a.score - trophies) - Math.abs(b.score - trophies)
   );
@@ -146,11 +177,25 @@ export const opponentsNear = async (
       window.push(rows[(start + i) % rows.length]!);
   }
 
-  const meta = window.length ? await redis.hGetAll(POOL_META) : {};
+  const metas = window.length
+    ? await redis.hMGet(
+        POOL_META,
+        window.map((r) => r.member)
+      )
+    : [];
   const opponents: DuelFoe[] = [];
-  for (const r of window) {
-    const m = readMeta(meta[r.member]);
+  const refreshed: Record<string, string> = {};
+  for (let i = 0; i < window.length; i++) {
+    const r = window[i]!;
+    const m = readMeta(metas[i] ?? undefined);
     if (!m) continue;
+    // The row is a PERSON, so it wears their snoovatar. One missing at listing
+    // time is asked for again here and kept, rather than written off.
+    let avatar = m.avatar;
+    if (!avatar) {
+      avatar = await fetchAvatar(m.username);
+      if (avatar) refreshed[r.member] = JSON.stringify({ ...m, avatar });
+    }
     opponents.push({
       kind: 'player',
       id: r.member,
@@ -159,17 +204,23 @@ export const opponentsNear = async (
       rating: Math.round(r.score),
       skill: skillForTrophies(r.score),
       blurb: blurbFor(r.score, m.cls),
-      avatar: m.avatar,
+      avatar,
       picked: m.picked,
     });
   }
+  if (Object.keys(refreshed).length) await redis.hSet(POOL_META, refreshed);
 
   const padded = opponents.length < DUEL_LOBBY_SIZE;
   if (padded) {
-    const bots = botsNear(trophies);
+    const bots = botsInTier(trophies).map((b) => ({
+      ...b,
+      blurb: leagueOf(b.rating).name + ' - ' + b.blurb,
+    }));
     // Rotate the bots too, so REFRESH changes the padding as well as the people.
     for (let i = 0; opponents.length < DUEL_LOBBY_SIZE && i < bots.length; i++)
-      opponents.push(bots[(cursor + i) % bots.length]!);
+      opponents.push(
+        bots[(((cursor + i) % bots.length) + bots.length) % bots.length]!
+      );
   }
 
   return { opponents, padded };

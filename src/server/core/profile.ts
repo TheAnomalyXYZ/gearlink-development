@@ -9,7 +9,12 @@ import { redis } from '@devvit/web/server';
 import type { BestRun, Profile } from '../../shared/api.js';
 import { STARTER_GEAR, loadoutIsLegal } from '../../shared/engine/gear.js';
 import { PACKS } from '../../shared/engine/economy.js';
-import { TROPHY_FLOOR } from '../../shared/engine/league.js';
+import {
+  TROPHY_FLOOR,
+  duelWeekOf,
+  settleWeeks,
+} from '../../shared/engine/league.js';
+import { syncPoolScore } from './duelpool.js';
 import { MAP_LENGTH, MAX_ASCENSION } from '../../shared/engine/campaign.js';
 import { normaliseHearts } from '../../shared/engine/hearts.js';
 import type { Hearts } from '../../shared/engine/hearts.js';
@@ -136,11 +141,28 @@ export const loadProfile = async (
 
   const duelCls = parseCls(h['duelCls']);
 
+  // The weekly reset is applied lazily, the first time a profile is read in a
+  // new week: promotions, holds and drops for every reset it missed.
+  const week = duelWeekOf(Date.now());
+  const lastWeek = num(h['duelWeek'], week);
+  const stored = num(h['trophies'], STARTING_TROPHIES);
+  const trophies =
+    lastWeek < week ? settleWeeks(stored, week - lastWeek) : stored;
+  if (h['duelWeek'] !== String(week)) {
+    await redis.hSet(profileKey(userId), {
+      duelWeek: String(week),
+      trophies: String(trophies),
+    });
+    // The profile is the authority: its first read of the week puts the pool
+    // row on the same number, whatever the sweep did with it.
+    await syncPoolScore(userId, trophies);
+  }
+
   return {
     username,
     coins: num(h['coins'], STARTING_COINS),
     gems: num(h['gems'], STARTING_GEMS),
-    trophies: num(h['trophies'], STARTING_TROPHIES),
+    trophies,
     gear,
     packs: normalisePacks(obj(h['packs'])),
     best: parseBest(h['best']),

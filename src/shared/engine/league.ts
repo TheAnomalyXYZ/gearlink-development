@@ -159,3 +159,84 @@ export const toNextLeague = (trophies: number): number | null => {
   const up = nextLeague(trophies);
   return up ? Math.max(0, up.floor - trophies) : null;
 };
+
+/* ---------- the weekly season ---------- */
+
+/**
+ * Trophies move you between the three levels of a tier during the week, but
+ * never across a tier line: the tier only changes at the weekly reset. Then
+ * level 3 promotes to level 1 of the tier above, level 2 holds, and level 1
+ * drops to DEMOTE_LEVEL of the tier below. Knight is one rung and holds.
+ *
+ * Settling is a pure function of the trophy count, so a profile and its pool
+ * row, settled separately, always land on the same number.
+ */
+
+/** Where a demotion lands. Level 2 rather than 3, so a player who stops
+ *  playing settles into a tier instead of bouncing between two forever. */
+export const DEMOTE_LEVEL = 2;
+
+const DAY_MS = 86_400_000;
+
+/** Weeks since the epoch, starting Monday 00:00 UTC - the same boundary the
+ *  weekly quests reset on. */
+export const duelWeekOf = (now: number): number =>
+  Math.floor((Math.floor(now / DAY_MS) + 3) / 7);
+
+/** When the week containing `now` ends, in epoch ms. */
+export const duelSeasonEndsAt = (now: number): number =>
+  ((duelWeekOf(now) + 1) * 7 - 3) * DAY_MS;
+
+/** The first and last league index of the tier a trophy count sits in. */
+const tierSpan = (trophies: number): { lo: League; hi: League } => {
+  const here = leagueOf(trophies);
+  const inTier = LEAGUES.filter((l) => l.tier === here.tier);
+  return { lo: inTier[0]!, hi: inTier[inTier.length - 1]! };
+};
+
+/** Trophy range of the tier `trophies` is in - what the lobby searches, and
+ *  what a week's results are held inside. `max` is Infinity at Knight. */
+export const tierRange = (trophies: number): { min: number; max: number } => {
+  const { lo, hi } = tierSpan(trophies);
+  const above = LEAGUES[hi.idx + 1];
+  return { min: lo.floor, max: above ? above.floor - 1 : Infinity };
+};
+
+/** Apply a duel result: the new count, held inside the current tier. */
+export const applyDuelDelta = (trophies: number, delta: number): number => {
+  const { min, max } = tierRange(trophies);
+  return Math.min(max, Math.max(min, Math.floor(trophies + delta)));
+};
+
+/** Where a player ends up at ONE weekly reset. */
+export const settleWeek = (trophies: number): number => {
+  const here = leagueOf(trophies);
+  if (here.level === 3) {
+    const up = LEAGUES[here.idx + 1];
+    return up ? up.floor : trophies;
+  }
+  if (here.level === 1 && here.idx > 0) {
+    const down = LEAGUES[here.idx - 3 + (DEMOTE_LEVEL - 1)];
+    return down ? down.floor : trophies;
+  }
+  return trophies;
+};
+
+/** Settle every reset missed. Bounded: a few weeks reaches a fixed point. */
+export const settleWeeks = (trophies: number, weeks: number): number => {
+  let t = trophies;
+  for (let i = 0; i < Math.min(Math.max(0, weeks), 12); i++) {
+    const next = settleWeek(t);
+    if (next === t) break;
+    t = next;
+  }
+  return t;
+};
+
+/** What the reset will do to this player, as the lobby banner says it. */
+export const weeklyOutcome = (
+  trophies: number
+): 'promote' | 'hold' | 'demote' => {
+  const s = settleWeek(trophies);
+  return s > trophies ? 'promote' : s < trophies ? 'demote' : 'hold';
+};

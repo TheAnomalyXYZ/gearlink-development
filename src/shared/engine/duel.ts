@@ -45,7 +45,7 @@ import {
   riderOf,
 } from './gear.js';
 import type { Gear, HeroClass, Mutators, Rider, Status } from './types.js';
-import { TOP_LEAGUE, TROPHY_FLOOR } from './league.js';
+import { LEAGUES, TOP_LEAGUE, TROPHY_FLOOR, tierRange } from './league.js';
 import { NO_MUTATORS } from './run.js';
 
 export const DUEL_HP = 60;
@@ -138,6 +138,22 @@ const BOT_NAMES = [
   'Pellingrove',
   'Stagwick',
   'Thornmere',
+  'Brackwater',
+  'Ashcombe',
+  'Gildrey',
+  'Morrow',
+  'Kestrel',
+  'Dunhallow',
+  'Ironsides',
+  'Wrenfield',
+  'Calder',
+  'Oakhollow',
+  'Sable',
+  'Fennick',
+  'Graymantle',
+  'Hollis',
+  'Blackthorn',
+  'Vesper',
 ];
 const BOT_BLURBS = [
   'Trades blows. Blocks late.',
@@ -149,33 +165,55 @@ const BOT_BLURBS = [
 ];
 const BOT_CLASSES: HeroClass[] = ['Hero', 'Archer', 'Mage'];
 
-/** The house roster, spread the length of the ladder so a lobby at any rating
- *  can always be filled. Deterministic: the same rung is always the same foe,
+/** House bots per tier, Bronze up to Knight. Weighted to the bottom: the low
+ *  tiers are where a new subreddit has nobody listed yet, and a player has to
+ *  be able to climb out of Bronze without waiting for one. Higher up, the
+ *  lobby leans on real duellists and the bots are only a last resort. */
+export const BOTS_PER_TIER = [8, 6, 5, 4, 3, 2];
+
+/** Knight has no ceiling; its bots spread over this many trophies above it. */
+const KNIGHT_BOT_SPAN = 400;
+
+/** The house roster, spread across every tier's levels so a lobby in any tier
+ *  can always be filled. Deterministic: the same slot is always the same foe,
  *  so a refresh reshuffles who you see rather than reinventing them. */
-export const DUEL_BOTS: DuelFoe[] = BOT_NAMES.map((name, i) => {
-  // One bot per rung of the ladder's lower reaches and one at the top, so
-  // every band a player can sit in has a house foe near it.
-  const rating =
-    TROPHY_FLOOR +
-    Math.round((i / (BOT_NAMES.length - 1)) * (LADDER_SPAN + 200));
-  return {
-    kind: 'bot' as const,
-    id: 'bot:' + name.toLowerCase(),
-    name,
-    cls: BOT_CLASSES[i % BOT_CLASSES.length]!,
-    rating,
-    skill: skillForTrophies(rating),
-    blurb: BOT_BLURBS[i % BOT_BLURBS.length]!,
-    avatar: '',
-    picked: [],
-  };
-});
+export const DUEL_BOTS: DuelFoe[] = (() => {
+  const out: DuelFoe[] = [];
+  const tierFloors = LEAGUES.filter((l) => l.level <= 1);
+  let n = 0;
+  tierFloors.forEach((lo, t) => {
+    const { min, max } = tierRange(lo.floor);
+    const span = Number.isFinite(max) ? max - min : KNIGHT_BOT_SPAN;
+    const count = BOTS_PER_TIER[t] ?? 1;
+    for (let j = 0; j < count; j++, n++) {
+      const name = BOT_NAMES[n % BOT_NAMES.length]!;
+      const rating = min + Math.round(((j + 0.5) / count) * span);
+      out.push({
+        kind: 'bot',
+        id: 'bot:' + name.toLowerCase(),
+        name,
+        cls: BOT_CLASSES[n % BOT_CLASSES.length]!,
+        rating,
+        skill: skillForTrophies(rating),
+        blurb: BOT_BLURBS[n % BOT_BLURBS.length]!,
+        avatar: '',
+        picked: [],
+      });
+    }
+  });
+  return out;
+})();
+
+/** The house bots in the same tier as `trophies`, nearest first. */
+export const botsInTier = (trophies: number): DuelFoe[] => {
+  const { min, max } = tierRange(trophies);
+  return DUEL_BOTS.filter((b) => b.rating >= min && b.rating <= max).sort(
+    (a, b) => Math.abs(a.rating - trophies) - Math.abs(b.rating - trophies)
+  );
+};
 
 /** How many opponents the lobby shows at once. */
 export const DUEL_LOBBY_SIZE = 5;
-/** Only opponents inside this trophy band are considered "close" - past it the
- *  list widens rather than showing nobody. */
-export const DUEL_MATCH_BAND = 250;
 
 /**
  * Setup coaching, shown once before a player's first duel. It runs BEFORE the
@@ -198,7 +236,7 @@ export const DUEL_SETUP_STEPS = [
   },
   {
     title: 'Then put your name to it',
-    body: "Listing your loadout puts you in the opponent pool at your trophy count. Stay out and you can still duel - you just will not show up in anybody else's lobby.",
+    body: "Listing your loadout puts you in the opponent pool for your league. Stay out and you can still duel - you just will not show up in anybody else's lobby.",
   },
 ];
 

@@ -29,7 +29,7 @@ import { loadProfile, saveProfile } from '../core/profile.js';
 import { getLeaderboard, recordScore } from '../core/leaderboard.js';
 import {
   listInPool,
-  opponentsNear,
+  opponentsInTier,
   removeFromPool,
   syncPoolScore,
 } from '../core/duelpool.js';
@@ -62,7 +62,7 @@ import {
   packById,
   rollPack,
   runQuestEvents,
-  TROPHY_FLOOR,
+  applyDuelDelta,
   verifyRun,
 } from '../../shared/engine/index.js';
 import type { PulledCard } from '../../shared/engine/economy.js';
@@ -562,7 +562,7 @@ api.post('/duel/listed', async (c) => {
   return c.json(profileJson(await loadProfile(me.userId, me.username)));
 });
 
-/** Five opponents near the asker's trophy count. `cursor` is what REFRESH
+/** Five opponents in the asker's tier. `cursor` is what REFRESH
  *  advances, so the button walks the neighbourhood instead of re-rolling it. */
 api.get('/duel/opponents', async (c) => {
   const me = who();
@@ -570,7 +570,7 @@ api.get('/duel/opponents', async (c) => {
   const raw = Number(c.req.query('cursor'));
   const cursor = Number.isFinite(raw) ? Math.floor(raw) : 0;
   const profile = await loadProfile(me.userId, me.username);
-  const { opponents, padded } = await opponentsNear(
+  const { opponents, padded } = await opponentsInTier(
     me.userId,
     profile.trophies,
     cursor
@@ -657,12 +657,14 @@ api.post('/duel/result', async (c) => {
     : body.won
       ? DUEL_WIN_TROPHIES
       : -DUEL_LOSS_TROPHIES;
-  const trophies = Math.max(TROPHY_FLOOR, profile.trophies + delta);
+  // Held inside the current tier: crossing a tier line only happens at the
+  // weekly reset, from level 3 up or level 1 down.
+  const trophies = applyDuelDelta(profile.trophies, delta);
   await saveProfile(me.userId, { trophies });
   // The pool is scored by trophies, so a result that moves them has to move the
   // band this player is matched in - otherwise a climber keeps being offered to
   // the rung they left.
-  if (delta !== 0) await syncPoolScore(me.userId, trophies);
+  if (trophies !== profile.trophies) await syncPoolScore(me.userId, trophies);
   // Quests count the same bounded result the trophies do, so an implausible
   // duel advances neither.
   if (credible)

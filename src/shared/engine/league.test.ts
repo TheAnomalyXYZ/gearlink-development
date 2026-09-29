@@ -1,13 +1,21 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { DUEL_BOTS, botsInTier } from './duel.js';
 import {
+  DEMOTE_LEVEL,
   LEAGUES,
   TOP_LEAGUE,
   TROPHY_FLOOR,
+  applyDuelDelta,
+  duelSeasonEndsAt,
+  duelWeekOf,
   leagueOf,
   leagueProgress,
   nextLeague,
+  settleWeek,
+  settleWeeks,
   toNextLeague,
+  weeklyOutcome,
 } from './league.js';
 
 void test('the ladder is five three-level tiers and a single Knight rung', () => {
@@ -72,4 +80,78 @@ void test('progress and distance agree about the next rung', () => {
   assert.equal(nextLeague(TOP_LEAGUE.floor), null);
   assert.equal(toNextLeague(TOP_LEAGUE.floor), null);
   assert.equal(leagueProgress(TOP_LEAGUE.floor + 5000), 1);
+});
+
+const byName = (n: string) => LEAGUES.find((l) => l.name === n)!;
+
+void test('a week of results never crosses a tier line', () => {
+  const b1 = byName('Bronze 1');
+  const b3 = byName('Bronze 3');
+  const s1 = byName('Silver 1');
+  // Winning at Bronze 3 tops out below Silver 1; losing at Silver 1 holds it.
+  assert.equal(applyDuelDelta(s1.floor - 5, 22), s1.floor - 1);
+  assert.equal(leagueOf(applyDuelDelta(b3.floor, 500)).name, 'Bronze 3');
+  assert.equal(applyDuelDelta(s1.floor, -12), s1.floor);
+  assert.equal(applyDuelDelta(b1.floor, -12), b1.floor);
+  // Inside the tier, levels move freely both ways.
+  assert.equal(
+    leagueOf(applyDuelDelta(byName('Bronze 2').floor, -1)).name,
+    'Bronze 1'
+  );
+  const k = byName('Knight');
+  assert.equal(applyDuelDelta(k.floor + 10, 22), k.floor + 32);
+  assert.equal(applyDuelDelta(k.floor, -12), k.floor);
+});
+
+void test('the reset promotes level 3, holds level 2 and drops level 1', () => {
+  assert.equal(
+    settleWeek(byName('Bronze 3').floor + 30),
+    byName('Silver 1').floor
+  );
+  assert.equal(settleWeek(byName('Diamond 3').floor), byName('Knight').floor);
+  const s2 = byName('Silver 2').floor + 40;
+  assert.equal(settleWeek(s2), s2);
+  assert.equal(
+    leagueOf(settleWeek(byName('Silver 1').floor)).name,
+    'Bronze ' + DEMOTE_LEVEL
+  );
+  // Nothing below Bronze and nothing above Knight.
+  assert.equal(settleWeek(byName('Bronze 1').floor), byName('Bronze 1').floor);
+  assert.equal(
+    settleWeek(byName('Knight').floor + 900),
+    byName('Knight').floor + 900
+  );
+  assert.equal(weeklyOutcome(byName('Gold 3').floor), 'promote');
+  assert.equal(weeklyOutcome(byName('Gold 2').floor), 'hold');
+  assert.equal(weeklyOutcome(byName('Gold 1').floor), 'demote');
+});
+
+void test('missed resets settle to a fixed point instead of bouncing', () => {
+  const start = byName('Silver 3').floor;
+  const once = settleWeeks(start, 1);
+  assert.equal(leagueOf(once).name, 'Gold 1');
+  const many = settleWeeks(start, 50);
+  assert.equal(settleWeek(many), many, 'a long absence should end at rest');
+});
+
+void test('the season week starts on Monday UTC', () => {
+  const mon = Date.UTC(2026, 8, 28); // Monday 28 Sep 2026
+  assert.equal(duelWeekOf(mon), duelWeekOf(mon + 6 * 86_400_000 + 1000));
+  assert.equal(duelWeekOf(mon) - 1, duelWeekOf(mon - 1));
+  assert.equal(duelSeasonEndsAt(mon), mon + 7 * 86_400_000);
+});
+
+void test('every tier has a house bot, and the low tiers have the most', () => {
+  let prev = Infinity;
+  for (const l of LEAGUES.filter((x) => x.level <= 1)) {
+    const bots = botsInTier(l.floor);
+    assert.ok(bots.length > 0, l.tier + ' has no bots');
+    assert.ok(bots.length <= prev, l.tier + ' has more bots than below it');
+    for (const b of bots)
+      assert.equal(leagueOf(b.rating).tier, l.tier, b.name + ' is out of tier');
+    prev = bots.length;
+  }
+  assert.ok(botsInTier(TROPHY_FLOOR).length >= 5, 'Bronze cannot fill a lobby');
+  const ids = new Set(DUEL_BOTS.map((b) => b.id));
+  assert.equal(ids.size, DUEL_BOTS.length, 'bot ids collide');
 });

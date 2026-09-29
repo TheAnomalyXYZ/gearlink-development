@@ -5340,7 +5340,7 @@ export const Screen = ({ v }: { v: View }) => (
                     letterSpacing: '.14em',
                   }}
                 >
-                  NEAR YOUR TROPHIES
+                  IN YOUR LEAGUE
                 </div>
                 <div
                   onClick={v.refreshOpponents}
@@ -5508,7 +5508,7 @@ export const Screen = ({ v }: { v: View }) => (
                   flexShrink: '0',
                 }}
               >
-                Not enough listed duellists at your rating yet, so the rest of
+                Not enough listed duellists in your league yet, so the rest of
                 this lobby is house bots. List your own loadout to put a real
                 name in somebody else&apos;s.
               </div>

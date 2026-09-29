@@ -45,6 +45,9 @@ import {
   RARITY_OUTLINE,
   RIDERS,
   colOf,
+  DEMOTE_LEVEL,
+  LEAGUES,
+  duelSeasonEndsAt,
   foeLoadout,
   leagueOf,
   leagueProgress,
@@ -66,7 +69,7 @@ import {
   rowOf,
   rewardLabel,
 } from '../../shared/engine/index.js';
-import { BOMB_ICON, GEARLINK_ICON, NAV_ICON } from './assets.js';
+import { BOMB_ICON, DEFAULT_SNOO, GEARLINK_ICON, NAV_ICON } from './assets.js';
 import {
   DUEL_SETUP_PHASE,
   FTUE_COPY,
@@ -87,6 +90,12 @@ export const buildView = (app: GearLinkApp): View => {
   >;
   const RID = RIDERS as Record<string, NonNullable<(typeof RIDERS)['burn']>>;
   const st = app.state as any;
+  /** An opponent's face: their snoovatar, Reddit's plain snoo when they have
+   *  none, and class art only for a house bot, which has no account. */
+  const faceOf = (f: { kind: string; avatar: string; cls: string }) =>
+    f.kind === 'player'
+      ? f.avatar || DEFAULT_SNOO
+      : (PERKS[f.cls] || PERKS['Hero']!).img;
   const loadout = app.loadout();
   const myLeague = leagueOf(st.profile.trophies);
   const upLeague = nextLeague(st.profile.trophies);
@@ -948,10 +957,39 @@ export const buildView = (app: GearLinkApp): View => {
     leagueNextName: upLeague
       ? upLeague.name.toUpperCase()
       : 'TOP OF THE LADDER',
-    leagueNextLine:
-      toNext === null
-        ? 'Knight is the last rung. Everything above it is defending it.'
-        : toNext + ' more trophies to ' + upLeague!.name + '.',
+    leagueNextLine: (() => {
+      /* The season is weekly: trophies move you through the three levels of a
+         tier, and only the reset moves you between tiers. */
+      const left = Math.max(0, duelSeasonEndsAt(Date.now()) - Date.now());
+      const d = Math.floor(left / 86_400_000);
+      const h = Math.floor((left % 86_400_000) / 3_600_000);
+      const resets = ' Resets in ' + (d > 0 ? d + 'd ' : '') + h + 'h.';
+      if (myLeague.level === 0)
+        return 'Knight is the top tier. Hold it.' + resets;
+      const idx = myLeague.idx;
+      const top = LEAGUES[idx - myLeague.level + 3]!;
+      const nextTier = LEAGUES[idx - myLeague.level + 4];
+      if (myLeague.level === 3)
+        return (
+          'Hold ' +
+          myLeague.name +
+          ' to promote to ' +
+          (nextTier ? nextTier.name : 'Knight') +
+          ' at the reset.' +
+          resets
+        );
+      const climb = toNext + ' more trophies to ' + upLeague!.name + '. ';
+      if (myLeague.level === 2)
+        return climb + 'Reach ' + top.name + ' to promote.' + resets;
+      const drop = LEAGUES[idx - 3 + (DEMOTE_LEVEL - 1)];
+      return (
+        climb +
+        (drop
+          ? 'Still here at the reset drops you to ' + drop.name + '.'
+          : 'Reach ' + top.name + ' to promote.') +
+        resets
+      );
+    })(),
 
     /* ---------- duel setup coaching ---------- */
     duelSetupDisplay:
@@ -992,7 +1030,7 @@ export const buildView = (app: GearLinkApp): View => {
     duelListedLabel: st.profile.duelListed ? 'LISTED' : 'NOT LISTED',
     duelListedColor: st.profile.duelListed ? '#AEE45D' : '#9DB4D4',
     duelListedLine: st.profile.duelListed
-      ? 'Other duellists near your trophies can draw you as an opponent.'
+      ? 'Other duellists in your league can draw you as an opponent.'
       : 'You are hidden from other lobbies. You can still duel anyone here.',
     duelListedToggleLabel: st.profile.duelListed ? 'GO PRIVATE' : 'LIST ME',
     toggleListed: app.toggleListed,
@@ -1032,8 +1070,8 @@ export const buildView = (app: GearLinkApp): View => {
         blurb: f.blurb,
         rating: f.rating,
         cls: f.cls.toUpperCase(),
-        img: f.avatar || (PERKS[f.cls] || PERKS['Hero']!).img,
-        avatarFit: f.avatar ? 'cover' : 'contain',
+        img: faceOf(f),
+        avatarFit: 'contain',
         badge: lg.name.toUpperCase(),
         badgeColor: lg.color,
         badgeBg: lg.shade,
@@ -1060,8 +1098,8 @@ export const buildView = (app: GearLinkApp): View => {
         confirmMeSlots: duelSlotTiles(st.profile.duelPicked ?? []),
         confirmFoeName: f.kind === 'player' ? 'u/' + f.name : f.name,
         confirmFoeCls: f.cls.toUpperCase(),
-        confirmFoeImg: f.avatar || (PERKS[f.cls] || PERKS['Hero']!).img,
-        confirmFoeFit: f.avatar ? 'cover' : 'contain',
+        confirmFoeImg: faceOf(f),
+        confirmFoeFit: 'contain',
         confirmFoePerk: (PERKS[f.cls] || PERKS['Hero']!).line,
         confirmFoeRating: f.rating,
         confirmFoeBadge: lg.name.toUpperCase(),
@@ -1301,8 +1339,9 @@ export const buildView = (app: GearLinkApp): View => {
         duelFoeNameUpper: fname,
         /* The arena keeps the face the lobby showed: a snoovatar when you are
            duelling a real account's loadout, class art for a house bot. */
-        duelFoeImg:
-          (st.duelFoe || {}).avatar || (PERKS[d.foe.cls] || PERKS['Hero']!).img,
+        duelFoeImg: st.duelFoe
+          ? faceOf(st.duelFoe)
+          : (PERKS[d.foe.cls] || PERKS['Hero']!).img,
         duelMyImg: (PERKS[d.me.cls] || PERKS['Hero']!).img,
         duelMyHp: d.me.hp,
         duelFoeHp: d.foe.hp,
