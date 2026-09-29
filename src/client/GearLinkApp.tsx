@@ -1381,7 +1381,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   };
   saveUnlisted = (): void => this.saveDuelLoadout(false);
 
-  /** ENTER from the lobby, for a player who saved a practice loadout. There is
+  /** ENTER from the lobby, for a player who saved a loadout for friendly duels. There is
    *  no way back out mid-week, so there is no toggle in the other direction. */
   toggleListed = (): void => {
     if (this.state.profile.duelListed) return;

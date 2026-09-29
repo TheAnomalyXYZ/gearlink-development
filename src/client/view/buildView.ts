@@ -1065,7 +1065,7 @@ export const buildView = (app: GearLinkApp): View => {
 
     /* ---------- lobby ---------- */
     duelListed: !!st.profile.duelListed,
-    duelListedLabel: entered ? 'ENTERED - LOCKED IN' : 'PRACTICE ONLY',
+    duelListedLabel: entered ? 'ENTERED - LOCKED IN' : 'FRIENDLY DUELS',
     duelListedColor: entered ? '#AEE45D' : '#FF9EA1',
     duelListedLine: entered
       ? "You're in this week's " +
@@ -1073,7 +1073,7 @@ export const buildView = (app: GearLinkApp): View => {
         ' league. Anyone in it can challenge your five until the reset in ' +
         resetIn +
         '. You can change your five, but you cannot leave.'
-      : "Practice duels don't move trophies or count toward prizes. Enter this week's league to climb and win the weekly prize.",
+      : "You're duelling as a friendly challenger. Enter this week's league to climb and win the weekly prize.",
     duelListedToggleLabel: "ENTER THIS WEEK'S LEAGUE",
     duelListedToggleDisplay: entered ? 'none' : 'flex',
     toggleListed: app.toggleListed,
@@ -1187,7 +1187,7 @@ export const buildView = (app: GearLinkApp): View => {
     optInPrimaryLabel: entered
       ? 'SAVE MY FIVE'
       : 'ENTER THE LEAGUE & POST CHALLENGE',
-    optInPracticeDisplay: entered ? 'none' : 'flex',
+    optInFriendlyDisplay: entered ? 'none' : 'flex',
     optInEnterDisplay: entered ? 'none' : 'flex',
     optInEnteredDisplay: entered ? 'flex' : 'none',
     enterConfirmDisplay: st.enterConfirm ? 'flex' : 'none',
@@ -1199,7 +1199,7 @@ export const buildView = (app: GearLinkApp): View => {
         ' / -' +
         DUEL_LOSS_TROPHIES +
         ' TROPHIES'
-      : 'PRACTICE - NO TROPHIES, NO PRIZE PROGRESS',
+      : 'FRIENDLY CHALLENGE',
     confirmRankColor: entered ? '#AEE45D' : '#FF9EA1',
     prizeTable: PRIZE_TABLE.map((p) => ({
       league: p.league.toUpperCase(),
@@ -1604,7 +1604,7 @@ export const buildView = (app: GearLinkApp): View => {
         duelOverDelta: !out
           ? ''
           : !out.ranked
-            ? 'PRACTICE - NO TROPHIES'
+            ? 'FRIENDLY CHALLENGE'
             : (out.delta > 0 ? '+' + out.delta : String(out.delta)) +
               ' TROPHIES',
         duelOverBody: out

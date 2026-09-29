@@ -236,7 +236,7 @@ export const DUEL_SETUP_STEPS = [
   },
   {
     title: 'Then decide whether to enter',
-    body: "Entering this week's league puts your five in the opponent pool and makes your duels count for trophies and the weekly prize. Once in, you are locked in until the Monday reset. Stay out and your duels are practice.",
+    body: "Entering this week's league puts your five in the opponent pool and makes your duels count for trophies and the weekly prize. Once in, you are locked in until the Monday reset. Stay out and your duels are friendly challenges.",
   },
 ];
 

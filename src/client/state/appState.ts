@@ -61,7 +61,7 @@ export type DuelOutcome = {
   kind: DuelEndKind;
   won: boolean;
   delta: number;
-  /** False for a practice duel, played without entering the week's league. */
+  /** False for a friendly duel, played without entering the week's league. */
   ranked: boolean;
 };
 export type GearTab = 'attack' | 'block' | 'effect';

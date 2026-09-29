@@ -669,7 +669,7 @@ api.post('/duel/result', async (c) => {
   // An implausible win still costs nothing and gains nothing, rather than
   // erroring - the duel is already over on the client either way.
   // Only a player entered in this week's league plays for trophies; anyone
-  // else's duel is practice. Otherwise a lead could be kept by duelling from
+  // else's duel is a friendly one. Otherwise a lead could be kept by duelling from
   // outside the pool, where nobody can challenge it.
   const ranked = credible && profile.duelListed;
   const delta = !ranked

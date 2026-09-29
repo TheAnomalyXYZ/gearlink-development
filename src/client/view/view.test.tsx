@@ -503,7 +503,7 @@ void test('entering the league warns about the lock and shows the prizes', () =>
   });
   assert.ok(optIn.includes('locked in until the Monday reset'));
   assert.ok(optIn.includes('WIN THIS WEEK IN'));
-  assert.ok(optIn.includes('PRACTICE ONLY'));
+  assert.ok(optIn.includes('FRIENDLY DUELS ONLY'));
   const modal = renders('lock-in warning', {
     phase: 'duelOptIn',
     flow: 'duel',
@@ -511,11 +511,11 @@ void test('entering the league warns about the lock and shows the prizes', () =>
     enterConfirm: 'setup',
   });
   assert.ok(modal.includes('LOCK IN FOR THIS WEEK?'));
-  const lobby = renders('lobby, practice', {
+  const lobby = renders('lobby, friendly', {
     phase: 'duelLobby',
     profile: out,
   });
-  assert.ok(lobby.includes('PRACTICE ONLY'));
+  assert.ok(lobby.includes('FRIENDLY DUELS'));
   assert.ok(lobby.includes('ENTER THIS WEEK&#x27;S LEAGUE'));
   const inLobby = renders('lobby, entered', { phase: 'duelLobby' });
   assert.ok(inLobby.includes('ENTERED - LOCKED IN'));

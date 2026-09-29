@@ -5079,7 +5079,7 @@ export const Screen = ({ v }: { v: View }) => (
                   onClick={v.saveUnlisted}
                   style={{
                     cursor: 'pointer',
-                    display: v.optInPracticeDisplay,
+                    display: v.optInFriendlyDisplay,
                     alignItems: 'center',
                     justifyContent: 'center',
                     height: '38px',
@@ -5089,10 +5089,10 @@ export const Screen = ({ v }: { v: View }) => (
                     boxShadow: '0 -2px 0 0 #7E84E6 inset, 0 2px 0 0 #FFF inset',
                     color: '#000000',
                     fontFamily: "'Yoster Island',Volter,monospace",
-                    fontSize: '10px',
+                    fontSize: '12px',
                   }}
                 >
-                  PRACTICE ONLY - NO TROPHIES OR PRIZES
+                  FRIENDLY DUELS ONLY
                 </div>
                 <div
                   onClick={v.backToDuelGear}
