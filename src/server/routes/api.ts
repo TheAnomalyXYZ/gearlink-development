@@ -519,7 +519,9 @@ api.post('/duel/loadout', async (c) => {
         400
       );
 
-  const listed = !!body.listed;
+  // Entry is locked for the week: a player already in this week's league can
+  // change their five, but saving it never takes them back out.
+  const listed = !!body.listed || profile.duelListed;
   await saveProfile(me.userId, {
     duelCls: body.cls,
     duelPicked: body.picked,
@@ -549,6 +551,15 @@ api.post('/duel/listed', async (c) => {
     .catch(() => null)) as DuelListedRequest | null;
   const profile = await loadProfile(me.userId, me.username);
   const listed = !!body?.listed;
+  // No leaving mid-week: hiding a lead from challengers is exactly what the
+  // lock exists to stop. Entry lapses by itself at the Monday reset.
+  if (!listed && profile.duelListed)
+    return c.json(
+      profileJson(
+        profile,
+        "You're in this week's league until the Monday reset."
+      )
+    );
   if (listed && (!profile.duelCls || profile.duelPicked.length !== 5))
     return c.json(
       profileJson(profile, 'Build a duel loadout before you list it.')
@@ -657,7 +668,11 @@ api.post('/duel/result', async (c) => {
     seconds <= DUEL_MATCH_SECONDS + 30;
   // An implausible win still costs nothing and gains nothing, rather than
   // erroring - the duel is already over on the client either way.
-  const delta = !credible
+  // Only a player entered in this week's league plays for trophies; anyone
+  // else's duel is practice. Otherwise a lead could be kept by duelling from
+  // outside the pool, where nobody can challenge it.
+  const ranked = credible && profile.duelListed;
+  const delta = !ranked
     ? 0
     : body.won
       ? DUEL_WIN_TROPHIES
@@ -672,7 +687,7 @@ api.post('/duel/result', async (c) => {
   if (trophies !== profile.trophies) await syncPoolScore(me.userId, trophies);
   // Quests count the same bounded result the trophies do, so an implausible
   // duel advances neither.
-  if (credible) await countDuel(me.userId);
+  if (ranked) await countDuel(me.userId);
   if (credible)
     await recordQuestEvents(me.userId, [
       { metric: 'duels', amount: 1 },

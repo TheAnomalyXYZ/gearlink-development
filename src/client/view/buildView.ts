@@ -18,6 +18,8 @@ import {
   DUEL_SETUP_STEPS,
   DUEL_HP,
   DUEL_JUNK_MIN_LINK,
+  DUEL_LOSS_TROPHIES,
+  DUEL_WIN_TROPHIES,
   DUEL_MATCH_SECONDS,
   EFFECT_COLOR,
   EFFECT_ICON,
@@ -105,6 +107,40 @@ export const buildView = (app: GearLinkApp): View => {
   const myLeague = leagueOf(st.profile.trophies);
   const upLeague = nextLeague(st.profile.trophies);
   const toNext = toNextLeague(st.profile.trophies);
+  const entered = !!st.profile.duelListed;
+  /** "3d 4h" to the Monday reset - when entry lapses and prizes pay. */
+  const resetIn = (() => {
+    const left = Math.max(0, duelSeasonEndsAt(Date.now()) - Date.now());
+    const d = Math.floor(left / 86_400_000);
+    const h = Math.floor((left % 86_400_000) / 3_600_000);
+    return (d > 0 ? d + 'd ' : '') + h + 'h';
+  })();
+  /** The three prizes this tier pays, with what the reset does at each. */
+  const tierPrizes = LEAGUES.filter((l) => l.tier === myLeague.tier).map(
+    (l) => {
+      const up = l.level === 3 ? LEAGUES[l.idx + 1] : null;
+      const down =
+        l.level === 1 && l.idx > 0
+          ? LEAGUES[l.idx - 3 + (DEMOTE_LEVEL - 1)]
+          : null;
+      const mine = l.idx === myLeague.idx;
+      return {
+        league: l.name.toUpperCase(),
+        color: l.color,
+        label: prizeLabel(seasonPrizeFor(l.floor)),
+        note: up
+          ? 'and promote to ' + up.name
+          : down
+            ? 'then drop to ' + down.name
+            : l.level === 0
+              ? 'and hold Knight'
+              : 'and stay',
+        tag: mine ? 'YOU' : '',
+        bg: mine ? 'rgba(252,227,112,.14)' : 'rgba(0,0,0,.25)',
+        border: mine ? '1px solid #FCE370' : '1px solid transparent',
+      };
+    }
+  );
   const questBoard = st.quests;
   const questClaimable = questBoard
     ? [...questBoard.daily, ...questBoard.weekly].filter(
@@ -965,10 +1001,7 @@ export const buildView = (app: GearLinkApp): View => {
     leagueNextLine: (() => {
       /* The season is weekly: trophies move you through the three levels of a
          tier, and only the reset moves you between tiers. */
-      const left = Math.max(0, duelSeasonEndsAt(Date.now()) - Date.now());
-      const d = Math.floor(left / 86_400_000);
-      const h = Math.floor((left % 86_400_000) / 3_600_000);
-      const resets = ' Resets in ' + (d > 0 ? d + 'd ' : '') + h + 'h.';
+      const resets = ' Resets in ' + resetIn + '.';
       if (myLeague.level === 0)
         return 'Knight is the top tier. Hold it.' + resets;
       const idx = myLeague.idx;
@@ -1032,12 +1065,17 @@ export const buildView = (app: GearLinkApp): View => {
 
     /* ---------- lobby ---------- */
     duelListed: !!st.profile.duelListed,
-    duelListedLabel: st.profile.duelListed ? 'LISTED' : 'NOT LISTED',
-    duelListedColor: st.profile.duelListed ? '#AEE45D' : '#9DB4D4',
-    duelListedLine: st.profile.duelListed
-      ? 'Other duellists in your league can draw you as an opponent.'
-      : 'You are hidden from other lobbies. You can still duel anyone here.',
-    duelListedToggleLabel: st.profile.duelListed ? 'GO PRIVATE' : 'LIST ME',
+    duelListedLabel: entered ? 'ENTERED - LOCKED IN' : 'PRACTICE ONLY',
+    duelListedColor: entered ? '#AEE45D' : '#FF9EA1',
+    duelListedLine: entered
+      ? "You're in this week's " +
+        myLeague.tier +
+        ' league. Anyone in it can challenge your five until the reset in ' +
+        resetIn +
+        '. You can change your five, but you cannot leave.'
+      : "Practice duels don't move trophies or count toward prizes. Enter this week's league to climb and win the weekly prize.",
+    duelListedToggleLabel: "ENTER THIS WEEK'S LEAGUE",
+    duelListedToggleDisplay: entered ? 'none' : 'flex',
     toggleListed: app.toggleListed,
     postChallenge: app.postChallenge,
     openChallenge: app.openChallenge,
@@ -1121,18 +1159,48 @@ export const buildView = (app: GearLinkApp): View => {
     backToLobby: app.backToLobby,
     confirmDuel: app.confirmDuel,
     /* ---------- weekly prizes ---------- */
-    leaguePrizeLine:
-      (myLeague.level === 0 ? 'Weekly prize: ' : 'Prize at the reset: ') +
-      prizeLabel(seasonPrizeFor(st.profile.trophies)) +
-      (st.profile.duelWeekDuels >= SEASON_MIN_DUELS
-        ? ' - qualified.'
-        : ' - ' +
-          st.profile.duelWeekDuels +
-          '/' +
-          SEASON_MIN_DUELS +
-          ' duels to qualify.'),
+    leaguePrizeLine: !entered
+      ? 'Enter to play for ' +
+        prizeLabel(seasonPrizeFor(st.profile.trophies)) +
+        ' at the reset.'
+      : (myLeague.level === 0 ? 'Weekly prize: ' : 'Prize at the reset: ') +
+        prizeLabel(seasonPrizeFor(st.profile.trophies)) +
+        (st.profile.duelWeekDuels >= SEASON_MIN_DUELS
+          ? ' - qualified.'
+          : ' - ' +
+            st.profile.duelWeekDuels +
+            '/' +
+            SEASON_MIN_DUELS +
+            ' duels to qualify.'),
     leaguePrizeColor:
-      st.profile.duelWeekDuels >= SEASON_MIN_DUELS ? '#AEE45D' : '#FCE370',
+      entered && st.profile.duelWeekDuels >= SEASON_MIN_DUELS
+        ? '#AEE45D'
+        : '#FCE370',
+
+    /* ---------- entering the week's league ---------- */
+    tierPrizes,
+    resetIn,
+    minDuels: SEASON_MIN_DUELS,
+    myTier: myLeague.tier.toUpperCase(),
+    optInEntered: entered,
+    optInTitle: entered ? 'UPDATE YOUR FIVE' : "ENTER THIS WEEK'S LEAGUE",
+    optInPrimaryLabel: entered
+      ? 'SAVE MY FIVE'
+      : 'ENTER THE LEAGUE & POST CHALLENGE',
+    optInPracticeDisplay: entered ? 'none' : 'flex',
+    optInEnterDisplay: entered ? 'none' : 'flex',
+    optInEnteredDisplay: entered ? 'flex' : 'none',
+    enterConfirmDisplay: st.enterConfirm ? 'flex' : 'none',
+    confirmEnter: app.confirmEnter,
+    cancelEnter: app.cancelEnter,
+    confirmRankLabel: entered
+      ? 'RANKED - ' +
+        DUEL_WIN_TROPHIES +
+        ' / -' +
+        DUEL_LOSS_TROPHIES +
+        ' TROPHIES'
+      : 'PRACTICE - NO TROPHIES, NO PRIZE PROGRESS',
+    confirmRankColor: entered ? '#AEE45D' : '#FF9EA1',
     prizeTable: PRIZE_TABLE.map((p) => ({
       league: p.league.toUpperCase(),
       color: p.color,
@@ -1533,9 +1601,12 @@ export const buildView = (app: GearLinkApp): View => {
         duelOverDisplay: out ? 'flex' : 'none',
         duelOverTitle: out ? (out.won ? 'YOU WIN' : 'YOU LOSE') : '',
         duelOverColor: out ? (out.won ? '#AEE45D' : '#FF9EA1') : '#FFF2B0',
-        duelOverDelta: out
-          ? (out.delta > 0 ? '+' + out.delta : String(out.delta)) + ' TROPHIES'
-          : '',
+        duelOverDelta: !out
+          ? ''
+          : !out.ranked
+            ? 'PRACTICE - NO TROPHIES'
+            : (out.delta > 0 ? '+' + out.delta : String(out.delta)) +
+              ' TROPHIES',
         duelOverBody: out
           ? out.kind === 'time-win'
             ? 'Clock ran out and you were ahead on HP.'

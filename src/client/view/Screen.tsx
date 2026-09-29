@@ -149,6 +149,98 @@ const btn = (bg: string, lip: string) => ({
   fontFamily: PIXEL,
 });
 
+/** This tier's three prizes, with what the reset does at each level - the
+ *  incentive shown wherever a player decides whether to enter. */
+const TierPrizes = ({ v }: { v: View }) => (
+  <div
+    style={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '5px',
+      flexShrink: '0',
+    }}
+  >
+    {(v.tierPrizes || []).map((p: any, pI: number) => (
+      <Fragment key={pI}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '6px 8px',
+            borderRadius: '6px 0 6px 0',
+            background: p.bg,
+            border: p.border,
+          }}
+        >
+          <div
+            style={{
+              flex: '0 0 74px',
+              fontFamily: PIXEL,
+              fontSize: '10px',
+              color: p.color,
+            }}
+          >
+            {p.league}
+          </div>
+          <div
+            style={{
+              flex: '1',
+              minWidth: '0',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1px',
+            }}
+          >
+            <div style={{ fontSize: '9px', color: '#FFFFFF' }}>{p.label}</div>
+            <div style={{ fontSize: '8px', color: '#9DB4D4' }}>{p.note}</div>
+          </div>
+          <div
+            style={{
+              flexShrink: '0',
+              fontSize: '8px',
+              color: '#FCE370',
+              letterSpacing: '.1em',
+            }}
+          >
+            {p.tag}
+          </div>
+        </div>
+      </Fragment>
+    ))}
+  </div>
+);
+
+const Bullet = ({
+  children,
+  color,
+}: {
+  children: ReactNode;
+  color?: string;
+}) => (
+  <div style={{ display: 'flex', gap: '7px', alignItems: 'baseline' }}>
+    <div
+      style={{
+        flexShrink: '0',
+        width: '6px',
+        height: '6px',
+        transform: 'rotate(45deg) translateY(-1px)',
+        background: color ?? '#9DB4D4',
+      }}
+    ></div>
+    <div
+      style={{
+        flex: '1',
+        fontSize: '9px',
+        color: '#E8EEF8',
+        lineHeight: '1.6',
+      }}
+    >
+      {children}
+    </div>
+  </div>
+);
+
 export const Screen = ({ v }: { v: View }) => (
   <div
     className="gl-page"
@@ -4801,22 +4893,89 @@ export const Screen = ({ v }: { v: View }) => (
                   flexShrink: '0',
                 }}
               >
-                PUT YOUR NAME TO IT
+                {v.optInTitle}
               </div>
+              {/* Entering locks a player in for the week, so the page says so
+                  before the button does - and says what it is worth. */}
               <div
                 style={{
-                  fontSize: '10px',
-                  color: '#CBD9EC',
-                  lineHeight: '1.6',
-                  textWrap: 'pretty',
+                  display: v.optInEnterDisplay,
+                  flexDirection: 'column',
+                  gap: '6px',
+                  background: '#1D2956',
+                  border: '2px solid #FF9EA1',
+                  borderRadius: '8px 0 8px 0',
+                  padding: '10px',
                   flexShrink: '0',
                 }}
               >
-                This is the five you duel with. List it and other duellists near
-                your trophies can draw you as an opponent while you are away -
-                and a challenge post goes up with your name on it. Stay private
-                and you keep duelling exactly the same; you just will not appear
-                in anybody else&apos;s lobby.
+                <div
+                  style={{
+                    fontSize: '9px',
+                    color: '#FF9EA1',
+                    letterSpacing: '.14em',
+                  }}
+                >
+                  BEFORE YOU ENTER
+                </div>
+                <Bullet color="#FF9EA1">
+                  <b>You are locked in until the Monday reset</b> (in{' '}
+                  {v.resetIn}). You can change your five, but you cannot leave
+                  the league this week.
+                </Bullet>
+                <Bullet>
+                  Your five joins the {v.myTier} opponent pool, and a challenge
+                  post goes up with your name on it. Anyone in {v.myTier} can
+                  duel it while you are away.
+                </Bullet>
+                <Bullet>
+                  Only entered duels move trophies and count toward the weekly
+                  prize.
+                </Bullet>
+                <Bullet>
+                  Entry lasts one week. After the reset you start outside the
+                  league and can choose to enter again.
+                </Bullet>
+              </div>
+              <div
+                style={{
+                  display: v.optInEnteredDisplay,
+                  fontSize: '10px',
+                  color: '#CBD9EC',
+                  lineHeight: '1.6',
+                  flexShrink: '0',
+                }}
+              >
+                You are in this week&apos;s {v.myTier} league until the reset in{' '}
+                {v.resetIn}. Saving swaps the five your challengers face.
+              </div>
+
+              <div
+                style={{
+                  display: v.optInEnterDisplay,
+                  flexDirection: 'column',
+                  gap: '6px',
+                  background: '#1D2956',
+                  border: '2px solid #FCE370',
+                  borderRadius: '8px 0 8px 0',
+                  padding: '10px',
+                  flexShrink: '0',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: '9px',
+                    color: '#FCE370',
+                    letterSpacing: '.14em',
+                  }}
+                >
+                  WIN THIS WEEK IN {v.myTier}
+                </div>
+                <TierPrizes v={v} />
+                <div style={{ fontSize: '8px', color: '#9DB4D4' }}>
+                  Paid at the reset for the level you finish on. Play{' '}
+                  {v.minDuels} entered duels to qualify.
+                </div>
               </div>
 
               <div
@@ -4914,13 +5073,13 @@ export const Screen = ({ v }: { v: View }) => (
                     textAlign: 'center',
                   }}
                 >
-                  LIST ME &amp; POST THE CHALLENGE
+                  {v.optInPrimaryLabel}
                 </div>
                 <div
                   onClick={v.saveUnlisted}
                   style={{
                     cursor: 'pointer',
-                    display: 'flex',
+                    display: v.optInPracticeDisplay,
                     alignItems: 'center',
                     justifyContent: 'center',
                     height: '38px',
@@ -4930,10 +5089,10 @@ export const Screen = ({ v }: { v: View }) => (
                     boxShadow: '0 -2px 0 0 #7E84E6 inset, 0 2px 0 0 #FFF inset',
                     color: '#000000',
                     fontFamily: "'Yoster Island',Volter,monospace",
-                    fontSize: '12px',
+                    fontSize: '10px',
                   }}
                 >
-                  SAVE, STAY PRIVATE
+                  PRACTICE ONLY - NO TROPHIES OR PRIZES
                 </div>
                 <div
                   onClick={v.backToDuelGear}
@@ -5265,13 +5424,31 @@ export const Screen = ({ v }: { v: View }) => (
                 >
                   {v.duelListedLine}
                 </div>
+                <div
+                  style={{
+                    display: v.optInEnterDisplay,
+                    flexDirection: 'column',
+                    gap: '6px',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: '8px',
+                      color: '#FCE370',
+                      letterSpacing: '.14em',
+                    }}
+                  >
+                    UP FOR GRABS THIS WEEK IN {v.myTier}
+                  </div>
+                  <TierPrizes v={v} />
+                </div>
                 <div style={{ display: 'flex', gap: '6px' }}>
                   <div
                     onClick={v.toggleListed}
                     style={{
                       cursor: 'pointer',
                       flex: '1',
-                      display: 'flex',
+                      display: v.duelListedToggleDisplay,
                       alignItems: 'center',
                       justifyContent: 'center',
                       height: '28px',
@@ -5836,6 +6013,18 @@ export const Screen = ({ v }: { v: View }) => (
               </div>
 
               <div style={{ flex: '1' }}></div>
+              <div
+                style={{
+                  alignSelf: 'center',
+                  fontSize: '9px',
+                  color: v.confirmRankColor,
+                  letterSpacing: '.1em',
+                  textAlign: 'center',
+                  flexShrink: '0',
+                }}
+              >
+                {v.confirmRankLabel}
+              </div>
               <div
                 onClick={v.confirmDuel}
                 style={{
@@ -7621,6 +7810,95 @@ export const Screen = ({ v }: { v: View }) => (
                 }}
               >
                 NEXT
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* The lock-in warning. Entering cannot be undone until the reset,
+            so it is the last thing between the button and the pool. */}
+        <div
+          onClick={v.cancelEnter}
+          style={{
+            position: 'absolute',
+            inset: '0',
+            zIndex: '38',
+            display: v.enterConfirmDisplay,
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+            background: 'rgba(6,27,62,.75)',
+            backdropFilter: 'blur(4px)',
+          }}
+        >
+          <div
+            onClick={v.stop}
+            style={{
+              width: '100%',
+              maxWidth: '330px',
+              maxHeight: '90%',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px',
+              background: '#1D2956',
+              border: '2px solid #FF9EA1',
+              borderRadius: '8px 0 8px 0',
+              padding: '14px',
+              animation: 'glPop 240ms ease-out',
+            }}
+          >
+            <div
+              style={{
+                fontFamily: PIXEL,
+                fontSize: '15px',
+                color: '#FFFFFF',
+              }}
+            >
+              LOCK IN FOR THIS WEEK?
+            </div>
+            <Bullet color="#FF9EA1">
+              You stay in the {v.myTier} league until the Monday reset (in{' '}
+              {v.resetIn}). There is no leaving early.
+            </Bullet>
+            <Bullet>
+              Your five can be challenged by anyone in {v.myTier}, and a
+              challenge post goes up with your name.
+            </Bullet>
+            <Bullet>You can still change your five at any time.</Bullet>
+            <Bullet>Next week you start outside again - nothing renews.</Bullet>
+            <div
+              style={{
+                fontSize: '8px',
+                color: '#FCE370',
+                letterSpacing: '.14em',
+              }}
+            >
+              WHAT YOU CAN WIN
+            </div>
+            <TierPrizes v={v} />
+            <div style={{ display: 'flex', gap: '8px', paddingTop: '2px' }}>
+              <div
+                onClick={v.cancelEnter}
+                style={{
+                  ...btn('#B5C0FF', '#7E84E6'),
+                  flex: '1',
+                  height: '40px',
+                  fontSize: '11px',
+                }}
+              >
+                NOT YET
+              </div>
+              <div
+                onClick={v.confirmEnter}
+                style={{
+                  ...btn('#FCE270', '#FF961D'),
+                  flex: '1.4',
+                  height: '40px',
+                  fontSize: '12px',
+                }}
+              >
+                LOCK IN &amp; ENTER
               </div>
             </div>
           </div>

@@ -16,7 +16,7 @@ import {
 } from '../../shared/engine/league.js';
 import { settlePrize } from '../../shared/engine/season.js';
 import type { SeasonPrize } from '../../shared/engine/season.js';
-import { syncPoolScore } from './duelpool.js';
+import { removeFromPool } from './duelpool.js';
 import { MAP_LENGTH, MAX_ASCENSION } from '../../shared/engine/campaign.js';
 import { normaliseHearts } from '../../shared/engine/hearts.js';
 import type { Hearts } from '../../shared/engine/hearts.js';
@@ -199,11 +199,14 @@ export const loadProfile = async (
       fields['duelPrize'] = JSON.stringify(earned);
     }
     duels = 0;
+    // League entry lasts one week and never renews itself: the new week
+    // starts everyone out of the pool until they choose to enter again.
+    fields['duelListed'] = '0';
     await redis.hSet(profileKey(userId), fields);
-    // The profile is the authority: its first read of the week puts the pool
-    // row on the same number, whatever the sweep did with it.
-    await syncPoolScore(userId, trophies);
+    await removeFromPool(userId);
   }
+  const listed =
+    h['duelListed'] === '1' && num(h['duelListedWeek'], -1) === week;
 
   return {
     username,
@@ -222,7 +225,7 @@ export const loadProfile = async (
     seenDuelSetup: h['seenDuelSetup'] === '1',
     duelCls,
     duelPicked: parsePicked(h['duelPicked'], duelCls),
-    duelListed: h['duelListed'] === '1',
+    duelListed: listed,
     duelWeekDuels: duels,
     duelPrize: prize,
   };
@@ -304,8 +307,12 @@ export const saveProfile = async (
   if (patch.duelCls !== undefined) fields['duelCls'] = patch.duelCls ?? '';
   if (patch.duelPicked !== undefined)
     fields['duelPicked'] = JSON.stringify(patch.duelPicked);
-  if (patch.duelListed !== undefined)
+  if (patch.duelListed !== undefined) {
     fields['duelListed'] = patch.duelListed ? '1' : '0';
+    // Entry is stamped with its week, so it lapses at the reset on its own.
+    if (patch.duelListed)
+      fields['duelListedWeek'] = String(duelWeekOf(Date.now()));
+  }
   if (!Object.keys(fields).length) return;
   await redis.hSet(profileKey(userId), fields);
 };

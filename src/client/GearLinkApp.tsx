@@ -1349,7 +1349,8 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     const cls = this.state.heroClass;
     const picked = this.state.picked;
     if (!loadoutIsLegal(picked, cls)) return;
-    this.setState({ duelSaving: true, duelSetup: null });
+    const wasListed = this.state.profile.duelListed;
+    this.setState({ duelSaving: true, duelSetup: null, enterConfirm: null });
     void api
       .saveDuelLoadout({ cls, picked, listed })
       .then((r) => {
@@ -1361,7 +1362,9 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
           duelOutcome: null,
         }));
         void this.loadOpponents(0);
-        if (listed) this.postChallenge();
+        // The challenge post goes up when a player ENTERS, not every time an
+        // entered player tweaks their five.
+        if (listed && !wasListed) this.postChallenge();
       })
       .catch((e) => {
         this.setState({ duelSaving: false });
@@ -1369,14 +1372,38 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       });
   }
 
-  listAndShare = (): void => this.saveDuelLoadout(true);
+  /** ENTER on the opt-in step. Entering locks a player in until the reset, so
+   *  it is asked twice - once on the page, once in the warning. Already in,
+   *  the button only saves the new five. */
+  listAndShare = (): void => {
+    if (this.state.profile.duelListed) this.saveDuelLoadout(true);
+    else this.setState({ enterConfirm: 'setup' });
+  };
   saveUnlisted = (): void => this.saveDuelLoadout(false);
 
-  /** Toggle listing from the lobby, without walking the build again. */
+  /** ENTER from the lobby, for a player who saved a practice loadout. There is
+   *  no way back out mid-week, so there is no toggle in the other direction. */
   toggleListed = (): void => {
+    if (this.state.profile.duelListed) return;
+    this.setState({ enterConfirm: 'lobby' });
+  };
+
+  cancelEnter = (): void => this.setState({ enterConfirm: null });
+
+  confirmEnter = (): void => {
+    const from = this.state.enterConfirm;
+    if (from === 'setup') {
+      this.saveDuelLoadout(true);
+      return;
+    }
+    this.setState({ enterConfirm: null });
     void api
-      .setDuelListed(!this.state.profile.duelListed)
-      .then((r) => this.adopt(r.profile, r.message))
+      .setDuelListed(true)
+      .then((r) => {
+        this.adopt(r.profile, r.message);
+        void this.loadOpponents(this.state.duelCursor);
+        if (r.profile.duelListed) this.postChallenge();
+      })
       .catch(this.fail);
   };
 
@@ -1670,13 +1697,15 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     this.timers.clear(...DUEL_TIMERS);
     const won = kind === 'win' || kind === 'time-win' || kind === 'win-buried';
     const seconds = Math.round((Date.now() - this.duelStartedAt) / 1000);
+    const ranked = this.state.profile.duelListed;
     // Shown immediately off the local result; the server's number replaces it
     // the moment it answers, so a slow network never holds up the panel.
     this.setState({
       duelOutcome: {
         kind,
         won,
-        delta: won ? DUEL_WIN_TROPHIES : -DUEL_LOSS_TROPHIES,
+        delta: !ranked ? 0 : won ? DUEL_WIN_TROPHIES : -DUEL_LOSS_TROPHIES,
+        ranked,
       },
       busy: false,
     });

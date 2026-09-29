@@ -235,8 +235,8 @@ export const DUEL_SETUP_STEPS = [
     body: 'These five pieces are what you attack with AND what the ladder hands your opponents when they challenge you while you are away.',
   },
   {
-    title: 'Then put your name to it',
-    body: "Listing your loadout puts you in the opponent pool for your league. Stay out and you can still duel - you just will not show up in anybody else's lobby.",
+    title: 'Then decide whether to enter',
+    body: "Entering this week's league puts your five in the opponent pool and makes your duels count for trophies and the weekly prize. Once in, you are locked in until the Monday reset. Stay out and your duels are practice.",
   },
 ];
 

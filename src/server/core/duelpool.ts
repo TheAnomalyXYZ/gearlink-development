@@ -17,12 +17,7 @@ import {
   skillForTrophies,
 } from '../../shared/engine/duel.js';
 import type { DuelFoe } from '../../shared/engine/duel.js';
-import {
-  duelWeekOf,
-  leagueOf,
-  settleWeeks,
-  tierRange,
-} from '../../shared/engine/league.js';
+import { duelWeekOf, leagueOf, tierRange } from '../../shared/engine/league.js';
 import { loadoutIsLegal } from '../../shared/engine/gear.js';
 import type { HeroClass } from '../../shared/engine/types.js';
 
@@ -110,35 +105,28 @@ export const syncPoolScore = async (
 };
 
 /**
- * Apply the weekly reset to every row still scored for an older week, once per
- * week. A listed player who is not playing has no profile read to settle them,
- * and without this they would sit in last week's tier in everyone's lobby.
- * Settling is a pure function of the score, so a row that races a profile read
- * lands on the same number either way.
+ * Clear last week's entries, once per week. Entering the league lasts one week
+ * and does not renew, so a row stamped for an older week - or one from before
+ * weeks were stamped - is simply dropped. A player who enters again is listed
+ * afresh at their settled trophy count.
  */
 const sweepPool = async (): Promise<void> => {
   const week = duelWeekOf(Date.now());
-  const swept = Number(await redis.get(POOL_SWEPT));
-  if (swept === week) return;
+  if (Number(await redis.get(POOL_SWEPT)) === week) return;
   // First caller this week does the sweep; everyone else carries on.
   const lock = POOL_SWEPT + ':' + week;
   if ((await redis.incrBy(lock, 1)) !== 1) return;
   await redis.expire(lock, 8 * 86_400);
   const rows = await redis.zRange(POOL_KEY, 0, -1);
   const weeks = rows.length ? await redis.hGetAll(POOL_WEEK) : {};
-  // Rows from before weeks were recorded are taken as current: their profiles
-  // start counting from this week too, so the two stay in step.
-  const base = Number.isFinite(swept) && swept > 0 ? swept : week;
-  const stamp: Record<string, string> = {};
-  for (const r of rows) {
-    const from = Number(weeks[r.member] ?? base);
-    stamp[r.member] = String(week);
-    if (from >= week) continue;
-    const next = settleWeeks(r.score, week - from);
-    if (next !== r.score)
-      await redis.zAdd(POOL_KEY, { member: r.member, score: next });
+  const stale = rows
+    .map((r) => r.member)
+    .filter((m) => Number(weeks[m] ?? -1) < week);
+  if (stale.length) {
+    await redis.zRem(POOL_KEY, stale);
+    await redis.hDel(POOL_META, stale);
+    await redis.hDel(POOL_WEEK, stale);
   }
-  if (Object.keys(stamp).length) await redis.hSet(POOL_WEEK, stamp);
   await redis.set(POOL_SWEPT, String(week));
 };
 

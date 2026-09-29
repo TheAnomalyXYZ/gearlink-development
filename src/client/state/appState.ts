@@ -57,7 +57,13 @@ export type OpenState = {
 };
 export type DuelEndKind =
   'win' | 'loss' | 'time-win' | 'time-loss' | 'win-buried' | 'loss-buried';
-export type DuelOutcome = { kind: DuelEndKind; won: boolean; delta: number };
+export type DuelOutcome = {
+  kind: DuelEndKind;
+  won: boolean;
+  delta: number;
+  /** False for a practice duel, played without entering the week's league. */
+  ranked: boolean;
+};
 export type GearTab = 'attack' | 'block' | 'effect';
 export type ShopTab = 'packs' | 'coins' | 'gems';
 export type InvTab = 'packs' | 'gear';
@@ -162,6 +168,9 @@ export type AppState = {
   challenger: DuelFoe | null;
   /** The lobby's how-duels-work sheet. */
   duelRulesOpen: boolean;
+  /** The lock-in warning before entering the week's league, and which screen
+   *  asked for it: the setup's opt-in step, or the lobby's ENTER button. */
+  enterConfirm: 'setup' | 'lobby' | null;
 
   duel: DuelState | null;
   duelFoe: DuelFoe | null;
@@ -313,6 +322,7 @@ export const INITIAL_STATE: AppState = {
   challengeUrl: null,
   challenger: null,
   duelRulesOpen: false,
+  enterConfirm: null,
   duel: null,
   duelFoe: null,
   duelFtue: null,
