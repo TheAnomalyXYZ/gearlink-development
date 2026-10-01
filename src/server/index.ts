@@ -5,6 +5,7 @@ import { admin } from './routes/admin.js';
 import { api } from './routes/api.js';
 import { menu } from './routes/menu.js';
 import { paymentsRoutes } from './routes/payments.js';
+import { scheduler } from './routes/scheduler.js';
 import { triggers } from './routes/triggers.js';
 
 const app = new Hono();
@@ -12,6 +13,7 @@ const internal = new Hono();
 
 internal.route('/menu', menu);
 internal.route('/payments', paymentsRoutes);
+internal.route('/scheduler', scheduler);
 internal.route('/triggers', triggers);
 
 app.route('/api/admin', admin);

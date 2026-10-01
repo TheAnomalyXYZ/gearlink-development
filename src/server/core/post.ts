@@ -99,17 +99,21 @@ const snoovatarOf = async (username: string): Promise<string> => {
 const isClass = (v: unknown): v is HeroClass =>
   v === 'Hero' || v === 'Archer' || v === 'Mage';
 
+/** A post's raw postData, or undefined when it has none or cannot be read. */
+export const readPostData = async (postId: string): Promise<unknown> => {
+  try {
+    const post = await reddit.getPostById(postId as never);
+    return await post?.getPostData();
+  } catch {
+    return undefined;
+  }
+};
+
 /** A post's challenge data, normalised, or null for an ordinary post. */
 const readChallengeData = async (
   postId: string
 ): Promise<(ChallengeData & { trophies: number }) | null> => {
-  let raw: unknown;
-  try {
-    const post = await reddit.getPostById(postId as never);
-    raw = await post?.getPostData();
-  } catch {
-    return null;
-  }
+  const raw = await readPostData(postId);
   if (!raw || typeof raw !== 'object') return null;
   const d = raw as Partial<ChallengeData>;
   if (!d.challenge || typeof d.username !== 'string' || !isClass(d.cls))

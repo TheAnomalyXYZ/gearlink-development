@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import type { UiResponse } from '@devvit/web/shared';
 import { context } from '@devvit/web/server';
 import { createPost } from '../core/post.js';
+import { postDailyOnce } from '../core/daily.js';
 
 export const menu = new Hono();
 
@@ -21,6 +22,33 @@ menu.post('/post-create', async (c) => {
       {
         showToast: 'Failed to create post',
       },
+      400
+    );
+  }
+});
+
+menu.post('/daily-post', async (c) => {
+  try {
+    const result = await postDailyOnce();
+    if (!result.postId)
+      return c.json<UiResponse>(
+        { showToast: "Today's Daily Gauntlet is already being posted" },
+        200
+      );
+    return c.json<UiResponse>(
+      {
+        showToast:
+          result.status === 'created'
+            ? "Today's Daily Gauntlet is up"
+            : "Today's Daily Gauntlet is already up",
+        navigateTo: `https://reddit.com/r/${context.subredditName}/comments/${result.postId}`,
+      },
+      200
+    );
+  } catch (error) {
+    console.error(`Error creating daily post: ${error}`);
+    return c.json<UiResponse>(
+      { showToast: 'Failed to post the Daily Gauntlet' },
       400
     );
   }

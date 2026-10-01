@@ -1,0 +1,52 @@
+import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
+import test from 'node:test';
+import {
+  DAY_MS,
+  DAILY_EPOCH,
+  dailyFoe,
+  dateLabelFor,
+  gauntletNumber,
+  nextGauntletAt,
+  posterFor,
+  utcDayKey,
+} from './daily.js';
+import { WAVE_ENEMIES } from './engine/monsters.js';
+
+void test('the first daily gauntlet is #1 and each UTC day adds one', () => {
+  assert.equal(gauntletNumber(DAILY_EPOCH), 1);
+  assert.equal(gauntletNumber(DAILY_EPOCH + DAY_MS - 1), 1);
+  assert.equal(gauntletNumber(DAILY_EPOCH + DAY_MS), 2);
+});
+
+void test('the next gauntlet goes up at the next UTC midnight', () => {
+  const noon = DAILY_EPOCH + DAY_MS / 2;
+  assert.equal(nextGauntletAt(noon), DAILY_EPOCH + DAY_MS);
+  assert.equal(nextGauntletAt(DAILY_EPOCH), DAILY_EPOCH + DAY_MS);
+});
+
+void test('every foe comes round once per cycle, never twice in a row', () => {
+  const n = WAVE_ENEMIES.length;
+  const seen = new Set<string>();
+  for (let d = 1; d <= n; d++) {
+    seen.add(dailyFoe(d).foe);
+    assert.notEqual(dailyFoe(d).foe, dailyFoe(d + 1).foe);
+  }
+  assert.equal(seen.size, n);
+});
+
+void test('every foe on a poster has art and a backdrop behind it', () => {
+  for (let d = 1; d <= WAVE_ENEMIES.length; d++) {
+    const f = dailyFoe(d);
+    assert.ok(existsSync('public' + f.foeArt), 'missing ' + f.foeArt);
+    assert.ok(existsSync('public' + f.backdrop), 'missing ' + f.backdrop);
+  }
+});
+
+void test('a poster is labelled with its own day', () => {
+  assert.equal(dateLabelFor('2026-10-01'), 'OCT 1');
+  const p = posterFor(true, '2026-10-03');
+  assert.equal(p.day, 3);
+  assert.equal(p.dateLabel, 'OCT 3');
+  assert.equal(utcDayKey(DAILY_EPOCH), '2026-10-01');
+});

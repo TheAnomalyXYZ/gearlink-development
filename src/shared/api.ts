@@ -194,10 +194,39 @@ export type ChallengeViewer = {
   avatar: string;
 };
 
+/**
+ * What the inline view of an ordinary GearLink post draws: the day's poster.
+ *
+ * A Daily Gauntlet post carries its own number and date; any other ordinary
+ * post is drawn as today's. Like the challenge card, every path is finished on
+ * the server so the feed view needs no engine.
+ */
+export type DailyPoster = {
+  /** True for a scheduled Daily Gauntlet post, false for any other post. */
+  daily: boolean;
+  /** Gauntlet number, counted from the first one. */
+  day: number;
+  /** Short date for the chip, e.g. "OCT 1". */
+  dateLabel: string;
+  /** The foe on the poster, the stage it stands on, and its light. */
+  foe: string;
+  foeArt: string;
+  region: string;
+  backdrop: string;
+  accent: string;
+  tagline: string;
+  /** The top of this post's own ladder, best first. Empty when nobody has run. */
+  top: { username: string; score: number; hero: HeroClass }[];
+  /** How many players are on this post's ladder. */
+  players: number;
+};
+
 export type ChallengeResponse = {
   type: 'challengeCard';
   /** Null on an ordinary GearLink post, which shows the plain splash. */
   card: ChallengeCard | null;
+  /** The poster for an ordinary post. Null on a challenge post. */
+  poster: DailyPoster | null;
   /** Who is reading, when Reddit says. Null for a logged-out visitor. */
   viewer: ChallengeViewer | null;
 };

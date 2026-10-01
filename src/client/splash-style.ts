@@ -72,6 +72,15 @@ filter:drop-shadow(0 0 3px #FFF2A8) drop-shadow(0 0 6px #FFB84D)}
 .glk-s4{bottom:-5px;right:18%;animation:glk-twinkle 2s ease-in-out 1.1s infinite}
 .glk-d1{animation-delay:.06s}.glk-d2{animation-delay:.12s}.glk-d3{animation-delay:.18s}
 .glk-d4{animation-delay:.24s}.glk-d5{animation-delay:.3s}
+@keyframes glk-spin{0%{transform:translate(-50%,-50%) rotate(0deg)}100%{transform:translate(-50%,-50%) rotate(360deg)}}
+@keyframes glk-mote{0%{opacity:0;transform:translateY(0) scale(.6)}20%{opacity:.9}100%{opacity:0;transform:translateY(-120px) scale(1)}}
+@keyframes glk-float{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-3px) rotate(6deg)}}
+.glk-spin{transform:translate(-50%,-50%);animation:glk-spin 24s linear infinite}
+.glk-float{animation:glk-float 2.4s ease-in-out infinite}
+.glk-mote{position:absolute;bottom:18%;width:3px;height:3px;border-radius:1px;pointer-events:none;opacity:0;animation:glk-mote 4s ease-out infinite}
+.glk-m0{left:22%;animation-delay:0s}.glk-m1{left:34%;animation-delay:1.3s}
+.glk-m2{left:47%;animation-delay:2.6s}.glk-m3{left:58%;animation-delay:.7s}
+.glk-m4{left:69%;animation-delay:2s}.glk-m5{left:79%;animation-delay:3.2s}
 @media (prefers-reduced-motion:reduce){
-.glk-bob,.glk-breathe,.glk-pop,.glk-sheen,.glk-blink,.glk-rise,.glk-star{animation:none}
+.glk-bob,.glk-breathe,.glk-pop,.glk-sheen,.glk-blink,.glk-rise,.glk-star,.glk-spin,.glk-float,.glk-mote{animation:none}
 }`;

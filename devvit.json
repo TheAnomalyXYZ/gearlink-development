@@ -25,8 +25,23 @@
         "location": "subreddit",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/post-create"
+      },
+      {
+        "label": "Post today's Daily Gauntlet",
+        "description": "Put up today's Daily Gauntlet now, if it is not up yet",
+        "location": "subreddit",
+        "forUserType": "moderator",
+        "endpoint": "/internal/menu/daily-post"
       }
     ]
+  },
+  "scheduler": {
+    "tasks": {
+      "dailyGauntlet": {
+        "endpoint": "/internal/scheduler/daily-post",
+        "cron": "0 0 * * *"
+      }
+    }
   },
   "triggers": {
     "onAppInstall": "/internal/triggers/on-app-install"

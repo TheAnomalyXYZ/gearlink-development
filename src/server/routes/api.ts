@@ -54,6 +54,7 @@ import {
   readChallengeCard,
   readChallengeFoe,
 } from '../core/post.js';
+import { readPoster } from '../core/daily.js';
 import {
   claimQuest,
   loadQuestBoard,
@@ -751,18 +752,21 @@ api.get('/challenge', async (c) => {
     return c.json<ChallengeResponse>({
       type: 'challengeCard',
       card: null,
+      poster: null,
       viewer: null,
     });
   // The reader fills the open side of the plate, so they are looked up with
   // the card. A logged-out visitor has no handle and gets no face, which the
   // card already draws as the anonymous seat.
-  const [card, avatar] = await Promise.all([
+  const [card, poster, avatar] = await Promise.all([
     readChallengeCard(postId),
+    readPoster(postId),
     username ? snoovatarOf(username) : Promise.resolve(''),
   ]);
   return c.json<ChallengeResponse>({
     type: 'challengeCard',
     card,
+    poster: card ? null : poster,
     viewer: username ? { username, avatar } : null,
   });
 });

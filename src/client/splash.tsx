@@ -2,12 +2,13 @@ import './index.css';
 
 import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { GEARLINK_ICON } from './view/assets.js';
 import { api } from './api.js';
-import type { ChallengeCard, ChallengeViewer } from '../shared/api.js';
+import type { ChallengeResponse } from '../shared/api.js';
+import { posterFor, utcDayKey } from '../shared/daily.js';
 import { requestExpandedMode } from '@devvit/web/client';
 import { Challenge } from './splash-card.js';
-import { MOTION, PIXEL, SCRIM, SHELL, TITLE } from './splash-style.js';
+import { Daily } from './splash-daily.js';
+import { PIXEL, SHELL } from './splash-style.js';
 
 /** The four-point star the Neura Knights claim button twinkles with. */
 const Star = ({ size, cls }: { size: number; cls: string }) => (
@@ -91,69 +92,57 @@ const Enter = ({
  * with finished image paths, so nothing here has to know what a rank or a
  * piece of gear looks like.
  *
- * Two answers. An ordinary GearLink post gets the game's own splash. A
- * CHALLENGE post gets the duellist who made it.
+ * Two answers. A CHALLENGE post gets the duellist who made it. Every other
+ * post gets the day's poster - its foe, its region and the top of its own
+ * ladder. Until the answer lands the card is a bare dark shell, so a challenge
+ * post never flashes the poster first; if the lookup fails, today's poster is
+ * drawn locally with an empty podium.
  */
-
-const Plain = () => (
-  <div
-    className="relative flex h-full min-h-screen flex-col items-center justify-center gap-3 px-6 text-center"
-    style={SHELL}
-  >
-    <style>{MOTION}</style>
-    <div className="absolute inset-0" style={SCRIM} />
-    <div
-      className="glk-bob relative h-[72px] w-[68px] bg-contain bg-center bg-no-repeat"
-      style={{ backgroundImage: `url(${GEARLINK_ICON})` }}
-    />
-    <div
-      className="relative"
-      style={{ ...TITLE, fontSize: 'clamp(20px,5vw,30px)' }}
-    >
-      GEARLINK BATTLE
-    </div>
-    <div
-      className="relative max-w-[34ch] text-xs leading-relaxed"
-      style={{ color: '#CBD9EC' }}
-    >
-      Link your gear, break the wave, and see how deep the ladder takes you.
-    </div>
-    <Enter label="ENTER THE GAUNTLET" />
-  </div>
-);
-
 export const Splash = () => {
-  const [card, setCard] = useState<ChallengeCard | null>(null);
-  // Who is reading. The same answer carries it, so the open side of the plate
-  // fills in with the reader's own face rather than a blank.
-  const [viewer, setViewer] = useState<ChallengeViewer | null>(null);
+  const [res, setRes] = useState<ChallengeResponse | null>(null);
 
   useEffect(() => {
     let live = true;
-    // A failed lookup is not an error worth showing: the plain splash is the
-    // right answer for every post that is not a challenge, including one whose
-    // data could not be read.
+    const today = () => posterFor(false, utcDayKey(Date.now()));
     void api
       .challengeCard()
       .then((r) => {
-        if (!live) return;
-        setCard(r.card);
-        setViewer(r.viewer);
+        if (live) setRes(r.card || r.poster ? r : { ...r, poster: today() });
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (live)
+          setRes({
+            type: 'challengeCard',
+            card: null,
+            poster: today(),
+            viewer: null,
+          });
+      });
     return () => {
       live = false;
     };
   }, []);
 
-  return card ? (
-    <Challenge
-      card={card}
-      viewer={viewer}
-      cta={<Enter label="ACCEPT THE CHALLENGE" sparkle />}
+  if (res?.card)
+    return (
+      <Challenge
+        card={res.card}
+        viewer={res.viewer}
+        cta={<Enter label="ACCEPT THE CHALLENGE" sparkle />}
+      />
+    );
+  const poster = res?.poster;
+  if (!poster) return <div className="h-screen w-full" style={SHELL} />;
+  return (
+    <Daily
+      poster={poster}
+      cta={
+        <Enter
+          label={poster.daily ? "PLAY TODAY'S GAUNTLET" : 'ENTER THE GAUNTLET'}
+          sparkle={poster.players === 0}
+        />
+      }
     />
-  ) : (
-    <Plain />
   );
 };
 

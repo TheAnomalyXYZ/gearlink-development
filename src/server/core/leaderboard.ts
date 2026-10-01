@@ -63,3 +63,7 @@ export const getLeaderboard = async (
     };
   });
 };
+
+/** How many players are on a post's ladder. */
+export const ladderSize = async (postId: string): Promise<number> =>
+  await redis.zCard(lbKey(postId));
