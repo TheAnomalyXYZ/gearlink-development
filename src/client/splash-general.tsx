@@ -87,9 +87,13 @@ const Stander = ({
         alt={hero.name}
         className="glk-bob relative w-full object-contain object-bottom"
         style={{
-          // Capped by the card's height too, so a short feed slot still fits
-          // all three; the sides stand a head shorter than the middle.
-          maxHeight: mid ? '46vh' : '38vh',
+          // Capped by the card's height too - and by what the title, the
+          // button and their padding leave of it - so a short feed slot
+          // still fits all three without a foot on the tagline. The sides
+          // stand a head shorter than the middle.
+          maxHeight: mid
+            ? 'min(46vh,calc(100vh - 240px))'
+            : 'min(38vh,calc((100vh - 240px) * .82))',
           animationDelay: `${i * 0.45}s`,
           imageRendering: 'pixelated',
           filter: `drop-shadow(0 0 10px ${hero.color}99) drop-shadow(0 4px 0 rgba(0,0,0,.35))`,
@@ -103,7 +107,7 @@ const Stander = ({
    is a Devvit host call this module stays clear of. */
 export const General = ({ cta }: { cta?: ReactNode }) => (
   <div
-    className="relative flex h-screen max-h-screen w-full flex-col items-center justify-between overflow-hidden px-4 pt-4 pb-3 text-center"
+    className="relative flex h-screen max-h-screen w-full flex-col items-center justify-between overflow-hidden px-4 pt-[clamp(20px,7vh,40px)] pb-[clamp(20px,7vh,40px)] text-center"
     style={{
       backgroundColor: '#2A7FD0',
       backgroundImage: 'url(/art/PocketKnights/sky_v3.png)',

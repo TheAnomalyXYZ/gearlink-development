@@ -6,15 +6,16 @@
  * holds yet - something to play for even on a day no one throws a challenge.
  */
 import { reddit, redis } from '@devvit/web/server';
-import type { DailyPoster } from '../../shared/api.js';
+import type { DailyBattle, DailyPoster } from '../../shared/api.js';
 import {
   dailyFoe,
+  dailyBattleFor,
   dailyNumber,
   posterFor,
   utcDayKey,
 } from '../../shared/daily.js';
 import { getLeaderboard, ladderSize } from './leaderboard.js';
-import { readPostData } from './post.js';
+import { readPostData, snoovatarOf } from './post.js';
 
 /** What a daily post carries. */
 type DailyData = { daily: number; date: string };
@@ -94,6 +95,15 @@ const readDailyDate = (raw: unknown): string | null => {
     : null;
 };
 
+/** The fight a Daily Battle post holds, or null for any other post. Its
+ *  location is open to every reader of that post, wherever their climb stands. */
+export const readDailyBattle = async (
+  postId: string
+): Promise<DailyBattle | null> => {
+  const date = readDailyDate(await readPostData(postId));
+  return date ? dailyBattleFor(date) : null;
+};
+
 /** The poster a Daily Battle post's inline view draws, or null for any
  *  other post. */
 export const readPoster = async (
@@ -105,9 +115,12 @@ export const readPoster = async (
     getLeaderboard(postId, undefined, 3),
     ladderSize(postId),
   ]);
-  return posterFor(
-    date,
-    rows.map((r) => ({ username: r.username, score: r.score, hero: r.hero })),
-    players
+  const top = await Promise.all(
+    rows.map(async (r) => ({
+      username: r.username,
+      score: r.score,
+      avatar: await snoovatarOf(r.username),
+    }))
   );
+  return posterFor(date, top, players);
 };

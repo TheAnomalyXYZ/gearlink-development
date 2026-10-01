@@ -5,7 +5,8 @@
  * the day and the server that draws its poster agree on which foe the day
  * belongs to.
  */
-import type { DailyPoster } from './api.js';
+import type { DailyBattle, DailyPoster } from './api.js';
+import { FIRST_LOCATION, LOCATIONS } from './engine/campaign.js';
 import {
   WAVE_ENEMIES,
   backgroundUrlFor,
@@ -79,6 +80,18 @@ export const dailyFoe = (day: number) => {
     backdrop: backgroundUrlFor(region),
     ...look,
   };
+};
+
+/** The map location a daily number is fought at: the one standing in its
+ *  foe's region. Opening the day's post goes straight there. */
+export const dailyLocationId = (day: number): string =>
+  LOCATIONS.find((l) => l.region === dailyFoe(day).region)?.id ??
+  FIRST_LOCATION;
+
+/** The fight a post dated YYYY-MM-DD holds. */
+export const dailyBattleFor = (dayKey: string): DailyBattle => {
+  const day = dailyNumber(Date.parse(dayKey + 'T00:00:00Z'));
+  return { day, locationId: dailyLocationId(day) };
 };
 
 /** The poster for one day's post. With no ladder given it is what a fresh

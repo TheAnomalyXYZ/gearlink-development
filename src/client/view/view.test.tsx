@@ -271,6 +271,7 @@ const fakeApp = (over: Record<string, unknown>): GearLinkApp => {
     goStep: curried,
     pickLocation: curried,
     goMap: noop,
+    replayDaily: noop,
     endAction: noop,
     startDuel: curried,
     pickFoe: curried,
@@ -364,6 +365,42 @@ const renders = (label: string, over: Record<string, unknown>) => {
   );
   return html;
 };
+
+void test("a Daily Battle's end screen reports the day's ladder", () => {
+  const daily = { day: 4, locationId: 'caves' };
+  const won = buildView(
+    fakeApp({
+      phase: 'end',
+      bs,
+      endReason: 'won',
+      runWon: true,
+      daily,
+      locationId: 'caves',
+      runBanked: 'banked',
+      runRank: 2,
+      runBest: true,
+    })
+  );
+  assert.equal(won.endTitle, 'DAILY BATTLE #4 WON');
+  assert.match(won.endBody, /#2 on today's ladder/);
+  assert.equal(won.endActionLabel, 'PLAY AGAIN');
+  assert.equal(won.endStats[0].label, "TODAY'S RANK");
+  assert.equal(won.endStats[0].value, '#2');
+  renders('daily end', {
+    phase: 'end',
+    bs,
+    endReason: 'dead',
+    daily,
+    locationId: 'caves',
+    runBanked: 'pending',
+  });
+
+  // Elsewhere on the same post, a map run still ends like a map run.
+  const map = buildView(
+    fakeApp({ phase: 'end', bs, endReason: 'won', daily, locationId: 'forest' })
+  );
+  assert.equal(map.endTitle, 'LOCATION TAKEN');
+});
 
 void test('every screen renders', () => {
   renders('splash', { phase: 'splash' });

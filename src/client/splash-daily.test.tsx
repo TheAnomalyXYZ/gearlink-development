@@ -21,8 +21,8 @@ void test('the podium shows whoever holds the ladder', () => {
   const p = posterFor(
     '2026-10-01',
     [
-      { username: 'alpha', score: 12340, hero: 'Mage' },
-      { username: 'bravo', score: 9000, hero: 'Archer' },
+      { username: 'alpha', score: 12340, avatar: '/snoo/alpha.png' },
+      { username: 'bravo', score: 9000, avatar: '' },
     ],
     7
   );
@@ -32,4 +32,19 @@ void test('the podium shows whoever holds the ladder', () => {
   assert.ok(html.includes('u/bravo'));
   assert.ok(html.includes('open seat'), 'third seat should be open');
   assert.ok(html.includes('7 raiders'));
+});
+
+void test('podium seats show snoovatars, plain Snoo when missing, never class art', () => {
+  const p = posterFor(
+    '2026-10-01',
+    [
+      { username: 'alpha', score: 12340, avatar: '/snoo/alpha.png' },
+      { username: 'bravo', score: 9000, avatar: '' },
+    ],
+    2
+  );
+  const html = renderToStaticMarkup(<Daily poster={p} />);
+  assert.ok(html.includes('/snoo/alpha.png'), 'snoovatar not shown');
+  assert.ok(html.includes('/avatars/snoo-default.png'), 'no Snoo fallback');
+  assert.ok(!html.includes('_Avatar.png'), 'class art leaked onto the podium');
 });

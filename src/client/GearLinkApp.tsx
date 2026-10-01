@@ -284,16 +284,22 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
           leaderboard: res.leaderboard,
           picked: ownedLoadout(s.heroClass, res.profile.gear),
           challenger: res.challenger,
+          daily: res.daily,
           isMod: res.isModerator,
         }),
         // Opened from a challenge post: ACCEPT goes straight to the pre-fight
         // screen against its poster - by way of the duel build if there is no
         // loadout yet, which hands back to that screen once it is saved.
+        // Opened from a Daily Battle post: straight into that location's
+        // pre-fight build, whether or not the climb has reached it.
         () => {
           const foe = res.challenger;
-          if (!foe) return;
-          if (this.duelLoadout()) this.pickFoe(foe)();
-          else this.openDuelSetup(foe);
+          if (foe) {
+            if (this.duelLoadout()) this.pickFoe(foe)();
+            else this.openDuelSetup(foe);
+            return;
+          }
+          if (res.daily) this.pickLocation(res.daily.locationId)();
         }
       );
     } catch (e) {
@@ -758,13 +764,29 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
 
   /** Commit to a location and walk into the hero step. A locked node is inert:
    *  the map is the only gate on the run, so it is enforced here as well as on
-   *  the server. */
+   *  the server. The daily post's own location is the one exception. */
   pickLocation = (id: string) => (): void => {
-    if (locationIndex(id) > this.state.profile.progress) return;
+    if (!this.canEnter(id)) return;
     this.setState({ locationId: id, flow: 'run', openLocation: null }, () =>
       this.goStep('hero')()
     );
   };
+  /** Whether a location is open to fight: reached by the climb, or the one
+   *  the Daily Battle post this app was opened from is fought at. */
+  canEnter = (id: string): boolean =>
+    locationIndex(id) <= this.state.profile.progress ||
+    id === this.state.daily?.locationId;
+
+  /** Whether the run on screen is this post's Daily Battle. */
+  isDailyRun = (): boolean =>
+    !!this.state.daily && this.state.locationId === this.state.daily.locationId;
+
+  /** PLAY AGAIN on a Daily Battle's end screen: back into its build. */
+  replayDaily = (): void => {
+    const daily = this.state.daily;
+    if (daily) this.pickLocation(daily.locationId)();
+  };
+
   goHome = this.goStep('home');
   openPause = (): void => this.setState({ modal: 'pause' });
   resume = (): void => this.setState({ modal: null });
@@ -968,7 +990,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   private async submitRun(): Promise<void> {
     const spec = this.runSpec;
     if (!this.run || !spec || !this.moves.length) {
-      this.setState({ coinsEarned: 0 });
+      this.setState({ coinsEarned: 0, runBanked: 'none' });
       return;
     }
     const moves = this.moves;
@@ -982,11 +1004,14 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         runWon: res.won,
         ascended: res.ascended,
         heartPiecesEarned: res.heartPiecesEarned,
+        runBanked: 'banked',
+        runRank: res.rank,
+        runBest: res.isBest,
       });
       this.refreshQuests();
     } catch (e) {
       // The run is over on screen either way; say plainly that it did not bank.
-      this.setState({ coinsEarned: 0 });
+      this.setState({ coinsEarned: 0, runBanked: 'failed' });
       this.fail(e);
     }
   }

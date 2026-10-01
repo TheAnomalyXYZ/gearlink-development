@@ -893,6 +893,75 @@ export const buildView = (app: GearLinkApp): View => {
     waveBonus: 0,
   };
 
+  /* A Daily Battle's end screen reports the day's fight - its ladder, its
+     crown - rather than what the run did to the map. */
+  const daily = st.daily as { day: number; locationId: string } | null;
+  const dailyRun = !!daily && st.locationId === daily.locationId;
+  const dailyName = daily ? 'DAILY BATTLE #' + daily.day : '';
+  const dailyOutcome =
+    st.endReason === 'won'
+      ? 'The elite fell and the day is yours to defend.'
+      : st.endReason === 'stuck'
+        ? 'The board locked before the elite fell.'
+        : st.endReason === 'ended'
+          ? 'You walked out mid-battle.'
+          : 'You fell before the elite did.';
+  const dailyStanding =
+    st.runBanked === 'pending'
+      ? "Banking your score on today's ladder..."
+      : st.runBanked === 'failed'
+        ? "This run did not reach today's ladder."
+        : st.runBanked === 'none' || st.runRank === null
+          ? "Nothing reached today's ladder. Play again to post a score."
+          : st.runRank === 1
+            ? st.runBest
+              ? "New best - you hold today's crown."
+              : "You still hold today's crown."
+            : st.runBest
+              ? 'New best today - #' + st.runRank + " on today's ladder."
+              : 'Not your best today. Your best holds #' +
+                st.runRank +
+                " on today's ladder.";
+  const dailyRankLabel =
+    st.runBanked === 'pending'
+      ? '...'
+      : st.runRank === null
+        ? '-'
+        : '#' + st.runRank;
+
+  const stat = (
+    label: string,
+    value: string | number,
+    color: string,
+    i: number
+  ) => ({
+    label,
+    value,
+    color,
+    anim: 'glPop 320ms ' + i * 80 + 'ms ease-out both',
+  });
+  const waves = app.rollUp(endBs.wavesCleared);
+  const link = app.rollUp(endBs.maxChain);
+  const score = app.rollUp(app.scoreOf(endBs)).toLocaleString();
+  const runStats = [
+    stat('WAVES CLEARED', waves, '#3C63FF', 0),
+    stat('BEST LINK', link, '#1D2956', 1),
+    stat('TURNS', app.rollUp(endBs.turnsUsed), '#1D2956', 2),
+    stat('SCORE', score, '#2E8B57', 3),
+  ];
+  // Rank and score lead: they are what the day's ladder is about.
+  const dailyStats = [
+    stat(
+      "TODAY'S RANK",
+      dailyRankLabel,
+      st.runRank === 1 ? '#C8901A' : '#3C63FF',
+      0
+    ),
+    stat('SCORE', score, '#2E8B57', 1),
+    stat('WAVES CLEARED', waves, '#3C63FF', 2),
+    stat('BEST LINK', link, '#1D2956', 3),
+  ];
+
   return {
     /* Wallet figures the shop header and the duel lobby read straight off the
        profile the server sent. */
@@ -2184,7 +2253,8 @@ export const buildView = (app: GearLinkApp): View => {
       Math.min(st.profile.progress, MAP_LENGTH) + '/' + MAP_LENGTH + ' TAKEN',
     mapPins: LOCATIONS.map((loc, i) => {
       const cleared = i < st.profile.progress;
-      const open = i <= st.profile.progress;
+      // The Daily Battle post's own location is open past the frontier too.
+      const open = i <= st.profile.progress || loc.id === st.daily?.locationId;
       const next = i === st.profile.progress;
       const isOpen = st.openLocation === loc.id;
       return {
@@ -2224,9 +2294,9 @@ export const buildView = (app: GearLinkApp): View => {
           loc.minWaves === loc.maxWaves
             ? loc.minWaves + ' WAVES'
             : loc.minWaves + '-' + loc.maxWaves + ' WAVES',
-        tag: cleared ? 'CLEARED' : next ? 'NEXT' : 'LOCKED',
-        tagBg: cleared ? '#2E8B57' : next ? '#FCE370' : '#3A4C74',
-        tagFg: next ? '#1D2956' : '#FFFFFF',
+        tag: cleared ? 'CLEARED' : next ? 'NEXT' : open ? 'DAILY' : 'LOCKED',
+        tagBg: cleared ? '#2E8B57' : next || open ? '#FCE370' : '#3A4C74',
+        tagFg: open && !cleared ? '#1D2956' : '#FFFFFF',
         // A locked pin opens a panel that explains itself, but has no way in.
         enter: open ? app.pickLocation(loc.id) : null,
         enterLabel: open ? 'ENTER' : 'LOCKED',
@@ -2456,8 +2526,9 @@ export const buildView = (app: GearLinkApp): View => {
     goLoadout: app.goLoadout,
     stop: app.stop,
     ...battle,
-    endTitle:
-      st.endReason === 'won'
+    endTitle: dailyRun
+      ? dailyName + (st.endReason === 'won' ? ' WON' : '')
+      : st.endReason === 'won'
         ? st.ascended
           ? 'ASCENDED'
           : 'LOCATION TAKEN'
@@ -2466,8 +2537,12 @@ export const buildView = (app: GearLinkApp): View => {
           : st.endReason === 'ended'
             ? 'RUN FORFEIT'
             : 'YOU FELL',
-    endBody:
-      st.endReason === 'won'
+    endBody: dailyRun
+      ? dailyOutcome +
+        ' ' +
+        dailyStanding +
+        (st.ascended ? ' The King is down - you ascended too.' : '')
+      : st.endReason === 'won'
         ? st.ascended
           ? 'The King is down. The map opens again from Greenwood, and everything on it hits harder from here.'
           : 'The elite fell and the road ahead is open. The next location fields more waves and a bigger guard.'
@@ -2479,34 +2554,13 @@ export const buildView = (app: GearLinkApp): View => {
     endTitleColor: st.endReason === 'won' ? '#FCE370' : '#FF9EA1',
     /* Won or lost, the way on is the map - there is nothing else to go back
        to now that a run is one location rather than an endless run. */
-    endActionLabel: st.endReason === 'won' ? 'BACK TO THE MAP' : 'TRY AGAIN',
-    endAction: app.goMap,
-    endStats: [
-      {
-        label: 'WAVES CLEARED',
-        value: app.rollUp(endBs.wavesCleared),
-        color: '#3C63FF',
-        anim: 'glPop 320ms ease-out both',
-      },
-      {
-        label: 'BEST LINK',
-        value: app.rollUp(endBs.maxChain),
-        color: '#1D2956',
-        anim: 'glPop 320ms 80ms ease-out both',
-      },
-      {
-        label: 'TURNS',
-        value: app.rollUp(endBs.turnsUsed),
-        color: '#1D2956',
-        anim: 'glPop 320ms 160ms ease-out both',
-      },
-      {
-        label: 'SCORE',
-        value: app.rollUp(app.scoreOf(endBs)).toLocaleString(),
-        color: '#2E8B57',
-        anim: 'glPop 320ms 240ms ease-out both',
-      },
-    ]
+    endActionLabel: dailyRun
+      ? 'PLAY AGAIN'
+      : st.endReason === 'won'
+        ? 'BACK TO THE MAP'
+        : 'TRY AGAIN',
+    endAction: dailyRun ? app.replayDaily : app.goMap,
+    endStats: (dailyRun ? dailyStats : runStats)
       .concat(
         !st.heartPiecesEarned
           ? []

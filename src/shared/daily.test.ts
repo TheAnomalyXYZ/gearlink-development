@@ -4,7 +4,9 @@ import test from 'node:test';
 import {
   DAY_MS,
   DAILY_EPOCH,
+  dailyBattleFor,
   dailyFoe,
+  dailyLocationId,
   dateLabelFor,
   dailyNumber,
   nextDailyAt,
@@ -12,6 +14,7 @@ import {
   utcDayKey,
 } from './daily.js';
 import { WAVE_ENEMIES } from './engine/monsters.js';
+import { locationById } from './engine/campaign.js';
 
 void test('the first Daily Battle is #1 and each UTC day adds one', () => {
   assert.equal(dailyNumber(DAILY_EPOCH), 1);
@@ -49,4 +52,15 @@ void test('a poster is labelled with its own day', () => {
   assert.equal(p.day, 3);
   assert.equal(p.dateLabel, 'OCT 3');
   assert.equal(utcDayKey(DAILY_EPOCH), '2026-10-01');
+});
+
+void test("a day is fought at the map location in its foe's region", () => {
+  for (let day = 1; day <= WAVE_ENEMIES.length; day++) {
+    const loc = locationById(dailyLocationId(day));
+    assert.equal(loc.region, dailyFoe(day).region);
+  }
+  assert.deepEqual(dailyBattleFor('2026-10-01'), {
+    day: 1,
+    locationId: dailyLocationId(1),
+  });
 });

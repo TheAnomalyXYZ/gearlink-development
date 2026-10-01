@@ -93,7 +93,7 @@ export const createChallengePost = async (
  *  so a missing one is asked for again when the card is read rather than
  *  written off. A failure here is not an error: the card falls back to
  *  Reddit's default snoo, which is still a Reddit face. */
-const snoovatarOf = async (username: string): Promise<string> => {
+export const snoovatarOf = async (username: string): Promise<string> => {
   try {
     return (await reddit.getSnoovatarUrl(username)) ?? '';
   } catch {

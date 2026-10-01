@@ -17,6 +17,7 @@ import type {
   RunState,
 } from '../../shared/engine/index.js';
 import type {
+  DailyBattle,
   LeaderboardEntry,
   Profile,
   QuestBoard,
@@ -103,6 +104,11 @@ export type AppState = {
   mapX: number;
   mapY: number;
 
+  /** Where the last run stands on this post's ladder, once the server says:
+   *  'none' when there was nothing to submit, 'failed' when it did not bank. */
+  runBanked: 'pending' | 'banked' | 'failed' | 'none';
+  runRank: number | null;
+  runBest: boolean;
   /** Pieces the last win dropped, for the end screen's readout. */
   heartPiecesEarned: number;
   /** An upgrade is in flight; the button stays inert until it lands. */
@@ -170,6 +176,9 @@ export type AppState = {
   /** The poster of the challenge post this app was opened from. Pinned to the
    *  top of the lobby for as long as the app is open. */
   challenger: DuelFoe | null;
+  /** The Daily Battle of the post this app was opened from. Its location is
+   *  open to the reader for as long as the app is open, even past their climb. */
+  daily: DailyBattle | null;
   /** A moderator of this subreddit: settings offers them the admin panel. */
   isMod: boolean;
   adminOpen: boolean;
@@ -262,6 +271,9 @@ export const BATTLE_RESET = {
   runWon: false,
   ascended: false,
   heartPiecesEarned: 0,
+  runBanked: 'pending',
+  runRank: null,
+  runBest: false,
   ftuePlace: null,
   ftueSample: { damage: 0, killed: false },
 } satisfies Partial<AppState>;
@@ -329,6 +341,7 @@ export const INITIAL_STATE: AppState = {
   duelPadded: false,
   challengeUrl: null,
   challenger: null,
+  daily: null,
   isMod: false,
   adminOpen: false,
   duelRulesOpen: false,

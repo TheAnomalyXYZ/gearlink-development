@@ -15,11 +15,9 @@ import type { DailyPoster } from '../shared/api.js';
 import { nextDailyAt } from '../shared/daily.js';
 import { MOTION, PIXEL, TITLE } from './splash-style.js';
 
-const HERO_FACE: Record<string, string> = {
-  Hero: '/art/NeuraKnights/Characters/Hero_Avatar.png',
-  Archer: '/art/NeuraKnights/Characters/Archer_Avatar.png',
-  Mage: '/art/NeuraKnights/Characters/Mage_Avatar.png',
-};
+/** Reddit's plain snoo, for a player with no snoovatar - the podium seats
+ *  redditors, so it never falls back to the game's class art. */
+const SNOO = '/avatars/snoo-default.png';
 
 /** Gold, silver, bronze - as fill and the darker lip under it. */
 const MEDAL: [string, string][] = [
@@ -77,6 +75,7 @@ const Seat = ({
   place: number;
   row: DailyPoster['top'][number] | undefined;
 }) => {
+  const [broken, setBroken] = useState(false);
   const [fill, lip] = MEDAL[place]!;
   const tall = place === 0;
   return (
@@ -115,10 +114,10 @@ const Seat = ({
         >
           {row ? (
             <img
-              src={HERO_FACE[row.hero] ?? HERO_FACE.Hero}
-              alt={row.hero}
-              className="h-full w-full object-cover"
-              style={{ imageRendering: 'pixelated' }}
+              src={broken || !row.avatar ? SNOO : row.avatar}
+              alt={row.username}
+              onError={() => setBroken(true)}
+              className="h-full w-full object-cover object-top"
             />
           ) : (
             <span style={{ fontFamily: PIXEL, fontSize: 11, color: '#7A8BB0' }}>

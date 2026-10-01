@@ -64,6 +64,9 @@ export type LeaderboardEntry = {
   isYou: boolean;
 };
 
+/** A Daily Battle post's fight: its number and the location it is fought at. */
+export type DailyBattle = { day: number; locationId: string };
+
 export type InitResponse = {
   type: 'init';
   postId: string;
@@ -72,6 +75,9 @@ export type InitResponse = {
   /** The duellist who made this post, when it is a challenge post the reader
    *  did not make themself. Opening it goes straight to the duel. */
   challenger: DuelFoe | null;
+  /** The Daily Battle this post holds, when it is one. Opening it goes
+   *  straight to that fight, even past the reader's own climb. */
+  daily: DailyBattle | null;
   /** Moderators of the subreddit get the admin panel in settings. */
   isModerator: boolean;
 };
@@ -211,8 +217,9 @@ export type DailyPoster = {
   backdrop: string;
   accent: string;
   tagline: string;
-  /** The top of this post's own ladder, best first. Empty when nobody has run. */
-  top: { username: string; score: number; hero: HeroClass }[];
+  /** The top of this post's own ladder, best first. Empty when nobody has run.
+   *  `avatar` is the player's snoovatar, '' when Reddit has none. */
+  top: { username: string; score: number; avatar: string }[];
   /** How many players are on this post's ladder. */
   players: number;
 };

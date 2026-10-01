@@ -54,7 +54,7 @@ import {
   readChallengeCard,
   readChallengeFoe,
 } from '../core/post.js';
-import { readPoster } from '../core/daily.js';
+import { readDailyBattle, readPoster } from '../core/daily.js';
 import {
   claimQuest,
   loadQuestBoard,
@@ -109,19 +109,22 @@ api.get('/init', async (c) => {
   // Before the profile read: a first read writes the profile, and the visit
   // has to see whether one existed to know if this is a new player.
   await recordVisit(me.userId, me.username);
-  const [profile, leaderboard, challenger, isModerator] = await Promise.all([
-    loadProfile(me.userId, me.username),
-    getLeaderboard(me.postId, me.userId),
-    // A failed read only means the post opens like any other.
-    readChallengeFoe(me.postId, me.userId, me.username).catch(() => null),
-    isModeratorSafe(me.userId),
-  ]);
+  const [profile, leaderboard, challenger, daily, isModerator] =
+    await Promise.all([
+      loadProfile(me.userId, me.username),
+      getLeaderboard(me.postId, me.userId),
+      // A failed read only means the post opens like any other.
+      readChallengeFoe(me.postId, me.userId, me.username).catch(() => null),
+      readDailyBattle(me.postId).catch(() => null),
+      isModeratorSafe(me.userId),
+    ]);
   return c.json<InitResponse>({
     type: 'init',
     postId: me.postId,
     profile,
     leaderboard,
     challenger,
+    daily,
     isModerator,
   });
 });
@@ -163,7 +166,8 @@ api.post('/run', async (c) => {
   }
 
   // The map is the server's to hand out: a location past the player's progress
-  // is not theirs to fight, and the ascension has to be the one the profile
+  // is not theirs to fight - except the one a Daily Battle post is fought at,
+  // which is open to everyone on that post. The ascension has to be the one the profile
   // records or the replay would score different monsters than were fought.
   const locId = body.locationId ?? LOCATIONS[0]!.id;
   if (!LOCATIONS.some((l) => l.id === locId))
@@ -172,7 +176,14 @@ api.post('/run', async (c) => {
       400
     );
   const locIdx = locationIndex(locId);
-  if (locIdx > profile.progress)
+  /* A daily fight past the player's frontier counts for the post's ladder and
+     the coins, but never moves the climb: no unlock, no heart pieces, no
+     ascension from a Castle the map has not reached. */
+  const beyond = locIdx > profile.progress;
+  if (
+    beyond &&
+    locId !== (await readDailyBattle(me.postId).catch(() => null))?.locationId
+  )
     return c.json<ErrorResponse>(
       { status: 'error', message: 'that location is still locked' },
       400
@@ -219,7 +230,7 @@ api.post('/run', async (c) => {
   /* A win opens the NEXT location, and never closes one already open - a
      replayed early location must not walk the map backwards. The Castle is the
      exception: its win is an ascension, so the map starts over one tier up. */
-  const isKing = won && locIdx === MAP_LENGTH - 1;
+  const isKing = won && !beyond && locIdx === MAP_LENGTH - 1;
   /* Heart pieces drop on a location's FIRST clear this ascension only. The
      frontier is exactly `progress`, so re-fighting somewhere already taken
      pays nothing and the first location cannot be farmed for a bigger pool. */
@@ -231,7 +242,7 @@ api.post('/run', async (c) => {
     ? ascended
       ? 0
       : MAP_LENGTH
-    : won
+    : won && !beyond
       ? Math.max(profile.progress, locIdx + 1)
       : profile.progress;
 
