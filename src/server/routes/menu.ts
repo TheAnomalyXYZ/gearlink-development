@@ -32,15 +32,15 @@ menu.post('/daily-post', async (c) => {
     const result = await postDailyOnce();
     if (!result.postId)
       return c.json<UiResponse>(
-        { showToast: "Today's Daily Gauntlet is already being posted" },
+        { showToast: "Today's Daily Battle is already being posted" },
         200
       );
     return c.json<UiResponse>(
       {
         showToast:
           result.status === 'created'
-            ? "Today's Daily Gauntlet is up"
-            : "Today's Daily Gauntlet is already up",
+            ? "Today's Daily Battle is up"
+            : "Today's Daily Battle is already up",
         navigateTo: `https://reddit.com/r/${context.subredditName}/comments/${result.postId}`,
       },
       200
@@ -48,7 +48,7 @@ menu.post('/daily-post', async (c) => {
   } catch (error) {
     console.error(`Error creating daily post: ${error}`);
     return c.json<UiResponse>(
-      { showToast: 'Failed to post the Daily Gauntlet' },
+      { showToast: 'Failed to post the Daily Battle' },
       400
     );
   }

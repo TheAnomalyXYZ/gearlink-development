@@ -12,9 +12,14 @@ import {
 import type { DuelFoe } from '../../shared/engine/duel.js';
 import type { HeroClass } from '../../shared/engine/types.js';
 
+/** The general GearLink Battle post: no day, no foe, nothing but the game.
+ *  The one a moderator pins as the place to play from. */
 export const createPost = async () => {
   return await reddit.submitCustomPost({
     title: 'GearLink Battle - link your gear, break the wave',
+    textFallback: {
+      text: 'GearLink Battle: link your gear, break the wave. Open the post to play.',
+    },
   });
 };
 

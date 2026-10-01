@@ -228,7 +228,7 @@ export const DUEL_SETUP_STEPS = [
   },
   {
     title: 'Pick who you duel as',
-    body: 'Your duel hero is kept separately from your gauntlet run, so climbing the ladder never means rebuilding the run you like.',
+    body: 'Your duel hero is kept separately from your campaign run, so climbing the ladder never means rebuilding the run you like.',
   },
   {
     title: 'Build the five you defend with',
@@ -381,7 +381,7 @@ export const buryBoard = (
   return b;
 };
 
-/** One duel move. Same payout maths as a gauntlet link (magnitudeFor, perk
+/** One duel move. Same payout maths as a campaign link (magnitudeFor, perk
  *  scaling, riders) but resolved against a player instead of a wave. */
 export const duelStep = (
   state: DuelState,
@@ -454,7 +454,7 @@ export const duelStep = (
 
   let curBoard = staged;
   // Bombs chain, but resolve in ONE beat: a duel reads on tempo, so the
-  // stage-by-stage playback the gauntlet uses would drag here.
+  // stage-by-stage playback the campaign uses would drag here.
   for (
     let stage = 0;
     pending.length > 0 && stage < MAX_DETONATION_STAGES;

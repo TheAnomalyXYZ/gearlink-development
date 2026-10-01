@@ -1320,7 +1320,7 @@ export const buildView = (app: GearLinkApp): View => {
           duelClockColor: '#FFF2B0',
           duelClockPct: 100,
           // The duel's own floats ride on `pops`, which the arena screen reads;
-          // `battle` is empty outside a gauntlet run, so nothing clobbers them.
+          // `battle` is empty outside a campaign run, so nothing clobbers them.
           pops: [],
           duelFoePops: [],
           foeBannerColor: '#8A9BBF',
@@ -2478,7 +2478,7 @@ export const buildView = (app: GearLinkApp): View => {
             : 'HP does not come back between waves. Clear the location in one go or not at all.',
     endTitleColor: st.endReason === 'won' ? '#FCE370' : '#FF9EA1',
     /* Won or lost, the way on is the map - there is nothing else to go back
-       to now that a run is one location rather than an endless gauntlet. */
+       to now that a run is one location rather than an endless run. */
     endActionLabel: st.endReason === 'won' ? 'BACK TO THE MAP' : 'TRY AGAIN',
     endAction: app.goMap,
     endStats: [

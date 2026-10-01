@@ -33,7 +33,7 @@ export type Profile = {
   seenDuelFtue: boolean;
   /** Whether the duel SETUP flow (hero, five, opt-in) has been walked once. */
   seenDuelSetup: boolean;
-  /** The duel loadout, kept apart from the gauntlet one so climbing the ladder
+  /** The duel loadout, kept apart from the run one so climbing the ladder
    *  never means rebuilding the run you like. Null until it is first built. */
   duelCls: HeroClass | null;
   duelPicked: string[];
@@ -195,16 +195,12 @@ export type ChallengeViewer = {
 };
 
 /**
- * What the inline view of an ordinary GearLink post draws: the day's poster.
- *
- * A Daily Gauntlet post carries its own number and date; any other ordinary
- * post is drawn as today's. Like the challenge card, every path is finished on
- * the server so the feed view needs no engine.
+ * What the inline view of a Daily Battle post draws: the day's poster. Like
+ * the challenge card, every path is finished on the server so the feed view
+ * needs no engine.
  */
 export type DailyPoster = {
-  /** True for a scheduled Daily Gauntlet post, false for any other post. */
-  daily: boolean;
-  /** Gauntlet number, counted from the first one. */
+  /** Daily Battle number, counted from the first one. */
   day: number;
   /** Short date for the chip, e.g. "OCT 1". */
   dateLabel: string;
@@ -223,9 +219,10 @@ export type DailyPoster = {
 
 export type ChallengeResponse = {
   type: 'challengeCard';
-  /** Null on an ordinary GearLink post, which shows the plain splash. */
+  /** Null on any post that is not a challenge. */
   card: ChallengeCard | null;
-  /** The poster for an ordinary post. Null on a challenge post. */
+  /** The day's poster on a Daily Battle post. Null on any other post - a
+   *  challenge post draws `card`, and a general post draws the plain splash. */
   poster: DailyPoster | null;
   /** Who is reading, when Reddit says. Null for a logged-out visitor. */
   viewer: ChallengeViewer | null;

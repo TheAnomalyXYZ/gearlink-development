@@ -3,7 +3,7 @@ import { postDailyOnce } from '../core/daily.js';
 
 export const scheduler = new Hono();
 
-/** Fired by the `dailyGauntlet` cron in devvit.json at 00:00 UTC. */
+/** Fired by the `dailyBattle` cron in devvit.json at 00:00 UTC. */
 scheduler.post('/daily-post', async (c) => {
   try {
     const result = await postDailyOnce();

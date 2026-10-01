@@ -6,23 +6,23 @@ import {
   DAILY_EPOCH,
   dailyFoe,
   dateLabelFor,
-  gauntletNumber,
-  nextGauntletAt,
+  dailyNumber,
+  nextDailyAt,
   posterFor,
   utcDayKey,
 } from './daily.js';
 import { WAVE_ENEMIES } from './engine/monsters.js';
 
-void test('the first daily gauntlet is #1 and each UTC day adds one', () => {
-  assert.equal(gauntletNumber(DAILY_EPOCH), 1);
-  assert.equal(gauntletNumber(DAILY_EPOCH + DAY_MS - 1), 1);
-  assert.equal(gauntletNumber(DAILY_EPOCH + DAY_MS), 2);
+void test('the first Daily Battle is #1 and each UTC day adds one', () => {
+  assert.equal(dailyNumber(DAILY_EPOCH), 1);
+  assert.equal(dailyNumber(DAILY_EPOCH + DAY_MS - 1), 1);
+  assert.equal(dailyNumber(DAILY_EPOCH + DAY_MS), 2);
 });
 
-void test('the next gauntlet goes up at the next UTC midnight', () => {
+void test('the next daily post goes up at the next UTC midnight', () => {
   const noon = DAILY_EPOCH + DAY_MS / 2;
-  assert.equal(nextGauntletAt(noon), DAILY_EPOCH + DAY_MS);
-  assert.equal(nextGauntletAt(DAILY_EPOCH), DAILY_EPOCH + DAY_MS);
+  assert.equal(nextDailyAt(noon), DAILY_EPOCH + DAY_MS);
+  assert.equal(nextDailyAt(DAILY_EPOCH), DAILY_EPOCH + DAY_MS);
 });
 
 void test('every foe comes round once per cycle, never twice in a row', () => {
@@ -45,7 +45,7 @@ void test('every foe on a poster has art and a backdrop behind it', () => {
 
 void test('a poster is labelled with its own day', () => {
   assert.equal(dateLabelFor('2026-10-01'), 'OCT 1');
-  const p = posterFor(true, '2026-10-03');
+  const p = posterFor('2026-10-03');
   assert.equal(p.day, 3);
   assert.equal(p.dateLabel, 'OCT 3');
   assert.equal(utcDayKey(DAILY_EPOCH), '2026-10-01');

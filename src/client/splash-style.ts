@@ -40,6 +40,31 @@ export const TITLE: CSSProperties = {
   textShadow: '0 4px 0 #141D2E',
 };
 
+/* The general post's cast. */
+const FACE = '/art/NeuraKnights/Characters/';
+const GEAR = '/art/NeuraKnights/Gear/';
+
+/** The three classes, left to right, each in its own colour. */
+export const GENERAL_HEROES = [
+  { name: 'ARCHER', art: FACE + 'Archer.png', color: '#5CC45A' },
+  { name: 'HERO', art: FACE + 'Hero.png', color: '#E8453C' },
+  { name: 'MAGE', art: FACE + 'Mage.png', color: '#8C7CFF' },
+];
+
+/** Gear floating round the heroes: ten epic pieces, five to a side. */
+export const GENERAL_GEAR = [
+  GEAR + 'Warrior/Hero_Weapon_Epic_Base.png',
+  GEAR + 'Archer/Archer_Weapon_Epic_Base.png',
+  GEAR + 'Mage/Mage_Weapon_Epic_Base.png',
+  GEAR + 'Warrior/Hero_Hat_Epic_Base.png',
+  GEAR + 'Mage/Mage_Necklace_Epic_Base.png',
+  GEAR + 'Archer/Archer_Off_Hand_Epic_Base.png',
+  GEAR + 'Warrior/Hero_Chest_Epic_Base.png',
+  GEAR + 'Archer/Archer_Necklace_Epic_Base.png',
+  GEAR + 'Mage/Mage_Off_Hand_Epic_Base.png',
+  GEAR + 'Warrior/Hero_Necklace_Epic_Base.png',
+];
+
 export const PIXEL = "'Yoster Island',Volter,monospace";
 
 /**
@@ -76,11 +101,13 @@ filter:drop-shadow(0 0 3px #FFF2A8) drop-shadow(0 0 6px #FFB84D)}
 @keyframes glk-mote{0%{opacity:0;transform:translateY(0) scale(.6)}20%{opacity:.9}100%{opacity:0;transform:translateY(-120px) scale(1)}}
 @keyframes glk-float{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-3px) rotate(6deg)}}
 .glk-spin{transform:translate(-50%,-50%);animation:glk-spin 24s linear infinite}
+.glk-drift{transform:translate(-50%,-50%);animation:glk-spin 36s linear infinite}
+.glk-drift-rev{transform:translate(-50%,-50%);animation:glk-spin 54s linear infinite reverse}
 .glk-float{animation:glk-float 2.4s ease-in-out infinite}
 .glk-mote{position:absolute;bottom:18%;width:3px;height:3px;border-radius:1px;pointer-events:none;opacity:0;animation:glk-mote 4s ease-out infinite}
 .glk-m0{left:22%;animation-delay:0s}.glk-m1{left:34%;animation-delay:1.3s}
 .glk-m2{left:47%;animation-delay:2.6s}.glk-m3{left:58%;animation-delay:.7s}
 .glk-m4{left:69%;animation-delay:2s}.glk-m5{left:79%;animation-delay:3.2s}
 @media (prefers-reduced-motion:reduce){
-.glk-bob,.glk-breathe,.glk-pop,.glk-sheen,.glk-blink,.glk-rise,.glk-star,.glk-spin,.glk-float,.glk-mote{animation:none}
+.glk-bob,.glk-breathe,.glk-pop,.glk-sheen,.glk-blink,.glk-rise,.glk-star,.glk-spin,.glk-drift,.glk-drift-rev,.glk-float,.glk-mote{animation:none}
 }`;

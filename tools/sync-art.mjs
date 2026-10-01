@@ -44,6 +44,10 @@ const HARDCODED = [
   '/art/PocketKnights/Map/Base.png',
   '/art/PocketKnights/Pattern/MenuButtonPatten.svg',
   '/art/PocketKnights/sky_v3.png',
+  // Full-body heroes on the general post's feed card.
+  '/art/NeuraKnights/Characters/Hero.png',
+  '/art/NeuraKnights/Characters/Archer.png',
+  '/art/NeuraKnights/Characters/Mage.png',
 ];
 
 export const artPaths = () => {

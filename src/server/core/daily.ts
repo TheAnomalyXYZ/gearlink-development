@@ -1,5 +1,5 @@
 /**
- * The Daily Gauntlet post.
+ * The Daily Battle post.
  *
  * Once a UTC day the scheduler puts up a fresh GearLink post. Every post keeps
  * its own ladder, so each day starts with an empty board and a crown nobody
@@ -9,7 +9,7 @@ import { reddit, redis } from '@devvit/web/server';
 import type { DailyPoster } from '../../shared/api.js';
 import {
   dailyFoe,
-  gauntletNumber,
+  dailyNumber,
   posterFor,
   utcDayKey,
 } from '../../shared/daily.js';
@@ -25,12 +25,12 @@ const guardKey = (dayKey: string) => `daily:post:${dayKey}`;
 const GUARD_TTL_MS = 48 * 60 * 60 * 1000;
 
 const submitDailyPost = async (dayKey: string) => {
-  const day = gauntletNumber(Date.parse(dayKey + 'T00:00:00Z'));
+  const day = dailyNumber(Date.parse(dayKey + 'T00:00:00Z'));
   const foe = dailyFoe(day);
   const data: DailyData = { daily: 1, date: dayKey };
   return await reddit.submitCustomPost({
     title:
-      'Daily Gauntlet #' +
+      'Daily Battle #' +
       day +
       ' - ' +
       foe.foe +
@@ -39,7 +39,7 @@ const submitDailyPost = async (dayKey: string) => {
       '. Who takes the crown today?',
     postData: { ...data },
     textFallback: {
-      text: "Today's GearLink Daily Gauntlet. Fresh ladder, empty crown - open the post to play.",
+      text: "Today's GearLink Daily Battle. Fresh ladder, empty crown - open the post to play.",
     },
   });
 };
@@ -49,7 +49,7 @@ export type DailyPostResult =
   | { status: 'skipped'; dayKey: string; postId?: string };
 
 /**
- * Put up today's gauntlet, at most once per UTC day.
+ * Put up today's Daily Battle, at most once per UTC day.
  *
  * The scheduler delivers at least once, and a moderator can post the day by
  * hand, so the day's slot is claimed atomically before anything is submitted.
@@ -94,23 +94,19 @@ const readDailyDate = (raw: unknown): string | null => {
     : null;
 };
 
-/**
- * The poster an ordinary post's inline view draws, or null for a challenge
- * post. A daily post is drawn as its own day; any other post as today's.
- */
+/** The poster a Daily Battle post's inline view draws, or null for any
+ *  other post. */
 export const readPoster = async (
   postId: string
 ): Promise<DailyPoster | null> => {
-  const raw = await readPostData(postId);
-  if (raw && typeof raw === 'object' && 'challenge' in raw) return null;
-  const date = readDailyDate(raw);
+  const date = readDailyDate(await readPostData(postId));
+  if (!date) return null;
   const [rows, players] = await Promise.all([
     getLeaderboard(postId, undefined, 3),
     ladderSize(postId),
   ]);
   return posterFor(
-    !!date,
-    date ?? utcDayKey(Date.now()),
+    date,
     rows.map((r) => ({ username: r.username, score: r.score, hero: r.hero })),
     players
   );

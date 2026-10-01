@@ -150,7 +150,7 @@ export type { AppState } from './state/appState.js';
 type RunSpec = Omit<SubmitRunRequest, 'moves'>;
 
 type TimerKey =
-  // gauntlet beats
+  // campaign beats
   | 'link'
   | 'land'
   | 'reject'
@@ -462,7 +462,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     if (this.wrap === el) return;
     this.wrap = el;
     // Re-observe on every NEW node: the duel screen mounts its own wrapper, and
-    // a one-shot observer would stay pinned to the gauntlet's element and leave
+    // a one-shot observer would stay pinned to the campaign's element and leave
     // the duel board measured at zero.
     this.ro = reobserve(this.ro, el, this.measureBoard);
     this.measureBoard();
@@ -999,7 +999,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     return host ? Number(host.getAttribute('data-cell')) : null;
   }
 
-  /** The board the player is currently dragging on - gauntlet wave or duel side.
+  /** The board the player is currently dragging on - campaign wave or duel side.
    *  Every input handler goes through this so one gesture serves both modes. */
   private liveBoard(): number[] | null {
     if (this.state.phase === 'duel') return this.state.duel?.me.board ?? null;
@@ -1107,7 +1107,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       loadout: this.loadout(),
       perk: this.perk(),
       sx,
-      // A gauntlet Mark sits on the linker's own status block.
+      // A campaign Mark sits on the linker's own status block.
       foeSx: sx,
       duelling: false,
       mutators: MUTATORS,

@@ -1,9 +1,9 @@
 /**
- * The Daily Gauntlet: one fresh post a day, each with its own ladder.
+ * The Daily Battle: one fresh post a day, each with its own ladder.
  *
  * Everything here is a pure function of the clock, so the server that posts
- * the day, the server that draws its poster, and the feed view that falls back
- * to drawing it locally all agree on which foe the day belongs to.
+ * the day and the server that draws its poster agree on which foe the day
+ * belongs to.
  */
 import type { DailyPoster } from './api.js';
 import {
@@ -14,18 +14,18 @@ import {
 
 export const DAY_MS = 86_400_000;
 
-/** Gauntlet #1 is the first UTC day the daily post ran. */
+/** Daily Battle #1 is the first UTC day the daily post ran. */
 export const DAILY_EPOCH = Date.UTC(2026, 9, 1);
 
 /** The UTC day a moment falls in, as YYYY-MM-DD. */
 export const utcDayKey = (now: number): string =>
   new Date(now).toISOString().slice(0, 10);
 
-export const gauntletNumber = (now: number): number =>
+export const dailyNumber = (now: number): number =>
   Math.floor((now - DAILY_EPOCH) / DAY_MS) + 1;
 
-/** The next UTC midnight, when the next gauntlet goes up. */
-export const nextGauntletAt = (now: number): number =>
+/** The next UTC midnight, when the next daily post goes up. */
+export const nextDailyAt = (now: number): number =>
   (Math.floor(now / DAY_MS) + 1) * DAY_MS;
 
 const MONTHS = [
@@ -59,7 +59,7 @@ const REGION_LOOK: Record<string, { accent: string; tagline: string }> = {
 };
 
 /**
- * The foe a gauntlet number puts on the poster. The roster is walked with a
+ * The foe a daily number puts on the poster. The roster is walked with a
  * stride coprime to its length, so consecutive days jump between regions
  * rather than climbing the roster in HP order, and every foe comes round once
  * per cycle.
@@ -81,17 +81,15 @@ export const dailyFoe = (day: number) => {
   };
 };
 
-/** A poster with no ladder yet - what the feed view draws until the server
- *  answers, and what a fresh gauntlet looks like. */
+/** The poster for one day's post. With no ladder given it is what a fresh
+ *  daily post looks like. */
 export const posterFor = (
-  daily: boolean,
   dayKey: string,
   top: DailyPoster['top'] = [],
   players = 0
 ): DailyPoster => {
-  const day = gauntletNumber(Date.parse(dayKey + 'T00:00:00Z'));
+  const day = dailyNumber(Date.parse(dayKey + 'T00:00:00Z'));
   return {
-    daily,
     day,
     dateLabel: dateLabelFor(dayKey),
     ...dailyFoe(day),

@@ -1,10 +1,10 @@
 /**
- * The inline view of an ordinary GearLink post: the day's poster.
+ * The inline view of a Daily Battle post: the day's poster.
  *
  * It sells the day, not the game. The day's foe stands in its own region,
  * lit in that region's colour with light wheeling behind it, over a podium of
  * whoever holds this post's ladder - or three empty seats and a crown nobody
- * has taken yet. A Daily Gauntlet post counts down to the next one.
+ * has taken yet, counting down to the next day's post.
  *
  * Its own module, like the challenge card, so it renders in a test without the
  * stylesheet the feed entry point imports.
@@ -12,7 +12,7 @@
 import { useEffect, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import type { DailyPoster } from '../shared/api.js';
-import { nextGauntletAt } from '../shared/daily.js';
+import { nextDailyAt } from '../shared/daily.js';
 import { MOTION, PIXEL, TITLE } from './splash-style.js';
 
 const HERO_FACE: Record<string, string> = {
@@ -42,7 +42,7 @@ const Countdown = () => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
-  const left = Math.max(0, Math.floor((nextGauntletAt(now) - now) / 1000));
+  const left = Math.max(0, Math.floor((nextDailyAt(now) - now) / 1000));
   const h = Math.floor(left / 3600);
   const m = Math.floor((left % 3600) / 60);
   return (
@@ -50,7 +50,7 @@ const Countdown = () => {
       className="flex items-center gap-1.5"
       style={{ fontSize: 9, color: '#CBD9EC', letterSpacing: '.12em' }}
     >
-      <span>NEXT GAUNTLET IN</span>
+      <span>NEXT DAILY BATTLE IN</span>
       <span
         className="px-1.5 py-0.5"
         style={{
@@ -218,22 +218,20 @@ export const Daily = ({
               letterSpacing: '.08em',
             }}
           >
-            {poster.daily ? 'DAILY GAUNTLET' : 'GEARLINK BATTLE'}
+            DAILY BATTLE
           </span>
-          {poster.daily ? (
-            <span
-              className="px-1.5"
-              style={{
-                fontSize: 11,
-                fontWeight: 700,
-                color: '#FFF',
-                background: '#000',
-                borderRadius: 4,
-              }}
-            >
-              No.{poster.day}
-            </span>
-          ) : null}
+          <span
+            className="px-1.5"
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              color: '#FFF',
+              background: '#000',
+              borderRadius: 4,
+            }}
+          >
+            No.{poster.day}
+          </span>
         </div>
         <div
           className="px-2 py-1"
@@ -327,7 +325,7 @@ export const Daily = ({
 
       <div className="glk-rise glk-d4 relative z-10 flex shrink-0 flex-col items-center gap-1">
         {cta}
-        {poster.daily ? <Countdown /> : null}
+        <Countdown />
       </div>
     </div>
   );

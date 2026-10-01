@@ -123,7 +123,7 @@ export const linkPreview = (p: {
   };
 };
 
-/** Floats for the player's side of a gauntlet turn. */
+/** Floats for the player's side of a campaign turn. */
 export const runPops = (out: StepResult): Pop[] => {
   const pops: Pop[] = [];
   if (out.attackDealt > 0)

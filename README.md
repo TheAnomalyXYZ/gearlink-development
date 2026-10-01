@@ -1,6 +1,6 @@
 # GearLink Battle
 
-A match-and-link roguelike gauntlet, running as a Devvit app on Reddit. Equip
+A match-and-link roguelike, running as a Devvit app on Reddit. Equip
 five pieces of gear, link orbs of the same gear to attack, block or heal, and
 see how far down the wave ladder you get. Every post carries its own ladder.
 
@@ -32,7 +32,7 @@ src/shared/engine/   the game, as pure functions
   rider-data.ts      per-card rider thresholds, likewise
   monsters.ts        the wave roster and its art
   board.ts           grid maths, link validation, collapse and refill
-  run.ts             `Run` - one gauntlet turn, start to swing
+  run.ts             `Run` - one campaign turn, start to swing
   duel.ts            sabotage rules, junk, and the duel bot
   economy.ts         packs, odds, bundles, duplicate refunds
   replay.ts          `verifyRun` - what the server trusts

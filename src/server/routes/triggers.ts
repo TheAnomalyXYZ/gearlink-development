@@ -7,7 +7,7 @@ export const triggers = new Hono();
 
 triggers.post('/on-app-install', async (c) => {
   try {
-    // The first post a sub sees is today's gauntlet; the scheduler takes it
+    // The first post a sub sees is today's Daily Battle; the scheduler takes it
     // from there, once a day.
     const result = await postDailyOnce();
     const input = await c.req.json<OnAppInstallRequest>();

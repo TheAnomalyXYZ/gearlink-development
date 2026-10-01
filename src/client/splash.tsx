@@ -4,10 +4,10 @@ import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { api } from './api.js';
 import type { ChallengeResponse } from '../shared/api.js';
-import { posterFor, utcDayKey } from '../shared/daily.js';
 import { requestExpandedMode } from '@devvit/web/client';
 import { Challenge } from './splash-card.js';
 import { Daily } from './splash-daily.js';
+import { General } from './splash-general.js';
 import { PIXEL, SHELL } from './splash-style.js';
 
 /** The four-point star the Neura Knights claim button twinkles with. */
@@ -92,29 +92,29 @@ const Enter = ({
  * with finished image paths, so nothing here has to know what a rank or a
  * piece of gear looks like.
  *
- * Two answers. A CHALLENGE post gets the duellist who made it. Every other
- * post gets the day's poster - its foe, its region and the top of its own
- * ladder. Until the answer lands the card is a bare dark shell, so a challenge
- * post never flashes the poster first; if the lookup fails, today's poster is
- * drawn locally with an empty podium.
+ * Three answers. A CHALLENGE post gets the duellist who made it. A Daily
+ * Battle post gets the day's poster - its foe, its region and the top of its
+ * own ladder. Every other post is the general GearLink Battle splash. Until
+ * the answer lands the card is a bare dark shell, so a challenge or daily post
+ * never flashes the general splash first; if the lookup fails, the general
+ * splash is drawn.
  */
 export const Splash = () => {
   const [res, setRes] = useState<ChallengeResponse | null>(null);
 
   useEffect(() => {
     let live = true;
-    const today = () => posterFor(false, utcDayKey(Date.now()));
     void api
       .challengeCard()
       .then((r) => {
-        if (live) setRes(r.card || r.poster ? r : { ...r, poster: today() });
+        if (live) setRes(r);
       })
       .catch(() => {
         if (live)
           setRes({
             type: 'challengeCard',
             card: null,
-            poster: today(),
+            poster: null,
             viewer: null,
           });
       });
@@ -123,7 +123,8 @@ export const Splash = () => {
     };
   }, []);
 
-  if (res?.card)
+  if (!res) return <div className="h-screen w-full" style={SHELL} />;
+  if (res.card)
     return (
       <Challenge
         card={res.card}
@@ -131,19 +132,19 @@ export const Splash = () => {
         cta={<Enter label="ACCEPT THE CHALLENGE" sparkle />}
       />
     );
-  const poster = res?.poster;
-  if (!poster) return <div className="h-screen w-full" style={SHELL} />;
-  return (
-    <Daily
-      poster={poster}
-      cta={
-        <Enter
-          label={poster.daily ? "PLAY TODAY'S GAUNTLET" : 'ENTER THE GAUNTLET'}
-          sparkle={poster.players === 0}
-        />
-      }
-    />
-  );
+  if (res.poster)
+    return (
+      <Daily
+        poster={res.poster}
+        cta={
+          <Enter
+            label="PLAY TODAY'S BATTLE"
+            sparkle={res.poster.players === 0}
+          />
+        }
+      />
+    );
+  return <General cta={<Enter label="PLAY NOW" sparkle />} />;
 };
 
 /* Mounting is guarded so the module can also be imported for a render test,

@@ -21,14 +21,14 @@
     "items": [
       {
         "label": "Create a GearLink Battle post",
-        "description": "Post a new GearLink gauntlet with its own ladder",
+        "description": "Post a general GearLink Battle post to play from or pin",
         "location": "subreddit",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/post-create"
       },
       {
-        "label": "Post today's Daily Gauntlet",
-        "description": "Put up today's Daily Gauntlet now, if it is not up yet",
+        "label": "Post today's Daily Battle",
+        "description": "Put up today's Daily Battle now, if it is not up yet",
         "location": "subreddit",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/daily-post"
@@ -37,7 +37,7 @@
   },
   "scheduler": {
     "tasks": {
-      "dailyGauntlet": {
+      "dailyBattle": {
         "endpoint": "/internal/scheduler/daily-post",
         "cron": "0 0 * * *"
       }

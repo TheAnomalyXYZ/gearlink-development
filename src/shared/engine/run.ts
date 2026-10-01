@@ -230,7 +230,7 @@ export class Run {
   }
 
   /** The last wave of a location is ALWAYS its elite - that is what makes a
-   *  battle read as a fight with an ending rather than a slice of a gauntlet.
+   *  battle read as a fight with an ending rather than a slice of an endless run.
    *  Everything before it draws from the affix table, with the opening waves
    *  of the first location left plain so a new player meets one rule at a
    *  time. */
