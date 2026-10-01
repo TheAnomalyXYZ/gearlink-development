@@ -17,6 +17,8 @@ import type {
 } from '@devvit/payments/shared';
 import { gemsForSku } from '../../shared/engine/economy.js';
 import { loadProfile, saveProfile } from '../core/profile.js';
+import { recordGoldOrder, recordRefund } from '../core/stats.js';
+import { goldSku } from '../../shared/admin.js';
 
 export const paymentsRoutes = new Hono();
 
@@ -80,6 +82,12 @@ paymentsRoutes.post('/fulfill', async (c) => {
     const profile = await loadProfile(userId, context.username ?? 'anonymous');
     await saveProfile(userId, { gems: profile.gems + gems });
     console.log(`Order ${order.id}: granted ${gems} gems to ${userId}.`);
+    await recordGoldOrder(
+      userId,
+      context.username ?? 'anonymous',
+      (order.products ?? []).map((p) => goldSku(p.sku)),
+      gems
+    );
     return c.json<PaymentHandlerResponse>({ success: true });
   } catch (error) {
     // The claim must not outlive a failed payout, or the retry is refused and
@@ -116,6 +124,7 @@ paymentsRoutes.post('/refund', async (c) => {
     gems: Math.max(0, profile.gems - Math.max(0, gems)),
   });
   await redis.hDel(FULFILLED, [order.id]);
+  await recordRefund(paidTo);
   console.log(
     `Refund for ${order.id}: reclaimed up to ${gems} gems from ${paidTo}.`
   );

@@ -100,6 +100,14 @@ export const recordQuestEvents = async (
   }
 };
 
+/** Drop this period's progress and claims, as for a fresh account. */
+export const resetQuests = async (
+  userId: string,
+  now = Date.now()
+): Promise<void> => {
+  await redis.del(...PERIODS.map((p) => questKey(userId, p, now)));
+};
+
 export const loadQuestBoard = async (
   userId: string,
   now = Date.now()

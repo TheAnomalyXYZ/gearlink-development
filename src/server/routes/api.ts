@@ -29,8 +29,19 @@ import {
   countDuel,
   dismissPrize,
   loadProfile,
+  profileKey,
   saveProfile,
 } from '../core/profile.js';
+import { isModeratorSafe } from '../core/mods.js';
+import {
+  recordDuel,
+  recordEvent,
+  recordQuestClaim,
+  recordRun,
+  recordSpend,
+  recordVisit,
+} from '../core/stats.js';
+import { coinBundleSku, packSku } from '../../shared/admin.js';
 import { getLeaderboard, recordScore } from '../core/leaderboard.js';
 import {
   listInPool,
@@ -94,11 +105,15 @@ const unauthorised = (c: HonoContext) =>
 api.get('/init', async (c) => {
   const me = who();
   if (!me) return unauthorised(c);
-  const [profile, leaderboard, challenger] = await Promise.all([
+  // Before the profile read: a first read writes the profile, and the visit
+  // has to see whether one existed to know if this is a new player.
+  await recordVisit(me.userId, me.username);
+  const [profile, leaderboard, challenger, isModerator] = await Promise.all([
     loadProfile(me.userId, me.username),
     getLeaderboard(me.postId, me.userId),
     // A failed read only means the post opens like any other.
     readChallengeFoe(me.postId, me.userId, me.username).catch(() => null),
+    isModeratorSafe(me.userId),
   ]);
   return c.json<InitResponse>({
     type: 'init',
@@ -106,6 +121,7 @@ api.get('/init', async (c) => {
     profile,
     leaderboard,
     challenger,
+    isModerator,
   });
 });
 
@@ -225,6 +241,13 @@ api.post('/run', async (c) => {
     progress,
     heartPieces: profile.heartPieces + heartPiecesEarned,
   });
+  await recordRun({
+    heroClass: body.heroClass,
+    locationId: locId,
+    won,
+    king: isKing,
+    ascended,
+  });
   await recordQuestEvents(
     me.userId,
     runQuestEvents({
@@ -310,6 +333,7 @@ api.post('/hearts/apply', async (c) => {
     heartPieces: profile.heartPieces - HEART_PIECES_PER_CONTAINER,
     hearts,
   });
+  await recordEvent('hearts_applied');
   const after = await loadProfile(me.userId, me.username);
   return c.json<ProfileResponse>(
     profileJson(after, cls + ' gained a heart container.')
@@ -355,6 +379,13 @@ api.post('/shop/pack', async (c) => {
       ? { gems: profile.gems - pack.price }
       : { coins: profile.coins - pack.price }),
   });
+  await recordSpend(
+    me.userId,
+    me.username,
+    packSku(pack.id),
+    pack.cur === 'gems' ? 'gems' : 'coins',
+    pack.price
+  );
   return c.json(profileJson(await loadProfile(me.userId, me.username)));
 });
 
@@ -379,6 +410,13 @@ api.post('/shop/coins', async (c) => {
     gems: profile.gems - b.gems,
     coins: profile.coins + b.amount,
   });
+  await recordSpend(
+    me.userId,
+    me.username,
+    coinBundleSku(b.id),
+    'gems',
+    b.gems
+  );
   return c.json(
     profileJson(
       await loadProfile(me.userId, me.username),
@@ -489,6 +527,7 @@ api.post('/shop/collect', async (c) => {
   };
   await saveProfile(me.userId, { gear, packs, coins: profile.coins + refund });
   await recordQuestEvents(me.userId, [{ metric: 'packs', amount: 1 }]);
+  await recordEvent('packs_opened');
   return c.json(profileJson(await loadProfile(me.userId, me.username)));
 });
 
@@ -528,6 +567,7 @@ api.post('/duel/loadout', async (c) => {
     duelListed: listed,
     seenDuelSetup: true,
   });
+  if (listed && !profile.duelListed) await recordEvent('league_entries');
   if (listed)
     await listInPool(
       me.userId,
@@ -566,6 +606,7 @@ api.post('/duel/listed', async (c) => {
     );
 
   await saveProfile(me.userId, { duelListed: listed });
+  if (listed && !profile.duelListed) await recordEvent('league_entries');
   if (listed)
     await listInPool(
       me.userId,
@@ -630,6 +671,7 @@ api.post('/duel/challenge', async (c) => {
       profile.duelPicked,
       await snoovatarOf(me.username)
     );
+    await recordEvent('challenge_posts');
     return c.json<DuelChallengeResponse>({
       type: 'challenge',
       url: `https://reddit.com/r/${context.subredditName}/comments/${post.id}`,
@@ -688,6 +730,7 @@ api.post('/duel/result', async (c) => {
   // Quests count the same bounded result the trophies do, so an implausible
   // duel advances neither.
   if (ranked) await countDuel(me.userId);
+  if (credible) await recordDuel(ranked, !!body.won);
   if (credible)
     await recordQuestEvents(me.userId, [
       { metric: 'duels', amount: 1 },
@@ -743,7 +786,13 @@ api.post('/ftue/seen', async (c) => {
     await saveProfile(me.userId, { seenDuelFtue: true });
   else if (body?.which === 'duelSetup')
     await saveProfile(me.userId, { seenDuelSetup: true });
-  else await saveProfile(me.userId, { seenFtue: true });
+  else {
+    // Counted once per account: the coaching can be replayed, the first
+    // finish only happens once.
+    const seen = await redis.hGet(profileKey(me.userId), 'seenFtue');
+    await saveProfile(me.userId, { seenFtue: true });
+    if (seen !== '1') await recordEvent('ftue_done');
+  }
   return c.json(profileJson(await loadProfile(me.userId, me.username)));
 });
 
@@ -772,6 +821,7 @@ api.post('/quests/claim', async (c) => {
       { status: 'error', message: res.message },
       400
     );
+  await recordQuestClaim(body?.questId ?? '');
   const [profile, board] = await Promise.all([
     loadProfile(me.userId, me.username),
     loadQuestBoard(me.userId),

@@ -22,7 +22,7 @@ import { normaliseHearts } from '../../shared/engine/hearts.js';
 import type { Hearts } from '../../shared/engine/hearts.js';
 import type { HeroClass } from '../../shared/engine/types.js';
 
-const profileKey = (userId: string) => `profile:${userId}`;
+export const profileKey = (userId: string) => `profile:${userId}`;
 
 /** A fresh account starts with enough coins for the entry pack, so the shop
  *  ladder reads cheap-first rather than leaving the premium crate as the only

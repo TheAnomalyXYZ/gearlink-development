@@ -72,6 +72,8 @@ export type InitResponse = {
   /** The duellist who made this post, when it is a challenge post the reader
    *  did not make themself. Opening it goes straight to the duel. */
   challenger: DuelFoe | null;
+  /** Moderators of the subreddit get the admin panel in settings. */
+  isModerator: boolean;
 };
 
 /** A finished run, as the client played it. The server re-runs the moves; the

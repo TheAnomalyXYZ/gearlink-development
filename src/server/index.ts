@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
 import { createServer, getServerPort } from '@devvit/web/server';
+import { admin } from './routes/admin.js';
 import { api } from './routes/api.js';
 import { menu } from './routes/menu.js';
 import { paymentsRoutes } from './routes/payments.js';
@@ -13,6 +14,7 @@ internal.route('/menu', menu);
 internal.route('/payments', paymentsRoutes);
 internal.route('/triggers', triggers);
 
+app.route('/api/admin', admin);
 app.route('/api', api);
 app.route('/internal', internal);
 

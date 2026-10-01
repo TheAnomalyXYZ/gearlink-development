@@ -858,6 +858,16 @@ export const buildView = (app: GearLinkApp): View => {
     ];
     modalFooter = 'Version ' + ver.app + '\nBuild ' + ver.build;
     modalActions = [
+      ...(st.isMod
+        ? [
+            {
+              label: 'ADMIN',
+              run: app.openAdmin,
+              bg: BTN.primary.bg,
+              shadow: BTN.primary.shadow,
+            },
+          ]
+        : []),
       {
         label: 'CLOSE',
         run: app.closeSettings,

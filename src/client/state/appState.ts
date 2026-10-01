@@ -170,6 +170,9 @@ export type AppState = {
   /** The poster of the challenge post this app was opened from. Pinned to the
    *  top of the lobby for as long as the app is open. */
   challenger: DuelFoe | null;
+  /** A moderator of this subreddit: settings offers them the admin panel. */
+  isMod: boolean;
+  adminOpen: boolean;
   /** The lobby's how-duels-work sheet. */
   duelRulesOpen: boolean;
   /** The lock-in warning before entering the week's league, and which screen
@@ -326,6 +329,8 @@ export const INITIAL_STATE: AppState = {
   duelPadded: false,
   challengeUrl: null,
   challenger: null,
+  isMod: false,
+  adminOpen: false,
   duelRulesOpen: false,
   enterConfirm: null,
   duel: null,

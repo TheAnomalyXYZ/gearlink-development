@@ -91,6 +91,9 @@ export const removeFromPool = async (userId: string): Promise<void> => {
   await redis.hDel(POOL_WEEK, [userId]);
 };
 
+export const isInPool = async (userId: string): Promise<boolean> =>
+  (await redis.zScore(POOL_KEY, userId)) !== undefined;
+
 /** Keep a listed player's pool score in step with their trophies, so the bands
  *  other people match against stay honest. A player who is not listed is left
  *  alone rather than silently added back. */

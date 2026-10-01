@@ -20,7 +20,7 @@
  * - `state/timers.ts`    named, self-replacing timeouts and intervals
  * - `state/boot.ts`      the first reads, fired before React mounts
  */
-import { Component } from 'react';
+import { Component, Suspense, lazy } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { context, navigateTo, showToast } from '@devvit/web/client';
 import { OrderResultStatus, purchase } from '@devvit/payments/client';
@@ -136,6 +136,11 @@ import { packSummary, toOpenCards } from './state/packs.js';
 import { Timers } from './state/timers.js';
 import { buildView } from './view/buildView.js';
 import { Screen } from './view/Screen.js';
+
+/** Moderators only, and rarely - kept out of the main bundle. */
+const AdminPanel = lazy(() =>
+  import('./admin/AdminPanel.js').then((m) => ({ default: m.AdminPanel }))
+);
 
 export type { AppState } from './state/appState.js';
 
@@ -279,6 +284,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
           leaderboard: res.leaderboard,
           picked: ownedLoadout(s.heroClass, res.profile.gear),
           challenger: res.challenger,
+          isMod: res.isModerator,
         }),
         // Opened from a challenge post: ACCEPT goes straight to the pre-fight
         // screen against its poster - by way of the duel build if there is no
@@ -777,6 +783,12 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   /** Opened from the pause menu mid-run, settings hands back to it. */
   closeSettings = (): void =>
     this.setState({ modal: this.state.phase === 'battle' ? 'pause' : null });
+  /** Moderators only - the server checks again on every admin call. */
+  openAdmin = (): void => {
+    if (this.state.isMod) this.setState({ adminOpen: true, modal: null });
+  };
+  closeAdmin = (): void =>
+    this.setState({ adminOpen: false, modal: 'settings' });
   setMusicVolume = (n: number): void =>
     this.applyVolumes({ ...this.state.volumes, music: n });
   setSfxVolume = (n: number): void =>
@@ -2166,6 +2178,15 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   override render() {
     if (this.state.fatal) return <Fatal message={this.state.fatal} />;
     if (!this.state.ready) return <Booting />;
-    return <Screen v={buildView(this)} />;
+    return (
+      <>
+        <Screen v={buildView(this)} />
+        {this.state.adminOpen && (
+          <Suspense fallback={null}>
+            <AdminPanel onClose={this.closeAdmin} />
+          </Suspense>
+        )}
+      </>
+    );
   }
 }

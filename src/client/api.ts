@@ -22,6 +22,14 @@ import type {
   SubmitRunRequest,
   SubmitRunResponse,
 } from '../shared/api.js';
+import type {
+  AdminActionResponse,
+  AdminDashboardResponse,
+  AdminExportResponse,
+  AdminGiftRequest,
+  AdminUserResponse,
+  AdminUsersResponse,
+} from '../shared/admin.js';
 
 class ApiError extends Error {}
 
@@ -78,6 +86,28 @@ export const api = {
   ftueSeen: (which: 'run' | 'duel' | 'duelSetup') =>
     call<ProfileResponse>('/ftue/seen', { which }),
   prizeSeen: () => call<ProfileResponse>('/duel/prize/seen', {}),
+};
+
+/** The moderator panel. The server refuses every one of these for anyone else. */
+export const adminApi = {
+  dashboard: () => call<AdminDashboardResponse>('/admin/dashboard'),
+  export: () => call<AdminExportResponse>('/admin/export'),
+  users: (offset: number) =>
+    call<AdminUsersResponse>('/admin/users?offset=' + offset),
+  search: (q: string) =>
+    call<AdminUsersResponse>('/admin/users/search?q=' + encodeURIComponent(q)),
+  user: (userId: string) =>
+    call<AdminUserResponse>('/admin/user/' + encodeURIComponent(userId)),
+  gift: (userId: string, req: AdminGiftRequest) =>
+    call<AdminActionResponse>(
+      '/admin/user/' + encodeURIComponent(userId) + '/gift',
+      req
+    ),
+  reset: (userId: string) =>
+    call<AdminActionResponse>(
+      '/admin/user/' + encodeURIComponent(userId) + '/reset',
+      {}
+    ),
 };
 
 export { ApiError };
