@@ -2148,6 +2148,8 @@ export const buildView = (app: GearLinkApp): View => {
         bottom: loc.at.bottom ?? 'auto',
         left: loc.at.left ?? 'auto',
         right: loc.at.right ?? 'auto',
+        // The sprite scales with the art, so its body lands where `at` meant.
+        width: (loc.pinW / MAP_ART.w) * 100 + '%',
         url: mapPinUrlFor(
           loc.pin,
           !open ? 'Locked' : isOpen ? 'Active' : 'Default'

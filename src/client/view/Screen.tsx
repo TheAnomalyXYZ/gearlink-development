@@ -459,6 +459,7 @@ export const Screen = ({ v }: { v: View }) => (
                           bottom: p.bottom,
                           left: p.left,
                           right: p.right,
+                          width: p.width,
                           zIndex: p.z,
                         }}
                       >
@@ -471,7 +472,7 @@ export const Screen = ({ v }: { v: View }) => (
                             style={{
                               position: 'relative',
                               zIndex: '2',
-                              width: '96px',
+                              width: '100%',
                               height: 'auto',
                               cursor: 'pointer',
                               imageRendering: 'pixelated',

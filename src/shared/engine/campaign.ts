@@ -32,6 +32,10 @@ export type Location = {
   /** Where the pin sits on the map art, as percentages of it. The artwork is
    *  the same 384x852 Base.png Neura Knights uses, so these are its positions. */
   at: { top?: string; bottom?: string; left?: string; right?: string };
+  /** The pin sprite's native width, in pixels of the 384px-wide map art. The
+   *  `at` offsets anchor the sprite's corner, so the pin must keep this size
+   *  relative to the art or its body drifts off the road as the map scales. */
+  pinW: number;
 };
 
 export const LOCATIONS: Location[] = [
@@ -46,6 +50,7 @@ export const LOCATIONS: Location[] = [
     blurb: 'Bandits on the road. Short, and it forgives a bad link.',
     pin: '02_Forest',
     at: { bottom: '19%', left: '7.75%' },
+    pinW: 152,
   },
   {
     id: 'bridge',
@@ -58,6 +63,7 @@ export const LOCATIONS: Location[] = [
     blurb: 'The toll is paid in HP. The troll hits like a wall falling.',
     pin: '03_Bridge',
     at: { bottom: '35%', right: '8.75%' },
+    pinW: 110,
   },
   {
     id: 'caves',
@@ -70,6 +76,7 @@ export const LOCATIONS: Location[] = [
     blurb: 'Big pools, slow swings. Bring something that keeps hitting.',
     pin: '04_Caves',
     at: { bottom: '42.5%', left: '3%' },
+    pinW: 138,
   },
   {
     id: 'ghost',
@@ -82,6 +89,7 @@ export const LOCATIONS: Location[] = [
     blurb: 'Five waves of dead men. Block is worth more than damage here.',
     pin: '05_Ghost_Town',
     at: { top: '27.75%', right: '2.75%' },
+    pinW: 152,
   },
   {
     id: 'mountain',
@@ -94,6 +102,7 @@ export const LOCATIONS: Location[] = [
     blurb: 'Armoured and patient. The Queen punishes a wasted turn.',
     pin: '06_Mountain',
     at: { top: '22.5%', left: '4%' },
+    pinW: 160,
   },
   {
     id: 'castle',
@@ -107,6 +116,7 @@ export const LOCATIONS: Location[] = [
     blurb: 'The King holds the last wave. Put him down and you ascend.',
     pin: '07_Castle',
     at: { top: '2.5%', right: '1.25%' },
+    pinW: 164,
   },
 ];
 
