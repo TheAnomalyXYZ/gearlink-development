@@ -245,7 +245,6 @@ export const Screen = ({ v }: { v: View }) => (
   <div
     className="gl-page"
     style={{
-      minHeight: '100vh',
       backgroundColor: '#0B1020',
       backgroundImage: 'url(/art/PocketKnights/sky_v3.png)',
       backgroundSize: 'cover',

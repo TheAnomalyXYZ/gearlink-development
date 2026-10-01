@@ -674,14 +674,22 @@ a:hover {
    phone-sized drops it and goes full-bleed. Doing it in CSS rather than in JS
    state means rotating the device reflows instantly and never feeds back into
    the board measurement.
+
+   Whatever the viewport, the play area never grows past a phone's footprint
+   (425 x 884, the same cap Neura Knights uses). A desktop or fullscreen window
+   gets a centred column with the scenery either side rather than a board
+   stretched across a monitor; a short desktop window loses the bezel padding
+   but keeps the column.
 --------------------------------------------------------------------------- */
 .gl-page {
+  height: 100dvh;
   padding: 16px;
+  overflow: hidden;
 }
 
 .gl-frame {
   width: 100%;
-  height: min(884px, calc(100vh - 32px));
+  height: 100%;
   max-width: 425px;
   max-height: 884px;
   padding: 16px;
@@ -700,14 +708,35 @@ a:hover {
   border-radius: 16px;
 }
 
-@media (max-width: 520px), (max-height: 720px) {
+/* Short but wide (a laptop, Reddit's expanded view): the bezel costs height
+   the board needs, so drop it, but keep the phone-width column. */
+@media (max-height: 720px) and (min-width: 521px) {
   .gl-page {
     padding: 0;
   }
 
   .gl-frame {
-    /* dvh so the address bar collapsing does not leave a strip of page behind */
-    height: 100dvh;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+  }
+
+  .gl-shell {
+    border-top: 0;
+    border-bottom: 0;
+    border-radius: 0;
+  }
+}
+
+/* Phone-sized: the device is the frame. Fill it. */
+@media (max-width: 520px) {
+  .gl-page {
+    padding: 0;
+  }
+
+  .gl-frame {
     max-width: none;
     max-height: none;
     padding: 0;
