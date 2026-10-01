@@ -22,7 +22,7 @@
  */
 import { Component } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import { navigateTo, showToast } from '@devvit/web/client';
+import { context, navigateTo, showToast } from '@devvit/web/client';
 import { OrderResultStatus, purchase } from '@devvit/payments/client';
 import {
   DUEL_FTUE_STEPS,
@@ -80,6 +80,14 @@ import type {
 } from '../shared/engine/index.js';
 import type { Profile, SubmitRunRequest } from '../shared/api.js';
 import { api } from './api.js';
+import {
+  DEFAULT_VOLUMES,
+  audio,
+  loadVolumes,
+  saveVolumes,
+} from './audio/audio.js';
+import type { Volumes } from './audio/audio.js';
+import { BGM, regionBgm } from './audio/tracks.js';
 import { Booting, Fatal } from './components/BootScreens.js';
 import {
   FTUE_ARROW_GAP,
@@ -226,6 +234,12 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
 
   override componentDidMount(): void {
     void this.boot();
+    const volumes = loadVolumes();
+    this.setState({ volumes });
+    audio.setVolumes(volumes);
+    audio.attach();
+    document.addEventListener('click', this.onUiClick);
+    this.syncMusic();
     window.addEventListener('resize', this.measureFtue);
     window.addEventListener('orientationchange', this.measureFtue);
   }
@@ -236,6 +250,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       this.prevPhase = st.phase;
       this.syncFtueToPhase();
     }
+    this.syncMusic();
     // Don't consume the step until a placement actually lands, so a frame that
     // measures before layout settles doesn't leave the card hidden forever.
     if (st.ftueStep && !st.ftuePlace) requestAnimationFrame(this.measureFtue);
@@ -243,6 +258,8 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
 
   override componentWillUnmount(): void {
     this.timers.clearAll();
+    audio.detach();
+    document.removeEventListener('click', this.onUiClick);
     for (const o of [this.ro, this.fro, this.aro, this.cardObs, this.mro])
       o?.disconnect();
     window.removeEventListener('resize', this.measureFtue);
@@ -754,6 +771,63 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   openHowFromMenu = (): void =>
     this.setState({ modal: 'how', homeMenu: false });
   closeModal = (): void => this.setState({ modal: null });
+  openSettings = (): void => this.setState({ modal: 'settings' });
+  openSettingsFromMenu = (): void =>
+    this.setState({ modal: 'settings', homeMenu: false });
+  /** Opened from the pause menu mid-run, settings hands back to it. */
+  closeSettings = (): void =>
+    this.setState({ modal: this.state.phase === 'battle' ? 'pause' : null });
+  setMusicVolume = (n: number): void =>
+    this.applyVolumes({ ...this.state.volumes, music: n });
+  setSfxVolume = (n: number): void =>
+    this.applyVolumes({ ...this.state.volumes, sfx: n });
+  resetVolumes = (): void => this.applyVolumes(DEFAULT_VOLUMES);
+  private applyVolumes(v: Volumes): void {
+    this.setState({ volumes: v });
+    audio.setVolumes(v);
+    saveVolumes(v);
+  }
+
+  /** The Devvit app version, and the client build it is serving. */
+  versionInfo(): { app: string; build: string } {
+    let app = 'dev';
+    try {
+      app = context.appVersion || app;
+    } catch {
+      /* no Devvit context outside the web view */
+    }
+    return {
+      app,
+      build: typeof __BUILD_ID__ === 'string' ? __BUILD_ID__ : 'dev',
+    };
+  }
+
+  /* ---------- audio ---------- */
+
+  /** The track for wherever the player is: the location's own theme on a run,
+   *  the training theme in a duel, the home theme everywhere else. */
+  private syncMusic(): void {
+    const st = this.state;
+    audio.music(
+      st.phase === 'battle' || st.phase === 'end'
+        ? regionBgm(locationById(st.locationId).region)
+        : st.phase === 'duel'
+          ? BGM.duel
+          : BGM.main
+    );
+  }
+
+  /** One delegated tick for every tappable control, so each of the screen's
+   *  buttons does not need its own call. The board has no pointer cursor, so
+   *  links are left to their own sounds. */
+  private onUiClick = (e: MouseEvent): void => {
+    const t = e.target;
+    if (
+      t instanceof Element &&
+      t.closest('[style*="cursor: pointer"], .cursor-pointer')
+    )
+      audio.play('click', { gain: 0.6 });
+  };
   stop = (e: { stopPropagation: () => void }): void => e.stopPropagation();
 
   /* ---------- loadout ---------- */
@@ -928,6 +1002,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
 
   /** Shake a link the rules refused, then let it go. */
   private reject(move: number[]): void {
+    audio.play('reject', { gain: 0.7 });
     this.setState({ rejecting: move.slice(), chain: [], preview: null });
     this.timers.after('reject', REJECT_MS, () =>
       this.setState({ rejecting: [] })
@@ -953,6 +1028,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       /* capture is an optimisation; the move handler still hit-tests by point */
     }
     this.setState({ chain: [i], preview: this.previewFor([i]) });
+    audio.play('link');
   };
 
   onMove = (e: ReactPointerEvent): void => {
@@ -975,6 +1051,8 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     if (orbTypeOf(board[i]!) !== orbTypeOf(board[chain[0]!]!)) return;
     const next = chain.concat([i]);
     this.setState({ chain: next, preview: this.previewFor(next) });
+    // Each orb rings a little higher, so a long link climbs as it is drawn.
+    audio.play('link', { rate: Math.min(2, 1 + 0.08 * (next.length - 1)) });
   };
 
   onCancel = (): void => this.setState({ chain: [], preview: null });
@@ -1096,6 +1174,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       preview: null,
     });
     this.timers.after('link', 320, () => {
+      audio.play('bomb');
       this.setState({
         arming: [],
         detonating: stg.detonators,
@@ -1143,6 +1222,11 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       this.timers.clear('hpRoll');
       this.setState({ hpShown: 0 });
     } else this.rollHp(Math.max(0, out.bs.enemyHp));
+    if (struck) audio.play('attack');
+    if (out.blockGained > 0) audio.play('block');
+    if (out.healed > 0) audio.play('heal');
+    if (out.fired.length > 0) audio.play('rider', { gain: 0.7 });
+    if (out.waveCleared) audio.play('kill');
 
     this.setState((s) => ({
       bs: out.bs,
@@ -1181,6 +1265,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         swing: out.enemyHeavy ? 'heavy' : 'attack',
       });
       this.timers.after('swing', 620, () => {
+        audio.play(out.enemyDamage > 0 ? 'hurt' : 'blocked');
         this.setState({
           hitWho: 'player',
           pops: [swingPop(out.enemyDamage)],
@@ -1198,6 +1283,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   private finishTurn(out: StepResult): void {
     const stuck = !out.over && !out.battleWon && !hasAnyMove(out.bs.board);
     if (out.battleWon || out.over || stuck) {
+      audio.play(out.battleWon ? 'victory' : 'defeat');
       this.setState({
         phase: 'end',
         endReason: out.battleWon ? 'won' : out.over ? 'dead' : 'stuck',
@@ -1619,6 +1705,9 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       });
       this.timers.after('link', 400, () => {
         this.pendingMe = false;
+        if (out.attack > 0) audio.play('attack');
+        if (out.blockGain > 0) audio.play('block');
+        if (out.heal > 0) audio.play('heal');
         this.setState((s) => ({
           duel: out.state,
           clearing: [],
@@ -1660,6 +1749,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         this.timers.after('foeClear', 90, land);
         return;
       }
+      if (out.attack > 0) audio.play('hurt');
       this.setState((s) => ({
         duel: out.state,
         foeBeat: 'landed',
@@ -1696,6 +1786,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   private endDuel(kind: DuelEndKind): void {
     this.timers.clear(...DUEL_TIMERS);
     const won = kind === 'win' || kind === 'time-win' || kind === 'win-buried';
+    audio.play(won ? 'victory' : 'defeat');
     const seconds = Math.round((Date.now() - this.duelStartedAt) / 1000);
     const ranked = this.state.profile.duelListed;
     // Shown immediately off the local result; the server's number replaces it
@@ -1769,6 +1860,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       .claimQuest(id)
       .then((r) => {
         this.setState({ quests: r.board, questClaiming: null });
+        audio.play('coins');
         this.adopt(r.profile, r.message);
       })
       .catch((e) => {
@@ -1792,9 +1884,13 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   closeCardInfo = (): void => this.setState({ cardInfo: null });
 
   buyCoins = (id: string) => (): void => {
+    const before = this.state.profile.coins;
     void api
       .buyCoins(id)
-      .then((r) => this.adopt(r.profile, r.message))
+      .then((r) => {
+        if (r.profile.coins > before) audio.play('coins');
+        this.adopt(r.profile, r.message);
+      })
       .catch(this.fail);
   };
   /**
@@ -1824,6 +1920,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         // closes, so the balance is re-read rather than assumed.
         const res = await api.profile();
         const gained = res.profile.gems - this.state.profile.gems;
+        if (gained > 0) audio.play('coins');
         this.adopt(
           res.profile,
           gained > 0
@@ -1841,7 +1938,10 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       .buyPack(id)
       .then((r) => {
         this.adopt(r.profile, r.message);
-        if (!r.message) this.openPackFrom(id, 'shop');
+        if (!r.message) {
+          audio.play('coins');
+          this.openPackFrom(id, 'shop');
+        }
       })
       .catch(this.fail);
   };
@@ -1873,7 +1973,9 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   private updatePack(fn: (op: OpenState) => OpenState | null): void {
     const op = this.state.openPack;
     const next = op ? fn(op) : null;
-    if (next) this.setState({ openPack: next });
+    if (!next) return;
+    if (op && next.shown > op.shown) audio.play('loot');
+    this.setState({ openPack: next });
   }
 
   tearPack = (): void =>

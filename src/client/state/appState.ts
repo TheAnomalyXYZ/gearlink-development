@@ -22,6 +22,8 @@ import type {
   QuestBoard,
 } from '../../shared/api.js';
 import type { FtueStep } from '../ftue.js';
+import { DEFAULT_VOLUMES } from '../audio/audio.js';
+import type { Volumes } from '../audio/audio.js';
 
 export type Phase =
   | 'splash'
@@ -133,8 +135,10 @@ export type AppState = {
   ftueSample: { damage: number; killed: boolean };
 
   preview: { text: string; color: string } | null;
-  modal: 'pause' | 'how' | 'board' | null;
+  modal: 'pause' | 'how' | 'board' | 'settings' | null;
   homeMenu: boolean;
+  /** Music and SFX slider values, 0-100. Read from browser storage on mount. */
+  volumes: Volumes;
 
   lastGear: string | null;
   peek: string | null;
@@ -301,6 +305,7 @@ export const INITIAL_STATE: AppState = {
   ftueStep: null,
   modal: null,
   homeMenu: false,
+  volumes: DEFAULT_VOLUMES,
   lastGear: null,
   peek: null,
   cardInfo: null,

@@ -161,6 +161,7 @@ const fakeApp = (over: Record<string, unknown>): GearLinkApp => {
     preview: null,
     modal: null,
     homeMenu: false,
+    volumes: { music: 50, sfx: 0 },
     lastGear: null,
     peek: null,
     cardInfo: null,
@@ -245,6 +246,7 @@ const fakeApp = (over: Record<string, unknown>): GearLinkApp => {
     intentFor: (e: unknown, m: number, h: number) =>
       run.intentFor(e as never, m, h),
     scoreOf: (s: typeof bs) => s.damageDealt,
+    versionInfo: () => ({ app: '0.0.7', build: 'abc1234 2026-10-01' }),
     waveCount: () => run.waveCount,
     waveDisplay: (w: number) =>
       enemyDisplayFor(run.planFor(w).name, run.location.region),
@@ -319,6 +321,12 @@ const fakeApp = (over: Record<string, unknown>): GearLinkApp => {
     toggleHomeMenu: noop,
     openBoardFromMenu: noop,
     openHowFromMenu: noop,
+    openSettings: noop,
+    openSettingsFromMenu: noop,
+    closeSettings: noop,
+    setMusicVolume: noop,
+    setSfxVolume: noop,
+    resetVolumes: noop,
     onDown: noop,
     onMove: noop,
     onUp: noop,
@@ -618,6 +626,13 @@ void test('modals render', () => {
   renders('pause', { phase: 'battle', bs, modal: 'pause' });
   renders('how to play', { phase: 'home', modal: 'how' });
   renders('ladder', { phase: 'home', modal: 'board' });
+  const settings = renders('settings', { phase: 'home', modal: 'settings' });
+  assert.ok(settings.includes('Background Music'));
+  assert.ok(settings.includes('Sound Effects'));
+  assert.ok(settings.includes('aria-valuenow="0"'));
+  assert.ok(settings.includes('DEFAULT'));
+  assert.ok(settings.includes('Version 0.0.7'));
+  assert.ok(settings.includes('Build abc1234 2026-10-01'));
 });
 
 void test('a pack open renders sealed, revealed and collectable', () => {

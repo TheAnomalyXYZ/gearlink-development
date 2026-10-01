@@ -16,6 +16,7 @@
 import { Fragment } from 'react';
 import type { ReactNode } from 'react';
 import type { View } from './buildView.js';
+import { MenuIcon, SpeakerIcon, VolumeSlider } from './SettingsControls.js';
 
 const PIXEL = "'Yoster Island',Volter,monospace";
 
@@ -756,39 +757,33 @@ export const Screen = ({ v }: { v: View }) => (
                     onClick={v.toggleHomeMenu}
                     style={{
                       cursor: 'pointer',
-                      width: '22px',
-                      height: '22px',
+                      width: '30px',
+                      height: '30px',
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '2px',
-                      border: '1px solid #3A4C74',
-                      borderRadius: '4px',
-                      background: 'rgba(20,29,46,.85)',
+                      boxSizing: 'border-box',
+                      border: '2px solid #000000',
+                      borderRadius: '8px 2px 8px 2px',
+                      background: v.homeMenuOpen ? '#428FFB' : '#B5C0FF',
+                      boxShadow: v.homeMenuOpen
+                        ? 'none'
+                        : '0 -2px 0 0 #7E84E6 inset, 0 2px 0 0 #FFF inset, 0 2px 0 0 rgba(0,0,0,.25)',
                     }}
                   >
-                    <div
-                      style={{
-                        width: '11px',
-                        height: '1px',
-                        background: '#9DB4D4',
-                      }}
-                    ></div>
-                    <div
-                      style={{
-                        width: '11px',
-                        height: '1px',
-                        background: '#9DB4D4',
-                      }}
-                    ></div>
-                    <div
-                      style={{
-                        width: '11px',
-                        height: '1px',
-                        background: '#9DB4D4',
-                      }}
-                    ></div>
+                    {[0, 1, 2].map((n) => (
+                      <div
+                        key={n}
+                        style={{
+                          width: '16px',
+                          height: '3px',
+                          borderRadius: '9999px',
+                          background: '#000000',
+                        }}
+                      ></div>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -796,32 +791,39 @@ export const Screen = ({ v }: { v: View }) => (
               <div
                 style={{
                   position: 'absolute',
-                  top: '38px',
+                  top: '48px',
                   right: '12px',
                   zIndex: '20',
-                  width: '132px',
+                  width: '168px',
                   display: v.homeMenuDisplay,
                   flexDirection: 'column',
-                  background: '#1D2956',
-                  border: '1px solid #3A4C74',
-                  borderRadius: '6px 0 6px 0',
-                  overflow: 'hidden',
-                  boxShadow: '0 4px 0 0 rgba(0,0,0,.35)',
+                  boxSizing: 'border-box',
+                  padding: '6px',
+                  background: '#D7E8FF',
+                  border: '2px solid #000000',
+                  borderRadius: '2px',
                 }}
               >
                 {(v.homeMenuItems || []).map((m: any, mI: number) => (
                   <Fragment key={mI}>
                     <div
+                      className="gl-menu-item"
                       onClick={m.run}
                       style={{
                         cursor: 'pointer',
-                        padding: '8px 10px',
-                        borderBottom: '1px solid #2A3A63',
-                        fontSize: '10px',
-                        color: '#CBD9EC',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        height: '38px',
+                        padding: '0 8px',
+                        borderRadius: '2px',
+                        fontFamily: PIXEL,
+                        fontSize: '12px',
+                        color: '#2B3E60',
                         textAlign: 'left',
                       }}
                     >
+                      <MenuIcon kind={m.icon} />
                       {m.label}
                     </div>
                   </Fragment>
@@ -7439,6 +7441,92 @@ export const Screen = ({ v }: { v: View }) => (
                       </div>
                     </Fragment>
                   ))}
+                  {v.modalSliders && v.modalSliders.length ? (
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        background: '#FDFDFD',
+                        borderRadius: '2px',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          height: '28px',
+                          background: '#7981F2',
+                          borderRadius: '2px 2px 0 0',
+                          fontFamily: PIXEL,
+                          fontSize: '13px',
+                          color: '#FFFFFF',
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        Music
+                      </div>
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '4px',
+                          padding: '16px',
+                        }}
+                      >
+                        {v.modalSliders.map((sl: any, sI: number) => (
+                          <Fragment key={sI}>
+                            <div
+                              style={{
+                                marginTop: sI ? '4px' : '0',
+                                fontSize: '11px',
+                                fontWeight: 'bold',
+                                color: '#4B6A85',
+                              }}
+                            >
+                              {sl.label}
+                            </div>
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                              }}
+                            >
+                              <SpeakerIcon value={sl.value} />
+                              <VolumeSlider
+                                label={sl.label}
+                                value={sl.value}
+                                onChange={sl.set}
+                              />
+                            </div>
+                          </Fragment>
+                        ))}
+                        <div
+                          onClick={v.resetVolumes}
+                          style={{
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            height: '40px',
+                            marginTop: '12px',
+                            boxSizing: 'border-box',
+                            border: '3px solid #000000',
+                            borderRadius: '8px 2px 8px 2px',
+                            background: '#B5C0FF',
+                            boxShadow:
+                              '0 -4px 0 0 #7E84E6 inset, 0 4px 0 0 #FFF inset, 0 2px 0 0 rgba(0,0,0,.25)',
+                            color: '#000000',
+                            fontFamily: PIXEL,
+                            fontSize: '12px',
+                          }}
+                        >
+                          DEFAULT
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
                   {(v.modalActions || []).map((a: any, aI: number) => (
                     <Fragment key={aI}>
                       <div
@@ -7462,6 +7550,19 @@ export const Screen = ({ v }: { v: View }) => (
                       </div>
                     </Fragment>
                   ))}
+                  {v.modalFooter ? (
+                    <div
+                      style={{
+                        fontSize: '9px',
+                        color: '#8B7355',
+                        textAlign: 'center',
+                        whiteSpace: 'pre-line',
+                        lineHeight: '1.6',
+                      }}
+                    >
+                      {v.modalFooter}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>

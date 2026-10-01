@@ -714,6 +714,9 @@ export const buildView = (app: GearLinkApp): View => {
 
   let modalTitle = '',
     modalRows: any[] = [],
+    modalSliders: any[] = [],
+    modalFooter = '',
+    modalClose = app.closeModal,
     modalActions = [
       {
         label: 'CLOSE',
@@ -754,6 +757,12 @@ export const buildView = (app: GearLinkApp): View => {
       {
         label: 'HOW TO PLAY',
         run: app.openHow,
+        bg: BTN.tertiary.bg,
+        shadow: BTN.tertiary.shadow,
+      },
+      {
+        label: 'SETTINGS',
+        run: app.openSettings,
         bg: BTN.tertiary.bg,
         shadow: BTN.tertiary.shadow,
       },
@@ -829,6 +838,31 @@ export const buildView = (app: GearLinkApp): View => {
           'HP never resets between waves. You die, or the board locks with no legal link and no bomb left.',
         meta: 'ENDLESS',
         metaColor: '#9DB4D4',
+      },
+    ];
+  } else if (st.modal === 'settings') {
+    const ver = app.versionInfo();
+    modalTitle = 'SETTINGS';
+    modalClose = app.closeSettings;
+    modalSliders = [
+      {
+        label: 'Background Music',
+        value: st.volumes.music,
+        set: app.setMusicVolume,
+      },
+      {
+        label: 'Sound Effects',
+        value: st.volumes.sfx,
+        set: app.setSfxVolume,
+      },
+    ];
+    modalFooter = 'Version ' + ver.app + '\nBuild ' + ver.build;
+    modalActions = [
+      {
+        label: 'CLOSE',
+        run: app.closeSettings,
+        bg: BTN.secondary.bg,
+        shadow: BTN.secondary.shadow,
       },
     ];
   } else if (st.modal === 'board') {
@@ -2102,9 +2136,11 @@ export const buildView = (app: GearLinkApp): View => {
     ),
     toggleHomeMenu: app.toggleHomeMenu,
     homeMenuDisplay: st.homeMenu ? 'flex' : 'none',
+    homeMenuOpen: st.homeMenu,
     homeMenuItems: [
-      { label: 'BLACKSMITHS', run: app.openBoardFromMenu },
-      { label: 'HOW TO PLAY', run: app.openHowFromMenu },
+      { label: 'BLACKSMITHS', icon: 'board', run: app.openBoardFromMenu },
+      { label: 'HOW TO PLAY', icon: 'how', run: app.openHowFromMenu },
+      { label: 'SETTINGS', icon: 'settings', run: app.openSettingsFromMenu },
     ],
     /* ---------- the map ---------- *
 
@@ -2405,7 +2441,7 @@ export const buildView = (app: GearLinkApp): View => {
     onCancel: app.onCancel,
     openHow: app.openHow,
     openBoard: app.openBoard,
-    closeModal: app.closeModal,
+    closeModal: modalClose,
     quitRun: app.quitRun,
     goLoadout: app.goLoadout,
     stop: app.stop,
@@ -2489,6 +2525,9 @@ export const buildView = (app: GearLinkApp): View => {
     modalTitle,
     modalRows,
     modalActions,
+    modalSliders,
+    modalFooter,
+    resetVolumes: app.resetVolumes,
     openPause: app.openPause,
   };
 };

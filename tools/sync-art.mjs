@@ -1,5 +1,5 @@
 /**
- * Re-download the game art and fonts from the asset CDN into `public/art`.
+ * Re-download the game art, fonts and audio from the asset CDN into `public/art`.
  *
  * The app serves these from its own origin because a Devvit web view's CSP
  * blocks third-party images and fonts. Run this when the CDN art changes:
@@ -28,6 +28,7 @@ import {
   getGearImageUrl,
   monsterUrlFor,
 } from '../dist/test/shared/engine/index.js';
+import { audioPaths } from '../dist/test/client/audio/tracks.js';
 
 const CDN = 'https://files.anomalygames.ai/';
 const LOCAL = '/art/';
@@ -47,6 +48,7 @@ const HARDCODED = [
 
 export const artPaths = () => {
   const paths = new Set(HARDCODED);
+  for (const a of audioPaths()) paths.add(a);
   for (const pin of MAP_PIN_URLS) paths.add(pin);
   for (const g of GEAR) {
     const u = getGearImageUrl(g.id);

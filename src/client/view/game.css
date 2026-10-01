@@ -751,3 +751,8 @@ a:hover {
     border-radius: 0;
   }
 }
+
+/* Home menu rows light up under the pointer, as in Neura Knights. */
+.gl-menu-item:hover {
+  background: #ffffff;
+}

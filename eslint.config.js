@@ -37,7 +37,8 @@ export default defineConfig([
     ignores: ['src/server/**/*.{ts,tsx}'],
     languageOptions: {
       ecmaVersion: 2023,
-      globals: globals.browser,
+      // __BUILD_ID__ is stamped by the `define` in vite.config.ts.
+      globals: { ...globals.browser, __BUILD_ID__: 'readonly' },
       parserOptions: {
         project: ['./tools/tsconfig.client.json', './tools/tsconfig.test.json'],
         tsconfigRootDir: import.meta.dirname,
