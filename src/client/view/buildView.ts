@@ -938,6 +938,7 @@ export const buildView = (app: GearLinkApp): View => {
     label,
     value,
     color,
+    icon: '',
     anim: 'glPop 320ms ' + i * 80 + 'ms ease-out both',
   });
   const waves = app.rollUp(endBs.wavesCleared);
@@ -1076,6 +1077,9 @@ export const buildView = (app: GearLinkApp): View => {
     setFtueHero: app.setFtueHero,
     setFtueGear: app.setFtueGear,
     setFtueSlots: app.setFtueSlots,
+    setFtueHomeNav: app.setFtueHomeNav,
+    setFtueHeroCta: app.setFtueHeroCta,
+    setFtueGearCta: app.setFtueGearCta,
     advanceFtue: app.advanceFtue,
     endFtue: app.endFtue,
     gearlinkIcon: GEARLINK_ICON,
@@ -2551,7 +2555,6 @@ export const buildView = (app: GearLinkApp): View => {
           : st.endReason === 'ended'
             ? 'You walked out mid-battle. Nothing on the map moved.'
             : 'HP does not come back between waves. Clear the location in one go or not at all.',
-    endTitleColor: st.endReason === 'won' ? '#FCE370' : '#FF9EA1',
     /* Won or lost, the way on is the map - there is nothing else to go back
        to now that a run is one location rather than an endless run. */
     endActionLabel: dailyRun
@@ -2569,6 +2572,7 @@ export const buildView = (app: GearLinkApp): View => {
                 label: 'HEART PIECES',
                 value: '+' + app.rollUp(st.heartPiecesEarned),
                 color: '#B23A48',
+                icon: '',
                 anim: 'glPop 320ms 400ms ease-out both',
               },
             ]
@@ -2579,8 +2583,9 @@ export const buildView = (app: GearLinkApp): View => {
           : [
               {
                 label: 'COINS EARNED',
-                value: '+' + app.rollUp(st.coinsEarned),
+                value: app.rollUp(st.coinsEarned),
                 color: '#8A5A2B',
+                icon: COIN_ICON,
                 anim: 'glPop 320ms 320ms ease-out both',
               },
             ]

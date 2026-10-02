@@ -2137,6 +2137,11 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   setFtueBoard = this.ftueRef('board');
   setFtueEnemy = this.ftueRef('enemyHp');
   setFtueTrack = this.ftueRef('track');
+  // Each screen's bottom action bar (map nav, hero CONTINUE, gear START). The
+  // card must never sit on these, or the player cannot see how to move on.
+  setFtueHomeNav = this.ftueRef('footer:home');
+  setFtueHeroCta = this.ftueRef('footer:hero');
+  setFtueGearCta = this.ftueRef('footer:gear');
   setFtueRoot = (el: HTMLElement | null): void => {
     this.ftueRoot = el;
   };
@@ -2158,11 +2163,26 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     const el = this.ftueEls[spec.target];
     if (!el) return;
     const arena = this.ftueRoot.getBoundingClientRect();
-    const rect = el.getBoundingClientRect();
+    const raw = el.getBoundingClientRect();
     const cardH = this.ftueCard.getBoundingClientRect().height;
-    if (!arena.height || !rect.height) return;
+    if (!arena.height || !raw.height) return;
+    // The map is larger than the shell and dragged around inside it, so only
+    // the part actually on screen counts as the target.
+    const rect = {
+      top: Math.max(raw.top, arena.top),
+      bottom: Math.min(raw.bottom, arena.bottom),
+      left: Math.max(raw.left, arena.left),
+      right: Math.min(raw.right, arena.right),
+    };
+    // Usable area stops at the bottom action bar so the card never covers it.
+    const footer = ['footer:home', 'footer:hero', 'footer:gear']
+      .map((k) => this.ftueEls[k])
+      .find((f) => f && f.isConnected);
+    const floor = footer
+      ? Math.min(arena.bottom, footer.getBoundingClientRect().top - 4)
+      : arena.bottom;
     const roomAbove = rect.top - arena.top;
-    const roomBelow = arena.bottom - rect.bottom;
+    const roomBelow = floor - rect.bottom;
     const needed = cardH + FTUE_ARROW_GAP + 16;
     const side =
       spec.place === 'above'
@@ -2176,16 +2196,27 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       side === 'above'
         ? arena.bottom - rect.top + FTUE_ARROW_GAP
         : rect.bottom - arena.top + FTUE_ARROW_GAP;
-    // Neither side may be able to hold a tall card (the legend step). Clamp so
-    // it slides back inside the shell instead of off the top edge.
+    // Neither side may be able to hold a tall card (the legend step, or a
+    // short desktop modal). Clamp so it stays between the top edge and the
+    // action bar instead of sliding over either.
+    const arrow = FTUE_ARROW_GAP + 16;
+    const maxTop = Math.max(0, floor - arena.top - cardH - arrow);
+    const minBottom = arena.bottom - floor;
+    const offset =
+      side === 'below'
+        ? Math.min(offsetRaw, maxTop)
+        : Math.max(
+            minBottom,
+            Math.min(offsetRaw, Math.max(0, arena.height - cardH - arrow))
+          );
     const next: Place = {
       side,
-      offset: Math.min(offsetRaw, Math.max(0, arena.height - cardH - 4)),
+      offset,
       hole: {
         top: rect.top - arena.top,
         left: rect.left - arena.left,
-        w: rect.width,
-        h: rect.height,
+        w: rect.right - rect.left,
+        h: rect.bottom - rect.top,
       },
     };
     const cur = this.state.ftuePlace;

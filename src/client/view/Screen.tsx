@@ -20,6 +20,20 @@ import { MenuIcon, SpeakerIcon, VolumeSlider } from './SettingsControls.js';
 
 const PIXEL = "'Yoster Island',Volter,monospace";
 
+/** Yoster Island draws `#` as a star, so any `#` in pixel text is set in
+ *  Volter instead to read as the hash it is. */
+const withHash = (text: string | number): ReactNode =>
+  String(text)
+    .split('#')
+    .map((part, i) => (
+      <Fragment key={i}>
+        {i > 0 ? (
+          <span style={{ fontFamily: 'Volter,monospace' }}>#</span>
+        ) : null}
+        {part}
+      </Fragment>
+    ));
+
 /** One side of the pre-fight screen: who, what class, and the five. */
 const DuelSideCard = ({
   label,
@@ -831,6 +845,7 @@ export const Screen = ({ v }: { v: View }) => (
               </div>
 
               <div
+                ref={v.setFtueHomeNav}
                 style={{
                   position: 'absolute',
                   left: '0',
@@ -1178,6 +1193,7 @@ export const Screen = ({ v }: { v: View }) => (
               </div>
 
               <div
+                ref={v.setFtueHeroCta}
                 style={{
                   marginTop: 'auto',
                   paddingTop: '8px',
@@ -2100,6 +2116,7 @@ export const Screen = ({ v }: { v: View }) => (
               </div>
 
               <div
+                ref={v.setFtueGearCta}
                 style={{
                   flexShrink: '0',
                   display: 'flex',
@@ -7185,6 +7202,20 @@ export const Screen = ({ v }: { v: View }) => (
                 background: '#141D2E',
               }}
             >
+              {/* The title sits over the card, white with a glow, the way the
+                  Neura Knights battle result modal heads its result. */}
+              <div
+                style={{
+                  fontFamily: "'Yoster Island',Volter,monospace",
+                  fontSize: '28px',
+                  color: '#FFFFFF',
+                  textShadow: '0 0 15px rgba(255, 255, 255, 0.60)',
+                  textAlign: 'center',
+                  animation: 'glPop 320ms ease-out both',
+                }}
+              >
+                {withHash(v.endTitle)}
+              </div>
               <div
                 style={{
                   width: '100%',
@@ -7205,16 +7236,6 @@ export const Screen = ({ v }: { v: View }) => (
                     padding: '18px 16px',
                   }}
                 >
-                  <div
-                    style={{
-                      fontFamily: "'Yoster Island',Volter,monospace",
-                      fontSize: '20px',
-                      color: v.endTitleColor || '#3C63FF',
-                      textAlign: 'center',
-                    }}
-                  >
-                    {v.endTitle}
-                  </div>
                   <div
                     style={{
                       fontSize: '11px',
@@ -7257,12 +7278,29 @@ export const Screen = ({ v }: { v: View }) => (
                           </div>
                           <div
                             style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
                               fontFamily: "'Yoster Island',Volter,monospace",
                               fontSize: '22px',
                               color: e.color,
                             }}
                           >
-                            {e.value}
+                            {e.icon ? (
+                              <div
+                                style={{
+                                  width: '20px',
+                                  height: '20px',
+                                  flexShrink: '0',
+                                  backgroundImage: `url(${e.icon})`,
+                                  backgroundSize: 'contain',
+                                  backgroundRepeat: 'no-repeat',
+                                  backgroundPosition: 'center',
+                                  imageRendering: 'pixelated',
+                                }}
+                              ></div>
+                            ) : null}
+                            {withHash(e.value)}
                           </div>
                         </div>
                       </Fragment>
@@ -7621,6 +7659,7 @@ export const Screen = ({ v }: { v: View }) => (
                   maxWidth: '320px',
                   top: v.ftueCardTop,
                   bottom: v.ftueCardBottom,
+                  maxHeight: 'calc(100% - 8px)',
                   visibility: v.ftueCardVis,
                   display: 'flex',
                   flexDirection: 'column',
@@ -7643,6 +7682,9 @@ export const Screen = ({ v }: { v: View }) => (
                   ref={v.setFtueCard}
                   style={{
                     width: '100%',
+                    flex: '0 1 auto',
+                    minHeight: '0',
+                    overflow: 'hidden',
                     background: 'rgba(255,255,255,.94)',
                     border: '2px solid #141D2E',
                     borderRadius: '12px 2px 12px 2px',
@@ -7669,6 +7711,9 @@ export const Screen = ({ v }: { v: View }) => (
                       color: '#141D2E',
                       lineHeight: '1.6',
                       textWrap: 'pretty',
+                      flex: '0 1 auto',
+                      minHeight: '0',
+                      overflowY: 'auto',
                     }}
                   >
                     {v.ftueBody}
@@ -7820,13 +7865,14 @@ export const Screen = ({ v }: { v: View }) => (
 
         {/* Duel setup coaching. It sits OVER the screen its step is about and
             never blocks it: the build is done by doing, so the card explains
-            and gets out of the way rather than gating the controls. */}
+            and gets out of the way rather than gating the controls. It docks
+            at the TOP: every setup screen keeps its way forward at the bottom. */}
         <div
           style={{
             position: 'absolute',
             left: '10px',
             right: '10px',
-            bottom: '10px',
+            top: '10px',
             zIndex: '40',
             display: v.duelSetupDisplay,
             flexDirection: 'column',

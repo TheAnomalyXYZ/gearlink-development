@@ -353,6 +353,9 @@ const fakeApp = (over: Record<string, unknown>): GearLinkApp => {
     setFtueHero: noop,
     setFtueGear: noop,
     setFtueSlots: noop,
+    setFtueHomeNav: noop,
+    setFtueHeroCta: noop,
+    setFtueGearCta: noop,
   } as unknown as GearLinkApp;
 };
 
