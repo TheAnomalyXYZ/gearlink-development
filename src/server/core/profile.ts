@@ -24,6 +24,11 @@ import type { HeroClass } from '../../shared/engine/types.js';
 
 export const profileKey = (userId: string) => `profile:${userId}`;
 
+/** Each unlocked flair is its own `flair:<id>` field on the profile hash, so
+ *  two requests unlocking different flairs at once both land - and an admin
+ *  reset, which drops the hash, takes them with it. */
+export const FLAIR_FIELD = 'flair:';
+
 /** A fresh account starts with enough coins for the entry pack, so the shop
  *  ladder reads cheap-first rather than leaving the premium crate as the only
  *  affordable buy. */
@@ -228,6 +233,10 @@ export const loadProfile = async (
     duelListed: listed,
     duelWeekDuels: duels,
     duelPrize: prize,
+    flairs: Object.keys(h)
+      .filter((f) => f.startsWith(FLAIR_FIELD) && h[f] === '1')
+      .map((f) => f.slice(FLAIR_FIELD.length)),
+    flair: h['flair'] || null,
   };
 };
 
@@ -271,6 +280,7 @@ export type ProfilePatch = Partial<
     | 'duelCls'
     | 'duelPicked'
     | 'duelListed'
+    | 'flair'
   >
 >;
 
@@ -313,6 +323,7 @@ export const saveProfile = async (
     if (patch.duelListed)
       fields['duelListedWeek'] = String(duelWeekOf(Date.now()));
   }
+  if (patch.flair !== undefined) fields['flair'] = patch.flair ?? '';
   if (!Object.keys(fields).length) return;
   await redis.hSet(profileKey(userId), fields);
 };

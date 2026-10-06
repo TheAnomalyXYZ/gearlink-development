@@ -44,6 +44,10 @@ export type Profile = {
   duelWeekDuels: number;
   /** Last week's league prize, already paid, until the notice is dismissed. */
   duelPrize: SeasonPrize | null;
+  /** Ids of the subreddit flairs this player has unlocked, kept for good. */
+  flairs: string[];
+  /** The unlocked flair this player chose to wear, or null for none. */
+  flair: string | null;
 };
 
 export type BestRun = {
@@ -288,5 +292,8 @@ export type ClaimQuestResponse = {
   board: QuestBoard;
   message: string;
 };
+
+/** Wear an unlocked flair in the subreddit, or null to take it off. */
+export type EquipFlairRequest = { flairId: string | null };
 
 export type ErrorResponse = { status: 'error'; message: string };

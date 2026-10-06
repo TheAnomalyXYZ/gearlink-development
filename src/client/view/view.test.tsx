@@ -49,6 +49,8 @@ const profile: Profile = {
   duelListed: true,
   duelWeekDuels: 1,
   duelPrize: null,
+  flairs: ['apprentice'],
+  flair: 'apprentice',
 };
 
 /** One of each row state: claimable, in progress, claimed. */
@@ -278,6 +280,7 @@ const fakeApp = (over: Record<string, unknown>): GearLinkApp => {
     pickShopTab: curried,
     pickQuestTab: curried,
     claimQuest: curried,
+    equipFlair: curried,
     pickInvTab: curried,
     inspectCard: curried,
     buyCoins: curried,
@@ -666,6 +669,9 @@ void test('modals render', () => {
   renders('pause', { phase: 'battle', bs, modal: 'pause' });
   renders('how to play', { phase: 'home', modal: 'how' });
   renders('ladder', { phase: 'home', modal: 'board' });
+  const flair = renders('flair', { phase: 'home', modal: 'flair' });
+  assert.ok(flair.includes('WEARING'));
+  assert.ok(flair.includes('TAKE OFF'));
   const settings = renders('settings', { phase: 'home', modal: 'settings' });
   assert.ok(settings.includes('Background Music'));
   assert.ok(settings.includes('Sound Effects'));

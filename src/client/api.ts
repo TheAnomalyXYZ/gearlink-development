@@ -86,6 +86,8 @@ export const api = {
   ftueSeen: (which: 'run' | 'duel' | 'duelSetup') =>
     call<ProfileResponse>('/ftue/seen', { which }),
   prizeSeen: () => call<ProfileResponse>('/duel/prize/seen', {}),
+  equipFlair: (flairId: string | null) =>
+    call<ProfileResponse>('/flair/equip', { flairId }),
 };
 
 /** The moderator panel. The server refuses every one of these for anyone else. */

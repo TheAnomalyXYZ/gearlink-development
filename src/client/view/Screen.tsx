@@ -7703,7 +7703,9 @@ export const Screen = ({ v }: { v: View }) => (
                   {(v.modalRows || []).map((r: any, rI: number) => (
                     <Fragment key={rI}>
                       <div
+                        onClick={r.run}
                         style={{
+                          cursor: r.run ? 'pointer' : 'default',
                           display: 'flex',
                           gap: '10px',
                           alignItems: 'baseline',

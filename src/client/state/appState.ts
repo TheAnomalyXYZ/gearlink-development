@@ -151,7 +151,7 @@ export type AppState = {
   ftueSample: { damage: number; killed: boolean };
 
   preview: Preview | null;
-  modal: 'pause' | 'how' | 'board' | 'settings' | null;
+  modal: 'pause' | 'how' | 'board' | 'settings' | 'flair' | null;
   homeMenu: boolean;
   /** Music and SFX slider values, 0-100. Read from browser storage on mount. */
   volumes: Volumes;
@@ -246,6 +246,8 @@ export const EMPTY_PROFILE: Profile = {
   duelListed: false,
   duelWeekDuels: 0,
   duelPrize: null,
+  flairs: [],
+  flair: null,
 };
 
 /** The design ships mutators as authoring knobs; this build runs the base rules. */

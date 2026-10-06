@@ -55,6 +55,7 @@ import {
   duelStep,
   enemyDisplayFor,
   fallDistances,
+  flairById,
   foeLoadout,
   hasAnyMove,
   heartsFor,
@@ -334,6 +335,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
 
   /** Adopt whatever the server now says the wallet is, and surface its note. */
   private adopt = (profile: Profile, message?: string): void => {
+    this.noteFlairs(profile);
     this.setState((s) => ({
       profile,
       shopMsg: message ?? s.shopMsg,
@@ -343,6 +345,15 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     }));
     if (message) this.clearShopMsgSoon();
   };
+
+  /** Toast any flair this profile unlocked that the one on screen had not. */
+  private noteFlairs(next: Profile): void {
+    const had = new Set(this.state.profile.flairs);
+    for (const id of next.flairs) {
+      const def = had.has(id) ? null : flairById(id);
+      if (def) safeToast(showToast, 'Flair unlocked: ' + def.text + '!');
+    }
+  }
 
   private fail = (e: unknown): void => {
     const msg = e instanceof Error ? e.message : 'Something went wrong.';
@@ -810,6 +821,26 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   openHowFromMenu = (): void =>
     this.setState({ modal: 'how', homeMenu: false });
   closeModal = (): void => this.setState({ modal: null });
+  openFlairFromMenu = (): void =>
+    this.setState({ modal: 'flair', homeMenu: false });
+
+  private flairBusy = false;
+  /** Wear an unlocked flair, or null to take it off. Reddit is written by the
+   *  server first, so the profile that comes back is what Reddit now shows. */
+  equipFlair = (flairId: string | null) => (): void => {
+    if (this.flairBusy) return;
+    this.flairBusy = true;
+    void api
+      .equipFlair(flairId)
+      .then((r) => {
+        this.adopt(r.profile);
+        if (r.message) safeToast(showToast, r.message);
+      })
+      .catch(this.fail)
+      .finally(() => {
+        this.flairBusy = false;
+      });
+  };
   openSettings = (): void => this.setState({ modal: 'settings' });
   openSettingsFromMenu = (): void =>
     this.setState({ modal: 'settings', homeMenu: false });
@@ -1008,6 +1039,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     this.moves = [];
     try {
       const res = await api.submitRun({ ...spec, moves });
+      this.noteFlairs(res.profile);
       this.setState({
         profile: res.profile,
         leaderboard: res.leaderboard,

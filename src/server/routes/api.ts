@@ -13,6 +13,7 @@ import type {
   DuelListedRequest,
   DuelOpponentsResponse,
   DuelResultRequest,
+  EquipFlairRequest,
   SaveDuelLoadoutRequest,
   ErrorResponse,
   InitResponse,
@@ -33,6 +34,7 @@ import {
   saveProfile,
 } from '../core/profile.js';
 import { isModeratorSafe } from '../core/mods.js';
+import { equipFlair, syncFlairs } from '../core/flair.js';
 import {
   recordDuel,
   recordEvent,
@@ -111,7 +113,9 @@ api.get('/init', async (c) => {
   await recordVisit(me.userId, me.username);
   const [profile, leaderboard, challenger, daily, isModerator] =
     await Promise.all([
-      loadProfile(me.userId, me.username),
+      // Boot also catches up flair unlocks: one added to the catalogue since
+      // the last visit lands for everyone who already qualifies.
+      loadProfile(me.userId, me.username).then((p) => syncFlairs(me.userId, p)),
       getLeaderboard(me.postId, me.userId),
       // A failed read only means the post opens like any other.
       readChallengeFoe(me.postId, me.userId, me.username).catch(() => null),
@@ -283,7 +287,7 @@ api.post('/run', async (c) => {
   );
 
   const [after, leaderboard] = await Promise.all([
-    loadProfile(me.userId, me.username),
+    loadProfile(me.userId, me.username).then((p) => syncFlairs(me.userId, p)),
     getLeaderboard(me.postId, me.userId),
   ]);
 
@@ -748,7 +752,8 @@ api.post('/duel/result', async (c) => {
       { metric: 'duels', amount: 1 },
       { metric: 'duelWins', amount: body.won ? 1 : 0 },
     ]);
-  return c.json(profileJson(await loadProfile(me.userId, me.username)));
+  const after = await loadProfile(me.userId, me.username);
+  return c.json(profileJson(await syncFlairs(me.userId, after)));
 });
 
 /**
@@ -847,4 +852,30 @@ api.post('/quests/claim', async (c) => {
     board,
     message: res.message,
   });
+});
+
+/* ---------- flair ---------- */
+
+/** Wear an unlocked flair in the subreddit, or null to take it off. The unlock
+ *  is the server's own record, so the only thing the client names is which. */
+api.post('/flair/equip', async (c) => {
+  const me = who();
+  if (!me) return unauthorised(c);
+  const body = (await c.req
+    .json()
+    .catch(() => null)) as EquipFlairRequest | null;
+  // A missing id is a bad body, not a request to strip the player's flair.
+  const flairId = body?.flairId;
+  if (flairId !== null && typeof flairId !== 'string')
+    return c.json<ErrorResponse>({ status: 'error', message: 'bad body' }, 400);
+  const profile = await loadProfile(me.userId, me.username);
+  const res = await equipFlair(me.userId, me.username, profile, flairId);
+  if (!res.ok)
+    return c.json<ErrorResponse>(
+      { status: 'error', message: res.message },
+      400
+    );
+  return c.json(
+    profileJson(await loadProfile(me.userId, me.username), res.message)
+  );
 });

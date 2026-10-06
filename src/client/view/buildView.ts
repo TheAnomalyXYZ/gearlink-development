@@ -47,6 +47,7 @@ import {
   NO_STATUS,
   PACKS,
   QUESTS,
+  FLAIRS,
   RARITY_ORDER,
   RARITY_OUTLINE,
   RIDERS,
@@ -1024,6 +1025,41 @@ export const buildView = (app: GearLinkApp): View => {
       {
         label: 'CLOSE',
         run: app.closeSettings,
+        bg: BTN.secondary.bg,
+        shadow: BTN.secondary.shadow,
+      },
+    ];
+  } else if (st.modal === 'flair') {
+    /* Every flair in the catalogue, locked ones included, so the picker also
+       says what is left to earn. Tapping an unlocked row wears it. */
+    const owned = new Set(st.profile.flairs);
+    modalTitle = 'FLAIR';
+    modalRows = FLAIRS.map((f) => {
+      const worn = st.profile.flair === f.id;
+      const open = owned.has(f.id);
+      return {
+        title: f.text,
+        detail: f.blurb,
+        meta: worn ? 'WEARING' : open ? 'WEAR' : 'LOCKED',
+        metaColor: worn ? '#AEE45D' : open ? '#428FFB' : '#9DB4D4',
+        run: open && !worn ? app.equipFlair(f.id) : undefined,
+      };
+    });
+    modalFooter = 'Flair shows next to your name\nin this subreddit.';
+    modalActions = [
+      ...(st.profile.flair
+        ? [
+            {
+              label: 'TAKE OFF',
+              run: app.equipFlair(null),
+              bg: BTN.primary.bg,
+              shadow: BTN.primary.shadow,
+            },
+          ]
+        : []),
+      {
+        label: 'CLOSE',
+        run: app.closeModal,
         bg: BTN.secondary.bg,
         shadow: BTN.secondary.shadow,
       },
@@ -2466,6 +2502,7 @@ export const buildView = (app: GearLinkApp): View => {
     homeMenuItems: [
       { label: 'BLACKSMITHS', icon: 'board', run: app.openBoardFromMenu },
       { label: 'HOW TO PLAY', icon: 'how', run: app.openHowFromMenu },
+      { label: 'FLAIR', icon: 'flair', run: app.openFlairFromMenu },
       { label: 'SETTINGS', icon: 'settings', run: app.openSettingsFromMenu },
     ],
     /* ---------- the map ---------- *
