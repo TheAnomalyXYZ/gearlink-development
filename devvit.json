@@ -59,7 +59,7 @@
       {
         "sku": "gems_40",
         "displayName": "40 Gems",
-        "description": "A pouch of gems. Spend them on gold packs or trade them for coins.",
+        "description": "A pouch of gems. Spend them on premium packs or trade them for coins.",
         "price": 25,
         "accountingType": "INSTANT"
       },

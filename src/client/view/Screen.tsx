@@ -3324,8 +3324,8 @@ export const Screen = ({ v }: { v: View }) => (
                     lineHeight: '1.6',
                   }}
                 >
-                  Gems buy premium packs and coin bundles. Prices are
-                  placeholders and no payment is taken.
+                  Gems buy premium packs and coin bundles. Gem bundles are
+                  purchased with Reddit Gold.
                 </div>
                 {(v.gemBundles || []).map((b: any, bI: number) => (
                   <Fragment key={bI}>
@@ -3392,28 +3392,41 @@ export const Screen = ({ v }: { v: View }) => (
                       </div>
                       <div
                         onClick={b.buy}
+                        role="button"
+                        aria-label={b.priceAria}
                         style={{
                           cursor: 'pointer',
                           flexShrink: '0',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          minHeight: '34px',
-                          padding: '0 13px',
-                          border: '2px solid #000000',
-                          borderRadius: '8px 2px 8px 2px',
-                          background: '#AEE45D',
-                          boxShadow:
-                            '0 -4px 0 0 #6F9E2E inset, 0 4px 0 0 #FFF inset, 0 2px 0 0 rgba(0,0,0,.25)',
-                          color: '#000000',
-                          fontFamily: 'VolterTitle,Volter,monospace',
-                          fontSize: '16.5px',
-                          lineHeight: '1.05',
-                          textAlign: 'center',
-                          textWrap: 'balance',
+                          gap: '6px',
+                          height: '32px',
+                          padding: '0 14px 0 10px',
+                          borderRadius: '999px',
+                          background: '#0A449B',
+                          color: '#FFFFFF',
+                          fontFamily:
+                            '"Reddit Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          lineHeight: '1',
+                          whiteSpace: 'nowrap',
                         }}
                       >
-                        {b.priceLabel}
+                        {/* Official Reddit Gold icon (filled), from the Devvit
+                            payments design guidelines. */}
+                        <svg
+                          viewBox="0 0 20 20"
+                          width="18"
+                          height="18"
+                          fill="currentColor"
+                          aria-hidden="true"
+                          style={{ flexShrink: '0' }}
+                        >
+                          <path d="m17.08 4.953-4.073-2.958a5.118 5.118 0 0 0-6.018 0L2.917 4.953a5.12 5.12 0 0 0-1.86 5.723l1.555 4.786A5.12 5.12 0 0 0 7.482 19h5.032a5.12 5.12 0 0 0 4.87-3.537l1.554-4.786a5.117 5.117 0 0 0-1.859-5.723ZM14.31 9.765l-1.277 3.928a1.022 1.022 0 0 1-.972.706h-4.13c-.443 0-.835-.285-.972-.706L5.683 9.765a1.023 1.023 0 0 1 .371-1.143l3.342-2.427c.358-.26.843-.26 1.201 0l3.342 2.427c.358.26.51.722.372 1.143Z" />
+                        </svg>
+                        <span>{b.priceLabel}</span>
                       </div>
                     </div>
                   </Fragment>

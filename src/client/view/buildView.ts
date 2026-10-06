@@ -2125,9 +2125,10 @@ export const buildView = (app: GearLinkApp): View => {
           Object.assign(
             {
               amount: b.amount.toLocaleString(),
-              // Reddit Gold is the unit the checkout charges in, so it is the
-              // unit the button quotes.
-              priceLabel: b.gold + ' GOLD',
+              // Reddit's payment guidelines want purchase buttons to read
+              // "Use N" next to the official gold icon, not a free-form price.
+              priceLabel: 'Use ' + (b.gold ?? 0).toLocaleString('en-US'),
+              priceAria: 'Use ' + (b.gold ?? 0) + ' Reddit Gold',
               tint: b.tint,
               buy: (e: FxEvent) => fxs.buyGems(app, b, e, fxHelpers()),
               inAnim: fxs.listIn(
