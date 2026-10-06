@@ -5,6 +5,7 @@
  */
 import {
   EFFECT_LABEL,
+  chainMultX100,
   MIN_LINK,
   RIDERS,
   SUPER_MIN_LINK,
@@ -37,7 +38,18 @@ export const COLOR = {
   linking: '#9DB4D4',
 } as const;
 
-export type Preview = { text: string; color: string };
+export type Preview = {
+  text: string;
+  color: string;
+  /** Chain maths for the combo chips: power x mult = val. Only on a full link. */
+  power?: number;
+  mult?: number;
+  val?: number;
+  effect?: string;
+  label?: string;
+  extra?: string;
+  bomb?: boolean;
+};
 
 const effectColor = (effect: string): string =>
   effect === 'attack'
@@ -120,6 +132,14 @@ export const linkPreview = (p: {
       rider +
       junk,
     color: effectColor(orb.effect),
+    power: orb.power,
+    mult: chainMultX100(chain.length, p.mutators),
+    val,
+    effect: orb.effect,
+    label:
+      orb.effect === 'attack' ? 'DAMAGE' : (EFFECT_LABEL[orb.effect] ?? ''),
+    extra: (mark + rider + junk).replace(/\s+/g, ' ').trim(),
+    bomb: !!bomb,
   };
 };
 

@@ -69,6 +69,18 @@ class AudioEngine {
   /** False when the element could not be routed through the gain node. */
   private wired = false;
 
+  /** The live context, for synthesized effects (fx/fx.ts). Null until the
+   *  first tap creates it. */
+  get context(): AudioContext | null {
+    return this.ctx;
+  }
+
+  /** The effects bus synthesized sounds connect into, so the SFX slider
+   *  applies to them too. Null until the first tap. */
+  get sfxOut(): GainNode | null {
+    return this.sfxGain;
+  }
+
   /** Listen for the first gesture and for the tab hiding. Safe to call twice. */
   attach(): void {
     if (this.attached || typeof document === 'undefined') return;

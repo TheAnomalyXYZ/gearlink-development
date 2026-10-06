@@ -8,6 +8,9 @@
  */
 import type { GearLinkApp } from '../GearLinkApp.js';
 import type { QuestReward } from '../../shared/engine/quests.js';
+import type { Gear } from '../../shared/engine/index.js';
+import type { AppState } from '../state/appState.js';
+import type { FxEvent } from '../fx/screens.js';
 import {
   AFFIX_BLURB,
   AFFIX_TINT,
@@ -76,7 +79,24 @@ import {
   rowOf,
   rewardLabel,
 } from '../../shared/engine/index.js';
-import { BOMB_ICON, DEFAULT_SNOO, GEARLINK_ICON, NAV_ICON } from './assets.js';
+import { DEFAULT_SNOO, GEARLINK_ICON, NAV_ICON } from './assets.js';
+import {
+  BOMB_PAL,
+  BOMB_TILE,
+  EMPTY_PAL,
+  JUNK_CRACKED,
+  JUNK_PAL,
+  liftT,
+  paletteFor,
+  snapPx,
+  stepDelays,
+  tileIcon,
+  tileVars,
+} from './tilePalette.js';
+import { crisp, preloadCrisp, setCrispNotify } from './crispIcon.js';
+import * as fx from '../fx/fx.js';
+import { syncPackStage } from '../fx/packStage.js';
+import * as fxs from '../fx/screens.js';
 import {
   DUEL_SETUP_PHASE,
   FTUE_COPY,
@@ -84,6 +104,80 @@ import {
   FTUE_LEGEND,
   FTUE_ORDER,
 } from '../ftue.js';
+
+/** Every icon a loadout can put on a tile, so crispIcon can upscale them before
+ *  the board first draws. */
+const loadoutIcons = (lo: (Gear | null | undefined)[]): string[] =>
+  (lo || [])
+    .filter((g): g is Gear => !!g)
+    .map(
+      (g) =>
+        tileIcon(getGearImageUrl(g.id) || EFFECT_ICON[g.effect] || '', false)[0]
+    )
+    .concat([BOMB_TILE[0], tileIcon(JUNK_ICON, false)[0]]);
+/** What the FX layer needs from the asset tables. */
+const fxHelpers = () => ({
+  packById,
+  coinIcon: COIN_ICON,
+  gemIcon: GEM_ICON,
+  gearImage: getGearImageUrl,
+  crisp,
+  packImg: (id: string) => packById(id)?.img || '',
+});
+/** The glow layer above the tile face: the cell's own inset shadow would be
+ *  hidden under the frame, so the super and arm glows live on their own div. */
+const glowOf = (a: string): string =>
+  /^glSuper/.test(a)
+    ? 'glSuperGlow 1.4s ease-in-out infinite'
+    : /^glArm/.test(a)
+      ? 'glArmGlow 360ms ease-in forwards'
+      : 'none';
+/** The combo chips under the board: power x mult = value, shown only while a
+ *  full link (3+) is drawn and the monster is not mid-swing. */
+const chipsFor = (st: AppState) => {
+  const p = st.preview;
+  const on = !!(p && p.mult && st.chain.length >= 3 && !st.swing);
+  const mx = p && p.mult ? p.mult / 100 : 0;
+  const pop = (n: number) =>
+    'glChipPop' + (n % 2 ? 'A' : 'B') + ' 220ms cubic-bezier(.3,1.8,.5,1)';
+  return {
+    chipsDisplay: on ? 'flex' : 'none',
+    previewDisplay: on ? 'none' : 'block',
+    chipPower: on && p ? String(p.power) : '',
+    chipMult: on
+      ? '×' + (Number.isInteger(mx) ? mx : mx.toFixed(2).replace(/0$/, ''))
+      : '',
+    chipRest: on && p ? '= ' + p.val + ' ' + (p.label || '') : '',
+    chipExtra: on && p ? p.extra || '' : '',
+    chipExtraDisplay: on && p?.extra ? 'block' : 'none',
+    chipBombDisplay: on && p?.bomb ? 'flex' : 'none',
+    chipPowerAnim: on && p ? pop(p.power ?? 0) : 'none',
+    chipMultAnim: on ? pop(st.chain.length) : 'none',
+  };
+};
+/** A coin bundle's art is a stack that grows with the bundle: 2 coins for the
+ *  smallest, up to 6, zig-zagged. */
+const coinStack = (k: number) => {
+  const n = Math.min(6, 2 + k);
+  return {
+    stackH: 26 + (n - 1) * 5 + 'px',
+    stack: Array.from({ length: n }, (_, i) => ({
+      x: (i % 2 ? 8 : 4) + 'px',
+      y: i * 5 + 'px',
+    })),
+  };
+};
+/** Per-cell delay for a staggered clear, keyed by cell index, in link order. */
+const clearDelays = (
+  order: number[]
+): Record<number, number> & { last: number } => {
+  const d = stepDelays(order.length);
+  const m: Record<number, number> = {};
+  order.forEach((c, k) => {
+    m[c] = d[k] ?? 0;
+  });
+  return Object.assign(m, { last: d[d.length - 1] ?? 0 });
+};
 
 export type View = Record<string, any>;
 
@@ -363,6 +457,13 @@ export const buildView = (app: GearLinkApp): View => {
     }
     const ftueHint = app.ftueHint();
     const dragging = st.ftueStep === 'drag' && ftueHint !== null;
+    const pal3 = paletteFor(loadout);
+    setCrispNotify(() =>
+      app.setState((s) => ({ crispGen: (s.crispGen || 0) + 1 }))
+    );
+    preloadCrisp(loadoutIcons(loadout));
+    const cell3 = snapPx(((st.boardW || 340) - 20) / 6);
+    const clearD = clearDelays(st.clearOrder || []);
     const cells = bs.board.map((v: number, i: number) => {
       const type = orbTypeOf(v);
       const orb = (loadout[type] || loadout[0])!;
@@ -375,7 +476,9 @@ export const buildView = (app: GearLinkApp): View => {
       const suffix = st.drop && st.drop.gen % 2 === 0 ? 'B' : 'A';
       let anim = 'none';
       let ring = 'none';
-      if (st.clearing.indexOf(i) >= 0) anim = 'glClear 420ms ease-in forwards';
+      if (st.clearing.indexOf(i) >= 0)
+        anim =
+          'glClearW 420ms ease-in ' + (clearD[i] ?? clearD.last) + 'ms both';
       else if (st.arming.indexOf(i) >= 0) anim = 'glArm 360ms ease-in forwards';
       else if (st.detonating.indexOf(i) >= 0) {
         anim = 'glDetonate 460ms ease-out forwards';
@@ -393,17 +496,34 @@ export const buildView = (app: GearLinkApp): View => {
           Math.min(fell, 5) +
           ' ' +
           (150 + fell * 55) +
-          'ms linear';
+          'ms linear ' +
+          colOf(i) * 18 +
+          'ms both';
       else if (sup) anim = 'glSuper 1.4s ease-in-out infinite';
+      // The newest link pops; alternating the name restarts the animation.
+      if (
+        anim === 'none' &&
+        inChain >= 0 &&
+        inChain === st.chain.length - 1 &&
+        st.chain.length > 1
+      )
+        anim =
+          'glLinkPop' +
+          (st.chain.length % 2 ? 'A' : 'B') +
+          ' 200ms cubic-bezier(.3,1.6,.5,1)';
       const isHint = dragging && ftueHint.indexOf(i) >= 0;
       return {
         i,
-        bg: EFFECT_TINTS[orb.effect]![Math.min(ordinal, 2)],
-        icon: sup
-          ? BOMB_ICON
-          : getGearImageUrl(orb.id) || EFFECT_ICON[orb.effect],
+        ...tileVars(sup ? BOMB_PAL : pal3[type] || EMPTY_PAL, inChain >= 0),
+        glowAnim: glowOf(anim),
+        icon: crisp(
+          tileIcon(
+            sup ? '' : getGearImageUrl(orb.id) || EFFECT_ICON[orb.effect] || '',
+            sup
+          )[0]
+        ),
         bd: inChain >= 0 ? '#FFFFFF' : isHint ? '#FFF2B0' : 'rgba(0,0,0,.3)',
-        scale: inChain >= 0 ? 'scale(.93)' : 'none',
+        scale: inChain >= 0 ? liftT(i) : 'none',
         order: inChain >= 0 ? String(inChain + 1) : '',
         z:
           st.detonating.indexOf(i) >= 0 || st.arming.indexOf(i) >= 0
@@ -457,7 +577,7 @@ export const buildView = (app: GearLinkApp): View => {
               : st.swing === 'landed'
                 ? 'glStrike 520ms ease-out both'
                 : st.hitWho === 'monster'
-                  ? 'glHit .3s ease'
+                  ? 'glHitV3 .42s ease-out'
                   : intent === 'charge'
                     ? 'none'
                     : 'glLoom 1200ms ease-in-out infinite',
@@ -501,6 +621,10 @@ export const buildView = (app: GearLinkApp): View => {
             ((st.slashGen || 0) % 2 ? 'B' : 'A') +
             ' 340ms 90ms ease-out both'
           : 'none',
+      enemyFrac: Math.max(
+        0,
+        Math.min(1, (st.hpShown == null ? bs.enemyHp : st.hpShown) / enemy.hp)
+      ),
       enemyPct: Math.max(
         0,
         Math.round(
@@ -635,16 +759,44 @@ export const buildView = (app: GearLinkApp): View => {
             : ' +' + (perk.healX100 - 100) + '% HEAL'),
       cells,
       chainPoints: pts,
+      // The link line takes the chain's colour and thickens as it grows; at
+      // six (a bomb) it goes white-hot and dashed.
+      ...(() => {
+        const n = st.chain.length;
+        const h = n
+          ? pal3[orbTypeOf(bs.board[st.chain[0]!]!)] || EMPTY_PAL
+          : EMPTY_PAL;
+        const hot = n >= 6;
+        const w = 8 + Math.min(6, n);
+        return {
+          chainColor: hot ? '#FFFFFF' : h.rim,
+          chainW: String(w),
+          chainUnderW: String(w + 4),
+          chainGlow: hot
+            ? 'drop-shadow(0 0 6px ' + h.rim + ') drop-shadow(0 0 2px #FFFFFF)'
+            : 'none',
+          chainDash: hot ? '6 4' : '10 6',
+        };
+      })(),
       lineOpacity: st.chain.length >= 2 ? 1 : 0,
       boardWrapRef: app.boardWrapRef,
-      boardW: st.boardW || 340,
-      boardH: st.boardH || 283,
+      // Snapped to whole pixels per cell so tile art lands on the pixel grid.
+      boardW: cell3 * 6 + 20,
+      boardH: snapPx(((st.boardH || 283) - 16) / 5) * 5 + 16,
       boardAnim: st.kick ? 'glKick 260ms ease-in-out' : 'none',
       pops: (st.pops || []).map((p: any) => ({
         text: p.text,
         color: p.color,
         top: p.top,
-        anim: 'glFloat 620ms ease-out forwards',
+        anim: 'glDmgPop 760ms cubic-bezier(.2,.9,.3,1) forwards',
+        // Bigger hits pop bigger, scaled against the monster's max HP.
+        size: (() => {
+          const m = /(\d+)/.exec(p.text || '');
+          const v = m ? +m[1]! : 0;
+          return (
+            Math.round(22 + 12 * Math.min(1, v / Math.max(1, enemy.hp))) + 'px'
+          );
+        })(),
       })),
       /* One readout for the whole turn: what a link will do, or WHY the board
            is not taking input. Silence during a resolve read as a dead board. */
@@ -705,6 +857,7 @@ export const buildView = (app: GearLinkApp): View => {
           boardOpacity: 1,
         };
       })(),
+      ...chipsFor(st),
       boardHint:
         enemy.affix === 'none'
           ? 'Link 6+ to forge a bomb. Tap a bomb to detonate a 3x3.'
@@ -1468,6 +1621,7 @@ export const buildView = (app: GearLinkApp): View => {
       const junkCount = (b: number[]) => b.filter(isJunk).length;
       const mine = d.me.board,
         theirs = d.foe.board;
+      const clearDd = clearDelays(st.clearOrder || []);
       const cellFor = (
         v: number,
         i: number,
@@ -1484,21 +1638,32 @@ export const buildView = (app: GearLinkApp): View => {
         const jd = junk ? junkDamage(v) : 0;
         return {
           i,
-          bg: junk
-            ? jd > 0
-              ? '#6A7387'
-              : '#3E4657'
-            : EFFECT_TINTS[orb.effect]![Math.min(ord, 2)],
+          ...tileVars(
+            junk
+              ? jd > 0
+                ? JUNK_CRACKED
+                : JUNK_PAL
+              : sup
+                ? BOMB_PAL
+                : paletteFor(loadout)[type] || EMPTY_PAL,
+            chainIdx >= 0
+          ),
           crackDisplay: jd > 0 ? 'block' : 'none',
-          icon: junk
-            ? JUNK_ICON
-            : sup
-              ? BOMB_ICON
-              : getGearImageUrl(orb.id) || EFFECT_ICON[orb.effect],
+          icon: crisp(
+            tileIcon(
+              junk
+                ? JUNK_ICON
+                : sup
+                  ? ''
+                  : getGearImageUrl(orb.id) || EFFECT_ICON[orb.effect] || '',
+              sup && !junk
+            )[0]
+          ),
           bd: chainIdx >= 0 ? '#FFFFFF' : junk ? '#20262F' : 'rgba(0,0,0,.3)',
-          scale: chainIdx >= 0 ? 'scale(.93)' : 'none',
+          scale: chainIdx >= 0 ? liftT(i) : 'none',
           order: chainIdx >= 0 ? String(chainIdx + 1) : '',
           opacity: junk ? (jd > 0 ? 0.7 : 0.85) : 1,
+          glowAnim: 'none',
         };
       };
       const drop = st.drop;
@@ -1515,7 +1680,7 @@ export const buildView = (app: GearLinkApp): View => {
         const fell = fDrop ? fDrop.dist[i] || 0 : 0;
         c.anim =
           fClear.indexOf(i) >= 0
-            ? 'glClear 460ms ease-in forwards'
+            ? 'glClearW 460ms ease-in forwards'
             : fDrop && fDrop.spawn === i
               ? 'glSpawn' + fSuffix + ' 520ms ease-out forwards'
               : fell > 0
@@ -1524,21 +1689,32 @@ export const buildView = (app: GearLinkApp): View => {
                   Math.min(fell, 5) +
                   ' ' +
                   (150 + fell * 55) +
-                  'ms linear'
+                  'ms linear ' +
+                  colOf(i) * 18 +
+                  'ms both'
                 : idx >= 0
                   ? 'glHint 700ms ease-in-out infinite'
                   : isSuper(v)
                     ? 'glSuper 1.4s ease-in-out infinite'
                     : 'none';
+        c.glowAnim = glowOf(c.anim);
         return c;
       };
+      setCrispNotify(() =>
+        app.setState((s) => ({ crispGen: (s.crispGen || 0) + 1 }))
+      );
+      preloadCrisp(
+        loadoutIcons(d.me.loadout).concat(loadoutIcons(d.foe.loadout))
+      );
       const duelCells = mine.map((v: number, i: number) => {
         const idx = st.chain.indexOf(i);
         const c: any = cellFor(v, i, d.me.loadout, idx);
         const fell = drop ? drop.dist[i] || 0 : 0;
         c.anim =
           st.clearing.indexOf(i) >= 0
-            ? 'glClear 420ms ease-in forwards'
+            ? 'glClearW 420ms ease-in ' +
+              (clearDd[i] ?? clearDd.last) +
+              'ms both'
             : st.rejecting.indexOf(i) >= 0
               ? 'glReject 300ms ease-in-out'
               : drop && drop.spawn === i
@@ -1549,10 +1725,13 @@ export const buildView = (app: GearLinkApp): View => {
                     Math.min(fell, 5) +
                     ' ' +
                     (150 + fell * 55) +
-                    'ms linear'
+                    'ms linear ' +
+                    colOf(i) * 18 +
+                    'ms both'
                   : isSuper(v)
                     ? 'glSuper 1.4s ease-in-out infinite'
                     : 'none';
+        c.glowAnim = glowOf(c.anim);
         return c;
       });
       const pts = st.chain
@@ -1772,6 +1951,15 @@ export const buildView = (app: GearLinkApp): View => {
       const metricOf = (id: string) =>
         (QUESTS.find((q) => q.id === id) || { metric: '' }).metric;
       return {
+        ...(() => {
+          fxs.questSync(app);
+          return fxs.metaPips(app);
+        })(),
+        claimAll: () => void fxs.claimAll(app, fxHelpers()),
+        claimAllDisplay:
+          list.filter((q) => q.claimable && !q.claimed).length >= 2
+            ? 'flex'
+            : 'none',
         questTabs: (['daily', 'weekly'] as const).map((id) => ({
           label: id === 'daily' ? 'DAILY DUTIES' : 'WEEKLY TRIALS',
           run: app.pickQuestTab(id),
@@ -1805,6 +1993,13 @@ export const buildView = (app: GearLinkApp): View => {
           return {
             title: q.title,
             blurb: q.blurb,
+            id: q.id,
+            ...fxs.questRowFx(
+              app,
+              q,
+              list.indexOf(q),
+              q.claimed ? '#5D6B8A' : q.claimable ? '#AEE45D' : '#428FFB'
+            ),
             progressLabel: q.progress + '/' + q.target,
             barW: Math.round((q.progress / Math.max(1, q.target)) * 100) + '%',
             barBg: q.claimed ? '#5D6B8A' : q.claimable ? '#AEE45D' : '#428FFB',
@@ -1836,7 +2031,7 @@ export const buildView = (app: GearLinkApp): View => {
                   : 'GO',
             run:
               state === 'claim'
-                ? app.claimQuest(q.id)
+                ? (e: FxEvent) => void fxs.claimQuest(app, q, e, fxHelpers())
                 : state === 'go' && go
                   ? go
                   : undefined,
@@ -1861,6 +2056,21 @@ export const buildView = (app: GearLinkApp): View => {
     revealAll: app.revealAll,
     collectPack: app.collectPack,
     gems: st.profile.gems,
+    // Wallet readouts roll toward the new balance instead of jumping.
+    ...(() => {
+      fx.setRollNotify(() =>
+        app.setState((s) => ({ fxGen: (s.fxGen || 0) + 1 }))
+      );
+      syncPackStage(app, fxHelpers());
+      const c = fx.rolled('coins', st.profile.coins);
+      const g = fx.rolled('gems', st.profile.gems);
+      return {
+        coinsShown: c.text,
+        coinAnim: c.anim,
+        gemsShown: g.text,
+        gemAnim: g.anim,
+      };
+    })(),
     shopIcon: NAV_ICON.shop,
     coinIcon: COIN_ICON,
     gemIcon: GEM_ICON,
@@ -1896,7 +2106,13 @@ export const buildView = (app: GearLinkApp): View => {
               amount: b.amount.toLocaleString(),
               gems: b.gems,
               tint: b.tint,
-              buy: app.buyCoins(b.id),
+              buy: (e: FxEvent) => fxs.buyCoins(app, b, e, can, fxHelpers()),
+              inAnim: fxs.listIn(
+                'shop',
+                st.phase === 'shop' && (st.shopTab || 'packs'),
+                COIN_BUNDLES.indexOf(b) * 40
+              ),
+              ...coinStack(COIN_BUNDLES.indexOf(b)),
               cursor: can ? 'pointer' : 'not-allowed',
               opacity: can ? 1 : 0.5,
               btnBg: can ? BTN.secondary.bg : BTN.disabled.bg,
@@ -1913,7 +2129,12 @@ export const buildView = (app: GearLinkApp): View => {
               // unit the button quotes.
               priceLabel: b.gold + ' GOLD',
               tint: b.tint,
-              buy: app.buyGems(b.id),
+              buy: (e: FxEvent) => fxs.buyGems(app, b, e, fxHelpers()),
+              inAnim: fxs.listIn(
+                'shop',
+                st.phase === 'shop' && (st.shopTab || 'packs'),
+                GEM_BUNDLES.indexOf(b) * 40
+              ),
             },
             bonus(b)
           )
@@ -1937,7 +2158,14 @@ export const buildView = (app: GearLinkApp): View => {
           pct: w + '%',
           color: RARITY_OUTLINE[r] || '#9FB3D1',
         })),
-        buy: app.buyPack(p.id),
+        buy: (e: FxEvent) => fxs.buyPack(app, p, e, can, fxHelpers()),
+        swayDelay: -(PACKS.indexOf(p) * 0.9).toFixed(1) + 's',
+        inAnim: fxs.listIn(
+          'shop',
+          st.phase === 'shop' && (st.shopTab || 'packs'),
+          PACKS.indexOf(p) * 40
+        ),
+        shineDelay: (PACKS.indexOf(p) * 0.7).toFixed(1) + 's',
         cursor: can ? 'pointer' : 'not-allowed',
         opacity: can ? 1 : 0.5,
         btnBg: can ? BTN.primary.bg : BTN.disabled.bg,
@@ -1954,6 +2182,11 @@ export const buildView = (app: GearLinkApp): View => {
         img: p.img,
         count: packs[p.id],
         open: app.openPack(p.id),
+        inAnim: fxs.listIn(
+          'bag',
+          st.phase === 'inventory' && (st.invTab || 'packs'),
+          PACKS.filter((q) => (packs[q.id] || 0) > 0).indexOf(p) * 40
+        ),
       }));
       const ownedCount = GEAR.filter((g) => (gear[g.id] || 0) > 0).length;
       const tab = st.invTab || 'packs';
@@ -1986,7 +2219,7 @@ export const buildView = (app: GearLinkApp): View => {
           ' gear found. Only gear you own can go in a loadout.',
         // Unowned cards stay VISIBLE but blacked out, so the collection reads
         // as a set with holes rather than a short list.
-        collection: GEAR.map((g) => {
+        collection: GEAR.map((g, gi) => {
           const n = gear[g.id] || 0;
           return {
             short: g.name.replace(/^(Warrior|Archer|Mage) /, ''),
@@ -1996,6 +2229,11 @@ export const buildView = (app: GearLinkApp): View => {
             filter: n > 0 ? 'none' : 'grayscale(1) brightness(.45)',
             count: n > 1 ? 'x' + n : '',
             countDisplay: n > 1 ? 'flex' : 'none',
+            inAnim: fxs.listIn(
+              'bagGear',
+              st.phase === 'inventory' && st.invTab === 'gear' && 'gear',
+              Math.floor(gi / 4) * 45 + (gi % 4) * 20
+            ),
             inspect: app.inspectCard(g.id),
           };
         }),
@@ -2202,6 +2440,9 @@ export const buildView = (app: GearLinkApp): View => {
         label: 'BAG',
         run: app.goInventory,
         img: NAV_ICON.bag,
+        alert: Object.values(st.profile.packs || {}).some(
+          (c) => typeof c === 'number' && c > 0
+        ),
         icon: '30px',
         active: false,
       },
@@ -2215,6 +2456,7 @@ export const buildView = (app: GearLinkApp): View => {
         nudge: k === 0 ? '0' : '-2px',
         z: n.active ? 2 : 1,
         alertDisplay: 'alert' in n && n.alert ? 'block' : 'none',
+        fx: n.label.toLowerCase(),
       })
     ),
     toggleHomeMenu: app.toggleHomeMenu,
@@ -2310,6 +2552,27 @@ export const buildView = (app: GearLinkApp): View => {
         kingDisplay: loc.king ? 'flex' : 'none',
       };
     }),
+    /* ---------- World Map (home) ---------- */
+    wmLocked: LOCATIONS.filter(
+      (loc, i) => !(i <= st.profile.progress || loc.id === st.daily?.locationId)
+    ).map((loc) => loc.id),
+    // ENTER on the diorama runs the same pickLocation a pin panel did.
+    wmEnter: (id: string) => {
+      const i = LOCATIONS.findIndex((loc) => loc.id === id);
+      const open =
+        i >= 0 && (i <= st.profile.progress || id === st.daily?.locationId);
+      app.setState({ wmFocused: false });
+      if (open) app.pickLocation(id)();
+    },
+    wmFocus: (on: boolean) => {
+      if (st.wmFocused !== on) app.setState({ wmFocused: on });
+    },
+    // The HUD and nav tuck off-screen while a location is focused.
+    wmNavT: st.wmFocused ? 'translate3d(0,170%,0)' : 'translate3d(0,0,0)',
+    wmHeaderT: st.wmFocused ? 'translate3d(0,-130%,0)' : 'translate3d(0,0,0)',
+    wmChromeTr: st.wmFocused
+      ? 'transform 240ms cubic-bezier(.6,0,.9,.4)'
+      : 'transform 380ms cubic-bezier(.3,1.5,.5,1) 80ms',
     homeWallet: [
       { icon: COIN_ICON, value: st.profile.coins.toLocaleString() },
       { icon: GEM_ICON, value: String(st.profile.gems) },

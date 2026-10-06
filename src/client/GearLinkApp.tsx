@@ -37,6 +37,8 @@ import {
   FOE_CLEAR_MS,
   FOE_LAND_MS,
   FOE_LINK_MS,
+  DUPE_COINS,
+  GEAR,
   GEAR_BY_ID,
   GEM_BUNDLES,
   GRID_COLS,
@@ -75,6 +77,7 @@ import type {
   Gear,
   HeroClass,
   Mutators,
+  Rarity,
   RunState,
   StepResult,
 } from '../shared/engine/index.js';
@@ -103,10 +106,14 @@ import {
   DUEL_RESET,
   INITIAL_STATE,
   MUTATORS,
+  isCollectFx,
 } from './state/appState.js';
 import type {
   AppState,
   DuelEndKind,
+  PackFx,
+  QuestFx,
+  WalletFx,
   GearTab,
   InvTab,
   OpenState,
@@ -136,6 +143,9 @@ import { packSummary, toOpenCards } from './state/packs.js';
 import { Timers } from './state/timers.js';
 import { buildView } from './view/buildView.js';
 import { Screen } from './view/Screen.js';
+import type { FxRect } from './fx/fx.js';
+import { juice } from './juice.js';
+import { paletteFor } from './view/tilePalette.js';
 
 /** Moderators only, and rarely - kept out of the main bundle. */
 const AdminPanel = lazy(() =>
@@ -152,6 +162,7 @@ type RunSpec = Omit<SubmitRunRequest, 'moves'>;
 type TimerKey =
   // campaign beats
   | 'link'
+  | 'forge'
   | 'land'
   | 'reject'
   | 'blast'
@@ -1065,7 +1076,8 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       /* capture is an optimisation; the move handler still hit-tests by point */
     }
     this.setState({ chain: [i], preview: this.previewFor([i]) });
-    audio.play('link');
+    juice.bind(this);
+    juice.link(1);
   };
 
   onMove = (e: ReactPointerEvent): void => {
@@ -1080,6 +1092,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     if (chain.length >= 2 && i === chain[chain.length - 2]) {
       const next = chain.slice(0, -1);
       this.setState({ chain: next, preview: this.previewFor(next) });
+      juice.link(next.length, true);
       return;
     }
     if (chain.includes(i) || !areAdjacent(last, i)) return;
@@ -1089,7 +1102,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     const next = chain.concat([i]);
     this.setState({ chain: next, preview: this.previewFor(next) });
     // Each orb rings a little higher, so a long link climbs as it is drawn.
-    audio.play('link', { rate: Math.min(2, 1 + 0.08 * (next.length - 1)) });
+    juice.link(next.length);
   };
 
   onCancel = (): void => this.setState({ chain: [], preview: null });
@@ -1169,13 +1182,38 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       this.playBlastStage(out, 0, land);
       return;
     }
-    this.setState({
-      busy: true,
-      clearing: out.cleared,
-      chain: [],
-      preview: null,
-    });
-    this.timers.after('link', 420, land);
+    // Tiles pop in link order, and a chain long enough to forge a bomb plays
+    // the forge beat first; juice returns how long each beat runs.
+    juice.bind(this);
+    const order = move.slice();
+    const lo = this.loadout();
+    const pal = paletteFor(lo);
+    const info = (i: number) => {
+      const t = orbTypeOf(bs.board[i]!);
+      return { pal: pal[t], effect: lo[t]?.effect };
+    };
+    const begin = () => {
+      this.setState({
+        busy: true,
+        clearing: out.cleared,
+        clearOrder: order,
+        chain: [],
+        preview: null,
+      });
+      this.timers.after(
+        'link',
+        juice.resolve(order, out.cleared, info, 'main'),
+        land
+      );
+    };
+    if (out.superAfter !== null && out.superAfter !== undefined) {
+      this.setState({ busy: true });
+      this.timers.after(
+        'forge',
+        juice.forge(order, out.superAfter, 'main'),
+        begin
+      );
+    } else begin();
   }
 
   /* Play the cascade STAGE BY STAGE. Each stage arms its detonators, blows
@@ -1212,6 +1250,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     });
     this.timers.after('link', 320, () => {
       audio.play('bomb');
+      juice.detonate(this.state.phase === 'duel' ? 'duel' : 'main');
       this.setState({
         arming: [],
         detonating: stg.detonators,
@@ -1264,6 +1303,16 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     if (out.healed > 0) audio.play('heal');
     if (out.fired.length > 0) audio.play('rider', { gain: 0.7 });
     if (out.waveCleared) audio.play('kill');
+    juice.bind(this);
+    if (out.waveCleared) juice.impact('kill');
+    else if (struck)
+      juice.impact(
+        out.attackDealt >=
+          0.25 * (out.attackDealt + Math.max(0, out.bs.enemyHp))
+          ? 'big'
+          : 'hit'
+      );
+    juice.dropTicks(fallDistances(allCleared), 6);
 
     this.setState((s) => ({
       bs: out.bs,
@@ -1303,6 +1352,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       });
       this.timers.after('swing', 620, () => {
         audio.play(out.enemyDamage > 0 ? 'hurt' : 'blocked');
+        if (out.enemyDamage > 0) juice.impact('hurt');
         this.setState({
           hitWho: 'player',
           pops: [swingPop(out.enemyDamage)],
@@ -1733,39 +1783,55 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
 
     if (side === 'me') {
       this.pendingMe = true;
+      juice.bind(this);
+      const order = move.slice();
+      const dlo = st.duel.me.loadout;
+      const dpal = paletteFor(dlo);
+      const db = st.duel.me.board;
+      const dinfo = (i: number) => {
+        const t = orbTypeOf(db[i]!);
+        return { pal: dpal[t], effect: dlo[t]?.effect };
+      };
       this.setState({
         busy: true,
         clearing: out.cleared,
+        clearOrder: order,
         chain: [],
         preview: null,
         duelHit: 'foe',
       });
-      this.timers.after('link', 400, () => {
-        this.pendingMe = false;
-        if (out.attack > 0) audio.play('attack');
-        if (out.blockGain > 0) audio.play('block');
-        if (out.heal > 0) audio.play('heal');
-        this.setState((s) => ({
-          duel: out.state,
-          clearing: [],
-          busy: false,
-          pops: mine,
-          foePops: theirs,
-          duelTurns: s.duelTurns + 1,
-          duelLog: [line].concat(s.duelLog).slice(0, 3),
-          drop: {
-            dist: fallDistances(out.cleared),
-            gen: (s.drop ? s.drop.gen : 0) + 1,
-            spawn: out.superAfter,
-          },
-        }));
-        // Resolved at commit, not after the drop, so a kill or a burial is never
-        // sitting behind an animation the player can already play through.
-        finish();
-        this.timers.after('land', 520, () =>
-          this.setState({ pops: [], foePops: [], drop: null, duelHit: null })
-        );
-      });
+      this.timers.after(
+        'link',
+        juice.resolve(order, out.cleared, dinfo, 'duel'),
+        () => {
+          this.pendingMe = false;
+          if (out.attack > 0) audio.play('attack');
+          if (out.blockGain > 0) audio.play('block');
+          if (out.heal > 0) audio.play('heal');
+          if (out.attack > 0) juice.impact('hit');
+          juice.dropTicks(fallDistances(out.cleared), 6);
+          this.setState((s) => ({
+            duel: out.state,
+            clearing: [],
+            busy: false,
+            pops: mine,
+            foePops: theirs,
+            duelTurns: s.duelTurns + 1,
+            duelLog: [line].concat(s.duelLog).slice(0, 3),
+            drop: {
+              dist: fallDistances(out.cleared),
+              gen: (s.drop ? s.drop.gen : 0) + 1,
+              spawn: out.superAfter,
+            },
+          }));
+          // Resolved at commit, not after the drop, so a kill or a burial is never
+          // sitting behind an animation the player can already play through.
+          finish();
+          this.timers.after('land', 520, () =>
+            this.setState({ pops: [], foePops: [], drop: null, duelHit: null })
+          );
+        }
+      );
       return;
     }
 
@@ -1890,18 +1956,21 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       .catch(() => undefined);
   }
 
-  claimQuest = (id: string) => (): void => {
+  claimQuest = (id: string, fxh?: QuestFx) => (): void => {
     if (this.state.questClaiming) return;
     this.setState({ questClaiming: id });
     void api
       .claimQuest(id)
       .then((r) => {
+        fxh?.before?.(r);
         this.setState({ quests: r.board, questClaiming: null });
         audio.play('coins');
         this.adopt(r.profile, r.message);
+        fxh?.after?.(r);
       })
       .catch((e) => {
         this.setState({ questClaiming: null });
+        fxh?.fail?.();
         this.fail(e);
         this.refreshQuests();
       });
@@ -1920,12 +1989,16 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   inspectCard = (id: string) => (): void => this.setState({ cardInfo: id });
   closeCardInfo = (): void => this.setState({ cardInfo: null });
 
-  buyCoins = (id: string) => (): void => {
+  buyCoins = (id: string, fxh?: WalletFx) => (): void => {
     const before = this.state.profile.coins;
     void api
       .buyCoins(id)
       .then((r) => {
-        if (r.profile.coins > before) audio.play('coins');
+        const gained = r.profile.coins - before;
+        if (gained > 0) {
+          audio.play('coins');
+          fxh?.gained?.(gained);
+        }
         this.adopt(r.profile, r.message);
       })
       .catch(this.fail);
@@ -1935,7 +2008,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
    * way. The gems are credited by the fulfilment endpoint, off the order Reddit
    * has already charged for - all this does afterwards is re-read the wallet.
    */
-  buyGems = (id: string) => (): void => {
+  buyGems = (id: string, fxh?: WalletFx) => (): void => {
     const bundle = bundleById(GEM_BUNDLES, id);
     if (!bundle?.sku) return;
     this.setState({ shopMsg: 'Opening checkout...' });
@@ -1957,7 +2030,10 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         // closes, so the balance is re-read rather than assumed.
         const res = await api.profile();
         const gained = res.profile.gems - this.state.profile.gems;
-        if (gained > 0) audio.play('coins');
+        if (gained > 0) {
+          audio.play('coins');
+          fxh?.gained?.(gained);
+        }
         this.adopt(
           res.profile,
           gained > 0
@@ -1970,17 +2046,20 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
 
   /** Buying opens it: the bag is for packs you saved, not a toll on a purchase
    *  you just made. COLLECT returns to the shop rather than to the bag. */
-  buyPack = (id: string) => (): void => {
+  buyPack = (id: string, fxh?: PackFx) => (): void => {
     void api
       .buyPack(id)
       .then((r) => {
         this.adopt(r.profile, r.message);
         if (!r.message) {
           audio.play('coins');
-          this.openPackFrom(id, 'shop');
-        }
+          this.openPackFrom(id, 'shop', fxh?.rect ? fxh.rect() : null);
+        } else fxh?.fail?.();
       })
-      .catch(this.fail);
+      .catch((e: unknown) => {
+        fxh?.fail?.();
+        this.fail(e);
+      });
   };
 
   openPack = (id: string) => (): void => this.openPackFrom(id, 'inventory');
@@ -1988,7 +2067,11 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   /** The roll happens on the server and is held there against a token; the
    *  cards only land in the collection when COLLECT presents that token back,
    *  so a half-watched open cannot half-apply. */
-  private openPackFrom(id: string, from: 'shop' | 'inventory'): void {
+  private openPackFrom(
+    id: string,
+    from: 'shop' | 'inventory',
+    fromRect: FxRect | null = null
+  ): void {
     void api
       .openPack(id)
       .then((r) =>
@@ -2001,6 +2084,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
             shown: 0,
             torn: false,
             from,
+            fromRect,
           },
         })
       )
@@ -2011,7 +2095,6 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     const op = this.state.openPack;
     const next = op ? fn(op) : null;
     if (!next) return;
-    if (op && next.shown > op.shown) audio.play('loot');
     this.setState({ openPack: next });
   }
 
@@ -2030,14 +2113,27 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
 
   packSummary = packSummary;
 
-  collectPack = (): void => {
+  /** `hooks` comes from the pack stage, which flies the cards to the bag; a
+   *  plain click passes the event, which is ignored. */
+  collectPack = (hooks?: unknown): void => {
     const op = this.state.openPack;
     if (!op) return;
     const back = op.from === 'shop';
+    const h = isCollectFx(hooks) ? hooks : null;
+    if (op.mock) {
+      this.setState({
+        phase: back ? 'shop' : 'inventory',
+        invTab: 'gear',
+        openPack: null,
+      });
+      h?.after?.();
+      return;
+    }
     const summary = packSummary(op);
     void api
       .collectPack({ token: op.token })
       .then((r) => {
+        h?.before(r);
         this.setState({
           phase: back ? 'shop' : 'inventory',
           invTab: 'gear',
@@ -2045,8 +2141,31 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         });
         this.adopt(r.profile, back ? summary : undefined);
         this.refreshQuests();
+        h?.after?.(r);
       })
       .catch(this.fail);
+  };
+
+  /** Dev only: a mocked open of the given rarity - never touches the server
+   *  roll, and COLLECT on it changes nothing. */
+  previewOpen = (rarity: Rarity, dupe: boolean): void => {
+    const pool = GEAR.filter((x) => x.rarity === rarity);
+    const gear = pool[Math.floor(Math.random() * pool.length)] ?? GEAR[0];
+    if (!gear) return;
+    this.setState({
+      phase: 'opening',
+      homeMenu: false,
+      openPack: {
+        id: rarity === 'Common' ? 'base' : 'bronze',
+        token: 'mock-' + Date.now(),
+        mock: true,
+        cards: [{ gear, isNew: !dupe, refund: dupe ? DUPE_COINS[rarity] : 0 }],
+        shown: 0,
+        torn: false,
+        from: 'shop',
+        fromRect: null,
+      },
+    });
   };
 
   /* ---------- FTUE ---------- */

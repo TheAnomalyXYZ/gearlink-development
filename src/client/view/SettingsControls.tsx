@@ -215,7 +215,7 @@ export const MenuIcon = ({ kind }: { kind: string }) =>
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontFamily: "'Yoster Island',Volter,monospace",
+        fontFamily: 'VolterTitle,Volter,monospace',
         fontSize: '18px',
         color: MENU_BLUE,
       }}

@@ -6,6 +6,9 @@
 type Handle = {
   kind: 'timeout' | 'interval';
   id: ReturnType<typeof setTimeout>;
+  /** Timeouts only: when it fires and what it runs, so freeze() can push it. */
+  due?: number;
+  fn?: () => void;
 };
 
 export class Timers<K extends string> {
@@ -20,13 +23,27 @@ export class Timers<K extends string> {
       if (this.handles.get(key)?.id === id) this.handles.delete(key);
       fn();
     }, ms);
-    this.handles.set(key, { kind: 'timeout', id });
+    this.handles.set(key, {
+      kind: 'timeout',
+      id,
+      due: performance.now() + ms,
+      fn,
+    });
   }
 
   /** Run `fn` every `ms`, replacing anything pending under `key`. */
   every(key: K, ms: number, fn: () => void): void {
     this.clear(key);
     this.handles.set(key, { kind: 'interval', id: setInterval(fn, ms) });
+  }
+
+  /** Hit-stop: every pending timeout is pushed back by `ms`. */
+  freeze(ms: number): void {
+    const t = performance.now();
+    for (const [key, h] of [...this.handles]) {
+      if (h.kind !== 'timeout' || !h.fn || h.due === undefined) continue;
+      this.after(key, Math.max(0, h.due - t) + ms, h.fn);
+    }
   }
 
   clear(...keys: K[]): void {

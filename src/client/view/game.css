@@ -21,6 +21,19 @@ body {
     format('truetype');
   font-display: swap;
 }
+/* Volter at 92%: it runs ~8% wider than Yoster Island, so title text laid
+   out for Yoster still fits. */
+@font-face {
+  font-family: VolterTitle;
+  src: url('/art/NeuraKnights/Fonts/Volter__28Goldfish_29.ttf')
+    format('truetype');
+  size-adjust: 92%;
+  font-display: swap;
+}
+/* Pixel title face for code that sets fonts outside React (World Map). */
+body {
+  --gl-pixel: VolterTitle;
+}
 a {
   color: #fff2b0;
   text-decoration: none;
@@ -165,8 +178,11 @@ a:hover {
   88% {
     transform: translateY(calc(-0.23 * (100% + 4px)));
   }
-  96% {
-    transform: translateY(2%) scaleY(0.9) scaleX(1.06);
+  93% {
+    transform: translateY(3%) scaleY(0.84) scaleX(1.12);
+  }
+  97% {
+    transform: translateY(-1%) scaleY(1.04) scaleX(0.98);
   }
   100% {
     transform: translateY(0) scaleY(1) scaleX(1);
@@ -185,8 +201,11 @@ a:hover {
   88% {
     transform: translateY(calc(-0.46 * (100% + 4px)));
   }
-  96% {
-    transform: translateY(2%) scaleY(0.9) scaleX(1.06);
+  93% {
+    transform: translateY(3%) scaleY(0.84) scaleX(1.12);
+  }
+  97% {
+    transform: translateY(-1%) scaleY(1.04) scaleX(0.98);
   }
   100% {
     transform: translateY(0) scaleY(1) scaleX(1);
@@ -205,8 +224,11 @@ a:hover {
   88% {
     transform: translateY(calc(-0.69 * (100% + 4px)));
   }
-  96% {
-    transform: translateY(2%) scaleY(0.9) scaleX(1.06);
+  93% {
+    transform: translateY(3%) scaleY(0.84) scaleX(1.12);
+  }
+  97% {
+    transform: translateY(-1%) scaleY(1.04) scaleX(0.98);
   }
   100% {
     transform: translateY(0) scaleY(1) scaleX(1);
@@ -225,8 +247,11 @@ a:hover {
   88% {
     transform: translateY(calc(-0.92 * (100% + 4px)));
   }
-  96% {
-    transform: translateY(2%) scaleY(0.9) scaleX(1.06);
+  93% {
+    transform: translateY(3%) scaleY(0.84) scaleX(1.12);
+  }
+  97% {
+    transform: translateY(-1%) scaleY(1.04) scaleX(0.98);
   }
   100% {
     transform: translateY(0) scaleY(1) scaleX(1);
@@ -245,8 +270,11 @@ a:hover {
   88% {
     transform: translateY(calc(-1.15 * (100% + 4px)));
   }
-  96% {
-    transform: translateY(2%) scaleY(0.9) scaleX(1.06);
+  93% {
+    transform: translateY(3%) scaleY(0.84) scaleX(1.12);
+  }
+  97% {
+    transform: translateY(-1%) scaleY(1.04) scaleX(0.98);
   }
   100% {
     transform: translateY(0) scaleY(1) scaleX(1);
@@ -265,8 +293,11 @@ a:hover {
   88% {
     transform: translateY(calc(-0.23 * (100% + 4px)));
   }
-  96% {
-    transform: translateY(2%) scaleY(0.9) scaleX(1.06);
+  93% {
+    transform: translateY(3%) scaleY(0.84) scaleX(1.12);
+  }
+  97% {
+    transform: translateY(-1%) scaleY(1.04) scaleX(0.98);
   }
   100% {
     transform: translateY(0) scaleY(1) scaleX(1);
@@ -285,8 +316,11 @@ a:hover {
   88% {
     transform: translateY(calc(-0.46 * (100% + 4px)));
   }
-  96% {
-    transform: translateY(2%) scaleY(0.9) scaleX(1.06);
+  93% {
+    transform: translateY(3%) scaleY(0.84) scaleX(1.12);
+  }
+  97% {
+    transform: translateY(-1%) scaleY(1.04) scaleX(0.98);
   }
   100% {
     transform: translateY(0) scaleY(1) scaleX(1);
@@ -305,8 +339,11 @@ a:hover {
   88% {
     transform: translateY(calc(-0.69 * (100% + 4px)));
   }
-  96% {
-    transform: translateY(2%) scaleY(0.9) scaleX(1.06);
+  93% {
+    transform: translateY(3%) scaleY(0.84) scaleX(1.12);
+  }
+  97% {
+    transform: translateY(-1%) scaleY(1.04) scaleX(0.98);
   }
   100% {
     transform: translateY(0) scaleY(1) scaleX(1);
@@ -325,8 +362,11 @@ a:hover {
   88% {
     transform: translateY(calc(-0.92 * (100% + 4px)));
   }
-  96% {
-    transform: translateY(2%) scaleY(0.9) scaleX(1.06);
+  93% {
+    transform: translateY(3%) scaleY(0.84) scaleX(1.12);
+  }
+  97% {
+    transform: translateY(-1%) scaleY(1.04) scaleX(0.98);
   }
   100% {
     transform: translateY(0) scaleY(1) scaleX(1);
@@ -345,8 +385,11 @@ a:hover {
   88% {
     transform: translateY(calc(-1.15 * (100% + 4px)));
   }
-  96% {
-    transform: translateY(2%) scaleY(0.9) scaleX(1.06);
+  93% {
+    transform: translateY(3%) scaleY(0.84) scaleX(1.12);
+  }
+  97% {
+    transform: translateY(-1%) scaleY(1.04) scaleX(0.98);
   }
   100% {
     transform: translateY(0) scaleY(1) scaleX(1);
@@ -632,7 +675,7 @@ a:hover {
     transform: translateX(7px);
   }
 }
-@keyframes glPop {
+@keyframes glFadeUp {
   from {
     opacity: 0;
     transform: translateY(8px) scale(0.96);
@@ -755,4 +798,378 @@ a:hover {
 /* Home menu rows light up under the pointer, as in Neura Knights. */
 .gl-menu-item:hover {
   background: #ffffff;
+}
+
+/* Tiles: super/arm glow layer, bomb badge, white-flash clear, link pop. */
+@keyframes glSuperGlow {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 0 0 2px #ffb84d,
+      inset 0 0 6px 1px rgba(255, 184, 77, 0.5);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 3px #ffe3a6,
+      inset 0 0 12px 3px rgba(255, 184, 77, 0.85);
+  }
+}
+@keyframes glArmGlow {
+  0% {
+    box-shadow:
+      inset 0 0 0 2px #ffd9a0,
+      inset 0 0 10px 3px rgba(255, 92, 46, 0.8);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 4px #fff3d0,
+      inset 0 0 18px 8px rgba(255, 60, 20, 1);
+  }
+  100% {
+    box-shadow:
+      inset 0 0 0 4px #ffffff,
+      inset 0 0 22px 10px rgba(255, 40, 10, 1);
+  }
+}
+@keyframes glBombBadge {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+@keyframes glClearW {
+  0% {
+    transform: scale(1.06);
+    filter: brightness(0) invert(1);
+    opacity: 1;
+  }
+  8% {
+    transform: scale(1.1);
+    filter: brightness(0) invert(1);
+  }
+  9% {
+    filter: brightness(1.9);
+  }
+  35% {
+    transform: scale(1.14);
+    filter: brightness(1.9);
+  }
+  60% {
+    transform: scale(1.05);
+    filter: brightness(1.5);
+  }
+  100% {
+    transform: scale(0.25);
+    filter: brightness(2.4);
+    opacity: 0;
+  }
+}
+/* A and B pairs are identical: alternating the name restarts the animation. */
+@keyframes glLinkPopA {
+  0% {
+    transform: translateY(-3px) scale(0.9);
+  }
+  50% {
+    transform: translateY(-3px) scale(1.18);
+  }
+  100% {
+    transform: translateY(-3px) scale(1.08);
+  }
+}
+@keyframes glLinkPopB {
+  0% {
+    transform: translateY(-3px) scale(0.9);
+  }
+  50% {
+    transform: translateY(-3px) scale(1.18);
+  }
+  100% {
+    transform: translateY(-3px) scale(1.08);
+  }
+}
+@keyframes glChipPopA {
+  0% {
+    transform: scale(0.7);
+  }
+  60% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes glChipPopB {
+  0% {
+    transform: scale(0.7);
+  }
+  60% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes glDmgPop {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  15% {
+    transform: scale(1.6) rotate(-6deg);
+    opacity: 1;
+  }
+  35% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-38px) scale(1);
+    opacity: 0;
+  }
+}
+@keyframes glHitV3 {
+  0%,
+  8% {
+    filter: brightness(0) invert(1);
+    transform: translateX(0);
+  }
+  9% {
+    filter: brightness(0) invert(1);
+    transform: translateX(6px);
+  }
+  10% {
+    filter: none;
+    transform: translateX(6px);
+  }
+  45% {
+    transform: translateX(-2px);
+  }
+  70% {
+    transform: translateX(1px);
+  }
+  100% {
+    filter: none;
+    transform: translateX(0);
+  }
+}
+@keyframes glDashFlow {
+  to {
+    stroke-dashoffset: -32;
+  }
+}
+
+/* Shop, bag and quest juice (driven from src/client/fx). */
+@keyframes glRollUpA {
+  0% {
+    transform: scale(1.25);
+    color: #aee45d;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes glRollUpB {
+  0% {
+    transform: scale(1.25);
+    color: #aee45d;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes glRollDownA {
+  0% {
+    transform: scale(1.2);
+    color: #ff7a7a;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes glRollDownB {
+  0% {
+    transform: scale(1.2);
+    color: #ff7a7a;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes glLetterBob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+@keyframes glRaysSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes glStageBob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+@keyframes glShineSweep {
+  0%,
+  55% {
+    background-position: 130% 0;
+  }
+  100% {
+    background-position: -30% 0;
+  }
+}
+@keyframes glPackSway {
+  0%,
+  100% {
+    transform: rotate(-1.5deg);
+  }
+  50% {
+    transform: rotate(1.5deg);
+  }
+}
+@keyframes glRowInA {
+  from {
+    transform: translateY(14px);
+    filter: opacity(0);
+  }
+  to {
+    transform: none;
+    filter: opacity(1);
+  }
+}
+@keyframes glRowInB {
+  from {
+    transform: translateY(14px);
+    filter: opacity(0);
+  }
+  to {
+    transform: none;
+    filter: opacity(1);
+  }
+}
+@keyframes glSegPopA {
+  0% {
+    transform: scale(0);
+  }
+  60% {
+    transform: scale(1.35);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes glSegPopB {
+  0% {
+    transform: scale(0);
+  }
+  60% {
+    transform: scale(1.35);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes glRowGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(252, 226, 112, 0);
+  }
+  50% {
+    box-shadow: 0 0 12px 2px rgba(252, 226, 112, 0.55);
+  }
+}
+@keyframes glClaimBounce {
+  0%,
+  82%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  88% {
+    transform: translateY(-5px) scale(1.06, 0.96);
+  }
+  94% {
+    transform: translateY(0) scale(0.97, 1.03);
+  }
+}
+@keyframes glIconBob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+@keyframes glDotBounce {
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.5);
+  }
+  70% {
+    transform: scale(0.85);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes glRibbon {
+  0%,
+  100% {
+    transform: rotate(-2deg);
+  }
+  50% {
+    transform: rotate(2deg) scale(1.04);
+  }
+}
+@keyframes glPipPopA {
+  0% {
+    transform: scale(0.4);
+  }
+  55% {
+    transform: scale(1.4);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes glPipPopB {
+  0% {
+    transform: scale(0.4);
+  }
+  55% {
+    transform: scale(1.4);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes glPipFlash {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.9);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-fx-packimg],
+  [data-fx-packimg] *,
+  [data-fx-quest] * {
+    animation: none !important;
+  }
 }

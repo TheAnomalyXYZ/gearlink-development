@@ -1,5 +1,6 @@
 import './index.css';
 import './view/game.css';
+import './view/worldMap.css';
 
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';

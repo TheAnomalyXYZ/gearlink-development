@@ -17,14 +17,18 @@ import type {
   RunState,
 } from '../../shared/engine/index.js';
 import type {
+  ClaimQuestResponse,
   DailyBattle,
   LeaderboardEntry,
   Profile,
+  ProfileResponse,
   QuestBoard,
 } from '../../shared/api.js';
 import type { FtueStep } from '../ftue.js';
 import { DEFAULT_VOLUMES } from '../audio/audio.js';
 import type { Volumes } from '../audio/audio.js';
+import type { FxRect } from '../fx/fx.js';
+import type { Preview } from './feedback.js';
 
 export type Phase =
   | 'splash'
@@ -57,6 +61,10 @@ export type OpenState = {
   shown: number;
   torn: boolean;
   from: 'shop' | 'inventory';
+  /** Where the bought pack sat in the shop, so the stage can fly it in. */
+  fromRect?: FxRect | null;
+  /** A dev preview open: nothing was rolled, so COLLECT has nothing to send. */
+  mock?: boolean;
 };
 export type DuelEndKind =
   'win' | 'loss' | 'time-win' | 'time-loss' | 'win-buried' | 'loss-buried';
@@ -129,6 +137,8 @@ export type AppState = {
   kick: boolean;
   slashGen: number;
   hpShown: number | null;
+  /** The link as drawn, so tiles clear in the order they were linked. */
+  clearOrder: number[];
   pHpShown: number | null;
   monPhase: 'dying' | 'empty' | 'spawning' | null;
   dying: { name: string; url: string; bg: string } | null;
@@ -140,7 +150,7 @@ export type AppState = {
   ftuePlace: Place | null;
   ftueSample: { damage: number; killed: boolean };
 
-  preview: { text: string; color: string } | null;
+  preview: Preview | null;
   modal: 'pause' | 'how' | 'board' | 'settings' | null;
   homeMenu: boolean;
   /** Music and SFX slider values, 0-100. Read from browser storage on mount. */
@@ -159,6 +169,12 @@ export type AppState = {
   questTab: QuestTab;
   /** The quest whose claim is in flight, so a double tap cannot fire twice. */
   questClaiming: string | null;
+
+  /** Bumped to re-render when a crisp tile icon or an FX roller ticks. */
+  crispGen: number;
+  fxGen: number;
+  /** The World Map has a location focused: the HUD and nav tuck away. */
+  wmFocused: boolean;
 
   /* Which flow the hero and gear steps are serving. They are the same two
      screens either way; what changes is where the five they build ends up -
@@ -263,6 +279,7 @@ export const BATTLE_RESET = {
   kick: false,
   slashGen: 0,
   hpShown: null,
+  clearOrder: [],
   pHpShown: null,
   monPhase: null,
   dying: null,
@@ -331,6 +348,9 @@ export const INITIAL_STATE: AppState = {
   quests: null,
   questTab: 'daily',
   questClaiming: null,
+  crispGen: 0,
+  fxGen: 0,
+  wmFocused: false,
   flow: 'run',
   runSaved: null,
   duelSetup: null,
@@ -356,3 +376,22 @@ export const INITIAL_STATE: AppState = {
   foeJunk: 0,
   foeHitFor: 0,
 };
+
+/* Hooks the FX layer (src/client/fx) hands to the shop, quest and pack
+   actions, so the animation can bracket the server round-trip. */
+export type QuestFx = {
+  before?: (r: ClaimQuestResponse) => void;
+  after?: (r: ClaimQuestResponse) => void;
+  fail?: () => void;
+};
+export type WalletFx = { gained?: (amount: number) => void };
+export type PackFx = { rect?: () => FxRect | null; fail?: () => void };
+export type CollectFx = {
+  before: (r: ProfileResponse) => void;
+  after?: (r?: ProfileResponse) => void;
+};
+export const isCollectFx = (x: unknown): x is CollectFx =>
+  typeof x === 'object' &&
+  x !== null &&
+  'before' in x &&
+  typeof x.before === 'function';

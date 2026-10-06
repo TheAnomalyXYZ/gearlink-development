@@ -17,8 +17,9 @@ import { Fragment } from 'react';
 import type { ReactNode } from 'react';
 import type { View } from './buildView.js';
 import { MenuIcon, SpeakerIcon, VolumeSlider } from './SettingsControls.js';
+import { WorldMap } from './WorldMap.js';
 
-const PIXEL = "'Yoster Island',Volter,monospace";
+const PIXEL = 'VolterTitle,Volter,monospace';
 
 /** Yoster Island draws `#` as a star, so any `#` in pixel text is set in
  *  Volter instead to read as the hash it is. */
@@ -321,7 +322,7 @@ export const Screen = ({ v }: { v: View }) => (
             ></div>
             <div
               style={{
-                fontFamily: "'Yoster Island',Volter,monospace",
+                fontFamily: 'VolterTitle,Volter,monospace',
                 fontSize: 'clamp(28px,6vw,48px)',
                 color: '#FFF2B0',
                 textAlign: 'center',
@@ -367,14 +368,17 @@ export const Screen = ({ v }: { v: View }) => (
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    height: '48px',
+                    minHeight: '48px',
                     border: '3px solid #000000',
                     borderRadius: '8px 2px 8px 2px',
                     background: a.bg,
                     boxShadow: a.shadow,
                     color: '#000000',
-                    fontFamily: "'Yoster Island',Volter,monospace",
-                    fontSize: '16px',
+                    fontFamily: 'VolterTitle,Volter,monospace',
+                    fontSize: '24px',
+                    lineHeight: '1.05',
+                    textAlign: 'center',
+                    textWrap: 'balance',
                   }}
                 >
                   {a.label}
@@ -411,248 +415,18 @@ export const Screen = ({ v }: { v: View }) => (
                 background: '#141D2E',
               }}
             >
-              {/* The map itself: cover-scaled artwork the player can drag. */}
+              {/* The World Map diorama: tap a location to focus it, ENTER runs
+                  that pin's own enter. The HUD and nav tuck away while focused. */}
               <div
-                ref={v.mapWrapRef}
-                onPointerDown={v.onMapDown}
-                onPointerMove={v.onMapMove}
-                onPointerUp={v.onMapUp}
-                onPointerCancel={v.onMapUp}
-                onClickCapture={v.onMapClickCapture}
-                style={{
-                  position: 'absolute',
-                  inset: '0',
-                  overflow: 'hidden',
-                  touchAction: 'none',
-                  userSelect: 'none',
-                  cursor: 'grab',
-                }}
+                ref={v.setFtueMap}
+                style={{ position: 'absolute', inset: '0' }}
               >
-                <div
-                  ref={v.setFtueMap}
-                  style={{
-                    position: 'absolute',
-                    top: '0',
-                    left: '0',
-                    width: v.mapFrame.w,
-                    height: v.mapFrame.h,
-                    transform: v.mapFrame.transform,
-                  }}
-                >
-                  <img
-                    src={v.mapArt}
-                    alt=""
-                    draggable={false}
-                    style={{
-                      position: 'absolute',
-                      inset: '0',
-                      width: '100%',
-                      height: '100%',
-                      imageRendering: 'pixelated',
-                      pointerEvents: 'none',
-                      userSelect: 'none',
-                    }}
-                  />
-
-                  {/* Tapping anywhere off a pin closes the open panel. */}
-                  <div
-                    onClick={v.closeLocation}
-                    style={{
-                      position: 'absolute',
-                      inset: '0',
-                      zIndex: '3',
-                      display: v.scrimDisplay,
-                    }}
-                  ></div>
-
-                  {(v.mapPins || []).map((p: any) => (
-                    <Fragment key={p.id}>
-                      <div
-                        style={{
-                          position: 'absolute',
-                          top: p.top,
-                          bottom: p.bottom,
-                          left: p.left,
-                          right: p.right,
-                          width: p.width,
-                          zIndex: p.z,
-                        }}
-                      >
-                        <div style={{ position: 'relative', display: 'flex' }}>
-                          <img
-                            onClick={p.tap}
-                            src={p.url}
-                            alt={p.name}
-                            draggable={false}
-                            style={{
-                              position: 'relative',
-                              zIndex: '2',
-                              width: '100%',
-                              height: 'auto',
-                              cursor: 'pointer',
-                              imageRendering: 'pixelated',
-                              animation: p.anim,
-                            }}
-                          />
-                          <div
-                            style={{
-                              position: 'absolute',
-                              top: '6px',
-                              right: '6px',
-                              zIndex: '3',
-                              display: p.newDisplay,
-                              width: '10px',
-                              height: '10px',
-                              borderRadius: '9999px',
-                              border: '2px solid #141D2E',
-                              background: '#FCE370',
-                            }}
-                          ></div>
-
-                          {/* The detail panel, sitting alongside the pin and
-                              opening away from the edge the pin is on, so it
-                              never runs off the shell. */}
-                          <div
-                            style={{
-                              position: 'absolute',
-                              top: '50%',
-                              transform: 'translateY(-50%)',
-                              left: p.panelLeft,
-                              right: p.panelRight,
-                              zIndex: '5',
-                              display: p.panelDisplay,
-                              width: '168px',
-                              flexDirection: 'column',
-                              gap: '6px',
-                              padding: '9px 10px',
-                              border: '2px solid #FFF2B0',
-                              borderRadius: '8px 2px 8px 2px',
-                              background: 'rgba(20,29,46,.96)',
-                              boxShadow: '0 4px 0 0 rgba(0,0,0,.4)',
-                            }}
-                          >
-                            <div
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '7px',
-                              }}
-                            >
-                              <div
-                                style={{
-                                  width: '30px',
-                                  height: '30px',
-                                  flexShrink: '0',
-                                  backgroundImage: `url(${p.bossUrl})`,
-                                  backgroundSize: 'contain',
-                                  backgroundRepeat: 'no-repeat',
-                                  backgroundPosition: 'center',
-                                  imageRendering: 'pixelated',
-                                }}
-                              ></div>
-                              <div
-                                style={{
-                                  flex: '1',
-                                  minWidth: '0',
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  gap: '2px',
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    fontFamily:
-                                      "'Yoster Island',Volter,monospace",
-                                    fontSize: '11px',
-                                    color: '#FFF2B0',
-                                    whiteSpace: 'nowrap',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                  }}
-                                >
-                                  {p.name}
-                                </div>
-                                <div
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '5px',
-                                    fontSize: '8px',
-                                    letterSpacing: '.08em',
-                                  }}
-                                >
-                                  <span style={{ color: '#CBD9EC' }}>
-                                    {p.waves}
-                                  </span>
-                                  <span style={{ color: '#FFC24B' }}>
-                                    {p.bossName}
-                                  </span>
-                                </div>
-                              </div>
-                              <div
-                                style={{
-                                  flexShrink: '0',
-                                  alignSelf: 'flex-start',
-                                  padding: '1px 4px',
-                                  borderRadius: '3px',
-                                  background: p.tagBg,
-                                  color: p.tagFg,
-                                  fontSize: '7px',
-                                  letterSpacing: '.1em',
-                                }}
-                              >
-                                {p.tag}
-                              </div>
-                            </div>
-                            <div
-                              style={{
-                                fontSize: '8px',
-                                color: '#9DB4D4',
-                                lineHeight: '1.6',
-                              }}
-                            >
-                              {p.blurb}
-                            </div>
-                            <div
-                              onClick={p.enter || undefined}
-                              style={{
-                                cursor: p.enterCursor,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '6px',
-                                height: '30px',
-                                border: '3px solid #000000',
-                                borderRadius: '6px 2px 6px 2px',
-                                background: p.enterBg,
-                                boxShadow: p.enterShadow,
-                                color: '#000000',
-                                fontFamily: "'Yoster Island',Volter,monospace",
-                                fontSize: '11px',
-                              }}
-                            >
-                              <span>{p.enterLabel}</span>
-                              <span
-                                style={{
-                                  display: p.kingDisplay,
-                                  alignItems: 'center',
-                                  padding: '1px 4px',
-                                  borderRadius: '3px',
-                                  background: '#7A3038',
-                                  color: '#FFD9DC',
-                                  fontSize: '7px',
-                                  letterSpacing: '.1em',
-                                }}
-                              >
-                                ASCEND
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </Fragment>
-                  ))}
-                </div>
+                <WorldMap
+                  embedded
+                  lockedIds={v.wmLocked}
+                  onEnter={v.wmEnter}
+                  onFocusChange={v.wmFocus}
+                />
               </div>
 
               {/* Top HUD, floating over the map rather than pushing it down. */}
@@ -663,6 +437,8 @@ export const Screen = ({ v }: { v: View }) => (
                   left: '0',
                   right: '0',
                   zIndex: '14',
+                  transform: v.wmHeaderT,
+                  transition: v.wmChromeTr,
                   display: 'flex',
                   alignItems: 'flex-start',
                   justifyContent: 'space-between',
@@ -690,7 +466,7 @@ export const Screen = ({ v }: { v: View }) => (
                       border: '1px solid #3A4C74',
                       borderRadius: '4px',
                       background: 'rgba(20,29,46,.85)',
-                      fontFamily: "'Yoster Island',Volter,monospace",
+                      fontFamily: 'VolterTitle,Volter,monospace',
                       fontSize: '10px',
                       color: v.ascensionColor,
                     }}
@@ -760,7 +536,7 @@ export const Screen = ({ v }: { v: View }) => (
                       border: '1px solid #3A4C74',
                       borderRadius: '9999px',
                       background: 'rgba(20,29,46,.85)',
-                      fontFamily: "'Yoster Island',Volter,monospace",
+                      fontFamily: 'VolterTitle,Volter,monospace',
                       fontSize: '11px',
                       color: '#9DB4D4',
                     }}
@@ -772,7 +548,7 @@ export const Screen = ({ v }: { v: View }) => (
                     style={{
                       cursor: 'pointer',
                       width: '30px',
-                      height: '30px',
+                      minHeight: '30px',
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
@@ -785,6 +561,9 @@ export const Screen = ({ v }: { v: View }) => (
                       boxShadow: v.homeMenuOpen
                         ? 'none'
                         : '0 -2px 0 0 #7E84E6 inset, 0 2px 0 0 #FFF inset, 0 2px 0 0 rgba(0,0,0,.25)',
+                      lineHeight: '1.05',
+                      textAlign: 'center',
+                      textWrap: 'balance',
                     }}
                   >
                     {[0, 1, 2].map((n) => (
@@ -852,6 +631,8 @@ export const Screen = ({ v }: { v: View }) => (
                   right: '0',
                   bottom: '0',
                   zIndex: '12',
+                  transform: v.wmNavT,
+                  transition: v.wmChromeTr,
                   padding: '16px',
                   display: 'flex',
                   alignItems: 'center',
@@ -863,8 +644,8 @@ export const Screen = ({ v }: { v: View }) => (
                   style={{
                     position: 'relative',
                     width: '100%',
-                    maxWidth: '369px',
-                    height: '60px',
+                    maxWidth: '400px',
+                    height: '80px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -877,11 +658,12 @@ export const Screen = ({ v }: { v: View }) => (
                   {(v.navItems || []).map((n: any, nI: number) => (
                     <Fragment key={nI}>
                       <div
+                        data-fx={n.fx}
                         onClick={n.run}
                         style={{
                           flex: '1',
                           minWidth: '0',
-                          height: '72px',
+                          height: '96px',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -918,15 +700,15 @@ export const Screen = ({ v }: { v: View }) => (
                           <div
                             style={{
                               position: 'absolute',
-                              top: '-12px',
+                              top: '-17px',
                               left: '50%',
                               transform: 'translateX(-50%)',
                               display: n.tipDisplay,
                               whiteSpace: 'nowrap',
-                              fontFamily: "'Yoster Island',Volter,monospace",
-                              fontSize: '13px',
+                              fontFamily: 'VolterTitle,Volter,monospace',
+                              fontSize: '19px',
                               color: '#FFFFFF',
-                              WebkitTextStroke: '4px #000000',
+                              WebkitTextStroke: '5px #000000',
                               paintOrder: 'stroke fill',
                             }}
                           >
@@ -935,11 +717,13 @@ export const Screen = ({ v }: { v: View }) => (
                           <div
                             style={{
                               position: 'absolute',
-                              top: '4px',
-                              right: '6px',
+                              top: '6px',
+                              right: '8px',
                               zIndex: '1',
-                              width: '9px',
-                              height: '9px',
+                              width: '12px',
+                              height: '12px',
+                              animation:
+                                'glDotBounce 700ms cubic-bezier(.3,1.8,.5,1)',
                               borderRadius: '50%',
                               background: '#FF4D4D',
                               border: '1.5px solid #1D1C24',
@@ -959,8 +743,8 @@ export const Screen = ({ v }: { v: View }) => (
                           >
                             <div
                               style={{
-                                width: n.icon,
-                                height: n.icon,
+                                width: `calc(${n.icon} * 1.45)`,
+                                height: `calc(${n.icon} * 1.45)`,
                                 backgroundImage: `url(${n.img})`,
                                 backgroundSize: 'contain',
                                 backgroundRepeat: 'no-repeat',
@@ -971,8 +755,8 @@ export const Screen = ({ v }: { v: View }) => (
                             <div
                               style={{
                                 display: n.subDisplay,
-                                fontFamily: "'Yoster Island',Volter,monospace",
-                                fontSize: '8px',
+                                fontFamily: 'VolterTitle,Volter,monospace',
+                                fontSize: '12px',
                                 lineHeight: '1',
                                 color: '#CBD9EC',
                                 whiteSpace: 'nowrap',
@@ -1007,7 +791,7 @@ export const Screen = ({ v }: { v: View }) => (
             >
               <div
                 style={{
-                  fontFamily: "'Yoster Island',Volter,monospace",
+                  fontFamily: 'VolterTitle,Volter,monospace',
                   fontSize: '18px',
                   color: '#FFF2B0',
                   letterSpacing: '.02em',
@@ -1050,7 +834,7 @@ export const Screen = ({ v }: { v: View }) => (
                 >
                   <div
                     style={{
-                      fontFamily: "'Yoster Island',Volter,monospace",
+                      fontFamily: 'VolterTitle,Volter,monospace',
                       fontSize: '11px',
                       color: '#FFF2B0',
                     }}
@@ -1114,7 +898,7 @@ export const Screen = ({ v }: { v: View }) => (
                       >
                         <div
                           style={{
-                            fontFamily: "'Yoster Island',Volter,monospace",
+                            fontFamily: 'VolterTitle,Volter,monospace',
                             fontSize: '14px',
                             color: '#FDFDFD',
                           }}
@@ -1179,7 +963,7 @@ export const Screen = ({ v }: { v: View }) => (
                         background: h.upgradeBg,
                         boxShadow: h.upgradeShadow,
                         color: '#000000',
-                        fontFamily: "'Yoster Island',Volter,monospace",
+                        fontFamily: 'VolterTitle,Volter,monospace',
                         fontSize: '11px',
                       }}
                     >
@@ -1211,14 +995,17 @@ export const Screen = ({ v }: { v: View }) => (
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        height: a.h,
+                        minHeight: a.h,
                         border: '3px solid #000000',
                         borderRadius: '8px 2px 8px 2px',
                         background: a.bg,
                         boxShadow: a.shadow,
                         color: '#000000',
-                        fontFamily: "'Yoster Island',Volter,monospace",
-                        fontSize: a.size,
+                        fontFamily: 'VolterTitle,Volter,monospace',
+                        fontSize: `calc(${a.size} * 1.5)`,
+                        lineHeight: '1.05',
+                        textAlign: 'center',
+                        textWrap: 'balance',
                       }}
                     >
                       {a.label}
@@ -1257,7 +1044,7 @@ export const Screen = ({ v }: { v: View }) => (
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        height: '26px',
+                        minHeight: '26px',
                         padding: '0 10px',
                         border: '1px solid #000000',
                         borderRadius: '8px 2px 8px 2px',
@@ -1265,8 +1052,11 @@ export const Screen = ({ v }: { v: View }) => (
                         boxShadow:
                           '0 -2px 0 0 #7E84E6 inset, 0 2px 0 0 #FFF inset, 0 2px 0 0 rgba(0,0,0,.25)',
                         color: '#000000',
-                        fontFamily: "'Yoster Island',Volter,monospace",
-                        fontSize: '10px',
+                        fontFamily: 'VolterTitle,Volter,monospace',
+                        fontSize: '15px',
+                        lineHeight: '1.05',
+                        textAlign: 'center',
+                        textWrap: 'balance',
                       }}
                     >
                       {a.label}
@@ -1322,7 +1112,7 @@ export const Screen = ({ v }: { v: View }) => (
                   >
                     <div
                       style={{
-                        fontFamily: "'Yoster Island',Volter,monospace",
+                        fontFamily: 'VolterTitle,Volter,monospace',
                         fontSize: '12px',
                         color: '#FDFDFD',
                       }}
@@ -1449,7 +1239,7 @@ export const Screen = ({ v }: { v: View }) => (
                       ></div>
                       <span
                         style={{
-                          fontFamily: "'Yoster Island',Volter,monospace",
+                          fontFamily: 'VolterTitle,Volter,monospace',
                           fontSize: '12px',
                           color: v.peekTypeColor,
                         }}
@@ -1786,7 +1576,7 @@ export const Screen = ({ v }: { v: View }) => (
                       ></div>
                       <span
                         style={{
-                          fontFamily: "'Yoster Island',Volter,monospace",
+                          fontFamily: 'VolterTitle,Volter,monospace',
                           fontSize: '11px',
                           color: v.slotInfoTypeColor,
                         }}
@@ -1991,8 +1781,7 @@ export const Screen = ({ v }: { v: View }) => (
                             >
                               <span
                                 style={{
-                                  fontFamily:
-                                    "'Yoster Island',Volter,monospace",
+                                  fontFamily: 'VolterTitle,Volter,monospace',
                                   fontSize: '10px',
                                   lineHeight: '1',
                                   color: '#141212',
@@ -2018,7 +1807,7 @@ export const Screen = ({ v }: { v: View }) => (
                           >
                             <span
                               style={{
-                                fontFamily: "'Yoster Island',Volter,monospace",
+                                fontFamily: 'VolterTitle,Volter,monospace',
                                 fontSize: '8px',
                                 color: '#141212',
                               }}
@@ -2034,7 +1823,7 @@ export const Screen = ({ v }: { v: View }) => (
                               width: '100%',
                               padding: '0 4px',
                               background: g.rarityColor,
-                              fontFamily: "'Yoster Island',Volter,monospace",
+                              fontFamily: 'VolterTitle,Volter,monospace',
                               fontSize: '8px',
                               lineHeight: '1.5',
                               color: '#141212',
@@ -2073,7 +1862,7 @@ export const Screen = ({ v }: { v: View }) => (
                             ></div>
                             <span
                               style={{
-                                fontFamily: "'Yoster Island',Volter,monospace",
+                                fontFamily: 'VolterTitle,Volter,monospace',
                                 fontSize: '10px',
                                 color: '#FFFFFF',
                               }}
@@ -2132,15 +1921,18 @@ export const Screen = ({ v }: { v: View }) => (
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    height: '46px',
+                    minHeight: '46px',
                     border: '3px solid #000000',
                     borderRadius: '8px 2px 8px 2px',
                     background: v.startBg,
                     boxShadow: v.startShadow,
                     color: '#000000',
-                    fontFamily: "'Yoster Island',Volter,monospace",
-                    fontSize: '15px',
+                    fontFamily: 'VolterTitle,Volter,monospace',
+                    fontSize: '22.5px',
                     opacity: v.startOpacity,
+                    lineHeight: '1.05',
+                    textAlign: 'center',
+                    textWrap: 'balance',
                   }}
                 >
                   {v.startLabel}
@@ -2153,6 +1945,7 @@ export const Screen = ({ v }: { v: View }) => (
         {v.isBattle ? (
           <>
             <div
+              data-juice="column"
               style={{
                 flex: '1',
                 minHeight: '0',
@@ -2224,7 +2017,7 @@ export const Screen = ({ v }: { v: View }) => (
                     >
                       <div
                         style={{
-                          fontFamily: "'Yoster Island',Volter,monospace",
+                          fontFamily: 'VolterTitle,Volter,monospace',
                           fontSize: '13px',
                           color: '#FFF2B0',
                           whiteSpace: 'nowrap',
@@ -2353,6 +2146,7 @@ export const Screen = ({ v }: { v: View }) => (
                   }}
                 >
                   <div
+                    data-juice="monster"
                     style={{
                       position: 'relative',
                       width: 'clamp(96px,22vh,190px)',
@@ -2423,14 +2217,30 @@ export const Screen = ({ v }: { v: View }) => (
                         animation: v.enemyBarAnim,
                       }}
                     >
-                      <div
-                        style={{
-                          height: '100%',
-                          background: '#D14141',
-                          width: `${v.enemyPct}%`,
-                          transition: 'width .35s ease-out',
-                        }}
-                      ></div>
+                      {/* A pale trail lags the red bar, so a hit reads as a chunk
+                          knocked off before it drains. */}
+                      <div style={{ position: 'relative', height: '100%' }}>
+                        <div
+                          style={{
+                            position: 'absolute',
+                            inset: '0',
+                            background: '#FFB0A8',
+                            transformOrigin: '0 50%',
+                            transform: `scaleX(${v.enemyFrac})`,
+                            transition: 'transform 400ms ease-out 250ms',
+                          }}
+                        ></div>
+                        <div
+                          style={{
+                            position: 'absolute',
+                            inset: '0',
+                            background: '#D14141',
+                            transformOrigin: '0 50%',
+                            transform: `scaleX(${v.enemyFrac})`,
+                            transition: 'transform 120ms ease-out',
+                          }}
+                        ></div>
+                      </div>
                     </div>
                     <div
                       style={{
@@ -2488,7 +2298,7 @@ export const Screen = ({ v }: { v: View }) => (
                           >
                             <div
                               style={{
-                                fontFamily: "'Yoster Island',Volter,monospace",
+                                fontFamily: 'VolterTitle,Volter,monospace',
                                 fontSize: '9px',
                                 color: '#FFF2B0',
                               }}
@@ -2540,7 +2350,7 @@ export const Screen = ({ v }: { v: View }) => (
                                       right: '-1px',
                                       bottom: '-1px',
                                       fontFamily:
-                                        "'Yoster Island',Volter,monospace",
+                                        'VolterTitle,Volter,monospace',
                                       fontSize: '9px',
                                       lineHeight: '1',
                                       color: '#FFFFFF',
@@ -2589,7 +2399,7 @@ export const Screen = ({ v }: { v: View }) => (
                         >
                           <div
                             style={{
-                              fontFamily: "'Yoster Island',Volter,monospace",
+                              fontFamily: 'VolterTitle,Volter,monospace',
                               fontSize: '9px',
                               color: '#FFF2B0',
                             }}
@@ -2712,6 +2522,7 @@ export const Screen = ({ v }: { v: View }) => (
                     }}
                   >
                     <div
+                      data-juice="hero-hp"
                       style={{
                         height: '100%',
                         background: '#2F9E5B',
@@ -2763,7 +2574,7 @@ export const Screen = ({ v }: { v: View }) => (
                   >
                     <div
                       style={{
-                        fontFamily: "'Yoster Island',Volter,monospace",
+                        fontFamily: 'VolterTitle,Volter,monospace',
                         fontSize: '9px',
                         color: '#FFF2B0',
                       }}
@@ -2771,6 +2582,7 @@ export const Screen = ({ v }: { v: View }) => (
                       {v.heroTipName}
                     </div>
                     <div
+                      data-juice="hero-status"
                       style={{
                         fontSize: '9px',
                         color: '#CBD9EC',
@@ -2813,7 +2625,7 @@ export const Screen = ({ v }: { v: View }) => (
                             position: 'absolute',
                             right: '-1px',
                             bottom: '-1px',
-                            fontFamily: "'Yoster Island',Volter,monospace",
+                            fontFamily: 'VolterTitle,Volter,monospace',
                             fontSize: '9px',
                             lineHeight: '1',
                             color: '#FFFFFF',
@@ -2853,12 +2665,94 @@ export const Screen = ({ v }: { v: View }) => (
                 >
                   <div
                     style={{
+                      display: v.previewDisplay,
                       fontSize: '11px',
                       color: v.previewColor,
                       transition: 'color .2s',
                     }}
                   >
                     {v.previewText}
+                  </div>
+                  {/* Chain maths as chips: power x mult = value, plus a bomb
+                      badge when the chain will forge one. */}
+                  <div
+                    style={{
+                      display: v.chipsDisplay,
+                      alignItems: 'center',
+                      gap: '6px',
+                      flexWrap: 'wrap',
+                      justifyContent: 'center',
+                      rowGap: '4px',
+                      fontFamily: 'VolterTitle,Volter,monospace',
+                      lineHeight: '1',
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding: '3px 8px 4px',
+                        border: '2px solid #000000',
+                        borderRadius: '6px 2px 6px 2px',
+                        background: '#3459C2',
+                        boxShadow: 'inset 0 -3px 0 #142663',
+                        color: '#FFFFFF',
+                        fontSize: '15px',
+                        animation: v.chipPowerAnim,
+                      }}
+                    >
+                      {v.chipPower}
+                    </div>
+                    <div
+                      style={{
+                        padding: '3px 8px 4px',
+                        border: '2px solid #000000',
+                        borderRadius: '6px 2px 6px 2px',
+                        background: '#B23A44',
+                        boxShadow: 'inset 0 -3px 0 #561520',
+                        color: '#FFFFFF',
+                        fontSize: '15px',
+                        animation: v.chipMultAnim,
+                      }}
+                    >
+                      {v.chipMult}
+                    </div>
+                    <div style={{ fontSize: '13px', color: v.previewColor }}>
+                      {v.chipRest}
+                    </div>
+                    <div
+                      style={{
+                        display: v.chipBombDisplay,
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '2px 7px 3px 4px',
+                        border: '2px solid #000000',
+                        borderRadius: '6px 2px 6px 2px',
+                        background: '#FFC24B',
+                        boxShadow: 'inset 0 -3px 0 #B5701A',
+                        color: '#000000',
+                        fontSize: '13px',
+                        animation: 'glBombBadge 700ms ease-in-out infinite',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '17px',
+                          height: '17px',
+                          background:
+                            'url(/fx/icons/bomb.png) 0 0/17px 17px no-repeat',
+                          imageRendering: 'pixelated',
+                        }}
+                      ></div>
+                      +BOMB
+                    </div>
+                    <div
+                      style={{
+                        display: v.chipExtraDisplay,
+                        fontSize: '11px',
+                        color: '#CBD9EC',
+                      }}
+                    >
+                      {v.chipExtra}
+                    </div>
                   </div>
                 </div>
                 <div
@@ -2874,6 +2768,7 @@ export const Screen = ({ v }: { v: View }) => (
                   }}
                 >
                   <div
+                    data-juice-board="main"
                     ref={v.setFtueBoard}
                     onPointerDown={v.onDown}
                     onPointerMove={v.onMove}
@@ -2899,18 +2794,32 @@ export const Screen = ({ v }: { v: View }) => (
                           style={{
                             position: 'relative',
                             minHeight: '0',
-                            borderRadius: '8px',
-                            border: `2px solid ${c.bd}`,
-                            background: c.bg,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
                             transform: c.scale,
+                            transition:
+                              'transform 160ms cubic-bezier(.34,1.8,.64,1)',
                             zIndex: c.z,
                             opacity: c.cellOpacity,
                             animation: c.anim,
                           }}
                         >
+                          <div
+                            style={{
+                              position: 'absolute',
+                              inset: '0',
+                              borderRadius: '8px',
+                              border: `2px solid ${c.bd}`,
+                              background: c.face,
+                            }}
+                          ></div>
+                          <div
+                            style={{
+                              position: 'absolute',
+                              inset: '0',
+                              borderRadius: '8px',
+                              pointerEvents: 'none',
+                              animation: c.glowAnim,
+                            }}
+                          ></div>
                           <div
                             style={{
                               position: 'absolute',
@@ -2937,16 +2846,20 @@ export const Screen = ({ v }: { v: View }) => (
                           ></div>
                           <div
                             style={{
-                              width: '75%',
-                              height: '75%',
-                              backgroundImage: `url(${c.icon})`,
-                              backgroundSize: 'contain',
-                              backgroundRepeat: 'no-repeat',
-                              backgroundPosition: 'center',
-                              imageRendering: 'pixelated',
+                              position: 'absolute',
+                              inset: '2px',
                               pointerEvents: 'none',
                             }}
-                          ></div>
+                          >
+                            <div
+                              style={{
+                                position: 'absolute',
+                                inset: '13%',
+                                background: `url(${c.icon}) center/contain no-repeat`,
+                                filter: 'drop-shadow(0 2px 0 rgba(0,0,0,.45))',
+                              }}
+                            ></div>
+                          </div>
                           <div
                             style={{
                               position: 'absolute',
@@ -2978,12 +2891,25 @@ export const Screen = ({ v }: { v: View }) => (
                       <polyline
                         points={v.chainPoints}
                         fill={'none'}
-                        stroke={'#FFFFFF'}
-                        strokeWidth={'9'}
-                        strokeLinecap={'round'}
-                        strokeLinejoin={'round'}
+                        stroke={'#0B0D1A'}
+                        strokeWidth={v.chainUnderW}
+                        strokeLinecap={'square'}
+                        strokeLinejoin={'miter'}
                         vectorEffect={'non-scaling-stroke'}
-                        opacity={'0.95'}
+                      />
+                      <polyline
+                        points={v.chainPoints}
+                        fill={'none'}
+                        stroke={v.chainColor}
+                        strokeWidth={v.chainW}
+                        strokeLinecap={'square'}
+                        strokeLinejoin={'miter'}
+                        strokeDasharray={v.chainDash}
+                        vectorEffect={'non-scaling-stroke'}
+                        style={{
+                          animation: 'glDashFlow 520ms linear infinite',
+                          filter: v.chainGlow,
+                        }}
                       />
                     </svg>
                     {(v.pops || []).map((p: any, pI: number) => (
@@ -2998,10 +2924,12 @@ export const Screen = ({ v }: { v: View }) => (
                             alignItems: 'center',
                             justifyContent: 'center',
                             pointerEvents: 'none',
-                            fontFamily: "'Yoster Island',Volter,monospace",
-                            fontSize: '22px',
+                            fontFamily: 'VolterTitle,Volter,monospace',
+                            fontSize: p.size,
                             color: p.color,
                             textShadow: '0 2px 0 #141D2E',
+                            WebkitTextStroke: '4px #141D2E',
+                            paintOrder: 'stroke fill',
                             animation: p.anim,
                           }}
                         >
@@ -3076,7 +3004,7 @@ export const Screen = ({ v }: { v: View }) => (
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      height: '26px',
+                      minHeight: '26px',
                       padding: '0 10px',
                       border: '1px solid #000000',
                       borderRadius: '8px 2px 8px 2px',
@@ -3084,15 +3012,18 @@ export const Screen = ({ v }: { v: View }) => (
                       boxShadow:
                         '0 -2px 0 0 #7E84E6 inset, 0 2px 0 0 #FFF inset',
                       color: '#000000',
-                      fontFamily: "'Yoster Island',Volter,monospace",
-                      fontSize: '10px',
+                      fontFamily: 'VolterTitle,Volter,monospace',
+                      fontSize: '15px',
+                      lineHeight: '1.05',
+                      textAlign: 'center',
+                      textWrap: 'balance',
                     }}
                   >
                     HOME
                   </div>
                   <div
                     style={{
-                      fontFamily: "'Yoster Island',Volter,monospace",
+                      fontFamily: 'VolterTitle,Volter,monospace',
                       fontSize: '15px',
                       color: '#FFF2B0',
                     }}
@@ -3132,13 +3063,15 @@ export const Screen = ({ v }: { v: View }) => (
                       }}
                     ></div>
                     <div
+                      data-fx="coins"
                       style={{
-                        fontFamily: "'Yoster Island',Volter,monospace",
+                        fontFamily: 'VolterTitle,Volter,monospace',
                         fontSize: '12px',
                         color: '#FCE370',
+                        animation: v.coinAnim,
                       }}
                     >
-                      {v.coins}
+                      {v.coinsShown}
                     </div>
                   </div>
                   <div
@@ -3165,13 +3098,15 @@ export const Screen = ({ v }: { v: View }) => (
                       }}
                     ></div>
                     <div
+                      data-fx="gems"
                       style={{
-                        fontFamily: "'Yoster Island',Volter,monospace",
+                        fontFamily: 'VolterTitle,Volter,monospace',
                         fontSize: '12px',
                         color: '#8FE3FF',
+                        animation: v.gemAnim,
                       }}
                     >
-                      {v.gems}
+                      {v.gemsShown}
                     </div>
                   </div>
                 </div>
@@ -3180,7 +3115,7 @@ export const Screen = ({ v }: { v: View }) => (
               <div
                 style={{
                   display: 'flex',
-                  height: '30px',
+                  height: '42px',
                   width: '100%',
                   background: '#141D2E',
                   borderRadius: '4px',
@@ -3202,8 +3137,8 @@ export const Screen = ({ v }: { v: View }) => (
                         gap: '4px',
                         borderRadius: '3px',
                         background: t.bg,
-                        fontFamily: "'Yoster Island',Volter,monospace",
-                        fontSize: '10px',
+                        fontFamily: 'VolterTitle,Volter,monospace',
+                        fontSize: '15px',
                         color: t.fg,
                       }}
                     >
@@ -3260,6 +3195,7 @@ export const Screen = ({ v }: { v: View }) => (
                 {(v.coinBundles || []).map((b: any, bI: number) => (
                   <Fragment key={bI}>
                     <div
+                      data-fx-bundle
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -3268,20 +3204,34 @@ export const Screen = ({ v }: { v: View }) => (
                         border: `2px solid ${b.tint}`,
                         borderRadius: '8px 0 8px 0',
                         padding: '9px',
+                        animation: b.inAnim,
                       }}
                     >
                       <div
+                        data-fx-stack
                         style={{
-                          width: '34px',
-                          height: '34px',
+                          position: 'relative',
+                          width: '38px',
+                          height: b.stackH,
                           flexShrink: '0',
-                          backgroundImage: `url(${v.coinIcon})`,
-                          backgroundSize: 'contain',
-                          backgroundRepeat: 'no-repeat',
-                          backgroundPosition: 'center',
-                          imageRendering: 'pixelated',
                         }}
-                      ></div>
+                      >
+                        {(b.stack || []).map((c: any, cI: number) => (
+                          <div
+                            key={cI}
+                            style={{
+                              position: 'absolute',
+                              left: c.x,
+                              bottom: c.y,
+                              width: '26px',
+                              height: '26px',
+                              background: `url(${v.coinIcon}) center/contain no-repeat`,
+                              imageRendering: 'pixelated',
+                              filter: 'drop-shadow(0 2px 0 rgba(0,0,0,.35))',
+                            }}
+                          ></div>
+                        ))}
+                      </div>
                       <div
                         style={{
                           flex: '1',
@@ -3293,7 +3243,7 @@ export const Screen = ({ v }: { v: View }) => (
                       >
                         <div
                           style={{
-                            fontFamily: "'Yoster Island',Volter,monospace",
+                            fontFamily: 'VolterTitle,Volter,monospace',
                             fontSize: '13px',
                             color: '#FCE370',
                           }}
@@ -3302,9 +3252,17 @@ export const Screen = ({ v }: { v: View }) => (
                         </div>
                         <div
                           style={{
-                            fontSize: '9px',
-                            color: b.bonusColor,
                             display: b.bonusDisplay,
+                            alignSelf: 'flex-start',
+                            padding: '2px 10px 3px 6px',
+                            background: b.bonusColor,
+                            color: '#141212',
+                            fontFamily: 'VolterTitle,Volter,monospace',
+                            fontSize: '11px',
+                            clipPath:
+                              'polygon(0 0,100% 0,calc(100% - 6px) 50%,100% 100%,0 100%)',
+                            transformOrigin: '0 50%',
+                            animation: 'glRibbon 1.8s ease-in-out infinite',
                           }}
                         >
                           {b.bonusLabel}
@@ -3320,15 +3278,18 @@ export const Screen = ({ v }: { v: View }) => (
                           alignItems: 'center',
                           justifyContent: 'center',
                           gap: '4px',
-                          height: '34px',
+                          minHeight: '34px',
                           padding: '0 11px',
                           border: '2px solid #000000',
                           borderRadius: '8px 2px 8px 2px',
                           background: b.btnBg,
                           boxShadow: b.btnShadow,
                           color: '#000000',
-                          fontFamily: "'Yoster Island',Volter,monospace",
-                          fontSize: '11px',
+                          fontFamily: 'VolterTitle,Volter,monospace',
+                          fontSize: '16.5px',
+                          lineHeight: '1.05',
+                          textAlign: 'center',
+                          textWrap: 'balance',
                         }}
                       >
                         <div
@@ -3369,6 +3330,7 @@ export const Screen = ({ v }: { v: View }) => (
                 {(v.gemBundles || []).map((b: any, bI: number) => (
                   <Fragment key={bI}>
                     <div
+                      data-fx-bundle
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -3377,6 +3339,7 @@ export const Screen = ({ v }: { v: View }) => (
                         border: `2px solid ${b.tint}`,
                         borderRadius: '8px 0 8px 0',
                         padding: '9px',
+                        animation: b.inAnim,
                       }}
                     >
                       <div
@@ -3402,7 +3365,7 @@ export const Screen = ({ v }: { v: View }) => (
                       >
                         <div
                           style={{
-                            fontFamily: "'Yoster Island',Volter,monospace",
+                            fontFamily: 'VolterTitle,Volter,monospace',
                             fontSize: '13px',
                             color: '#8FE3FF',
                           }}
@@ -3411,9 +3374,17 @@ export const Screen = ({ v }: { v: View }) => (
                         </div>
                         <div
                           style={{
-                            fontSize: '9px',
-                            color: b.bonusColor,
                             display: b.bonusDisplay,
+                            alignSelf: 'flex-start',
+                            padding: '2px 10px 3px 6px',
+                            background: b.bonusColor,
+                            color: '#141212',
+                            fontFamily: 'VolterTitle,Volter,monospace',
+                            fontSize: '11px',
+                            clipPath:
+                              'polygon(0 0,100% 0,calc(100% - 6px) 50%,100% 100%,0 100%)',
+                            transformOrigin: '0 50%',
+                            animation: 'glRibbon 1.8s ease-in-out infinite',
                           }}
                         >
                           {b.bonusLabel}
@@ -3427,7 +3398,7 @@ export const Screen = ({ v }: { v: View }) => (
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          height: '34px',
+                          minHeight: '34px',
                           padding: '0 13px',
                           border: '2px solid #000000',
                           borderRadius: '8px 2px 8px 2px',
@@ -3435,8 +3406,11 @@ export const Screen = ({ v }: { v: View }) => (
                           boxShadow:
                             '0 -4px 0 0 #6F9E2E inset, 0 4px 0 0 #FFF inset, 0 2px 0 0 rgba(0,0,0,.25)',
                           color: '#000000',
-                          fontFamily: "'Yoster Island',Volter,monospace",
-                          fontSize: '11px',
+                          fontFamily: 'VolterTitle,Volter,monospace',
+                          fontSize: '16.5px',
+                          lineHeight: '1.05',
+                          textAlign: 'center',
+                          textWrap: 'balance',
                         }}
                       >
                         {b.priceLabel}
@@ -3456,6 +3430,7 @@ export const Screen = ({ v }: { v: View }) => (
                 {(v.shopPacks || []).map((p: any, pI: number) => (
                   <Fragment key={pI}>
                     <div
+                      data-fx-pack
                       style={{
                         display: 'flex',
                         flexDirection: 'column',
@@ -3464,6 +3439,7 @@ export const Screen = ({ v }: { v: View }) => (
                         border: `2px solid ${p.tint}`,
                         borderRadius: '8px 0 8px 0',
                         padding: '10px',
+                        animation: p.inAnim,
                       }}
                     >
                       <div
@@ -3474,17 +3450,58 @@ export const Screen = ({ v }: { v: View }) => (
                         }}
                       >
                         <div
+                          data-fx-packimg
                           style={{
+                            position: 'relative',
                             width: '52px',
                             height: '62px',
                             flexShrink: '0',
-                            backgroundImage: `url(${p.img})`,
-                            backgroundSize: 'contain',
-                            backgroundRepeat: 'no-repeat',
-                            backgroundPosition: 'center',
-                            imageRendering: 'pixelated',
+                            transformOrigin: '50% 100%',
+                            animation: `glPackSway 3s ease-in-out ${p.swayDelay} infinite`,
                           }}
-                        ></div>
+                        >
+                          <div
+                            data-tilt
+                            style={{ position: 'absolute', inset: '-8px' }}
+                          >
+                            <div
+                              data-tilt-inner
+                              style={{ position: 'absolute', inset: '8px' }}
+                            >
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  inset: '0',
+                                  background: `url(${p.img}) center/contain no-repeat`,
+                                  imageRendering: 'pixelated',
+                                }}
+                              ></div>
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  inset: '0',
+                                  WebkitMask: `url(${p.img}) center/contain no-repeat`,
+                                  mask: `url(${p.img}) center/contain no-repeat`,
+                                  background:
+                                    'linear-gradient(115deg,transparent 42%,rgba(255,255,255,.7) 50%,transparent 58%)',
+                                  backgroundSize: '260% 100%',
+                                  animation: `glShineSweep 2.5s ease-in-out ${p.shineDelay} infinite`,
+                                }}
+                              ></div>
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  inset: '0',
+                                  WebkitMask: `url(${p.img}) center/contain no-repeat`,
+                                  mask: `url(${p.img}) center/contain no-repeat`,
+                                  background:
+                                    'radial-gradient(circle at calc(50% + var(--tilt-x,0) * 45%) calc(45% + var(--tilt-y,0) * 45%),rgba(255,255,255,.45),transparent 55%)',
+                                  opacity: 'var(--tilt-on,0)',
+                                }}
+                              ></div>
+                            </div>
+                          </div>
+                        </div>
                         <div
                           style={{
                             flex: '1',
@@ -3496,8 +3513,8 @@ export const Screen = ({ v }: { v: View }) => (
                         >
                           <div
                             style={{
-                              fontFamily: "'Yoster Island',Volter,monospace",
-                              fontSize: '12px',
+                              fontFamily: 'VolterTitle,Volter,monospace',
+                              fontSize: '14px',
                               color: '#FFFFFF',
                             }}
                           >
@@ -3560,14 +3577,17 @@ export const Screen = ({ v }: { v: View }) => (
                           alignItems: 'center',
                           justifyContent: 'center',
                           gap: '5px',
-                          height: '36px',
+                          minHeight: '36px',
                           border: '2px solid #000000',
                           borderRadius: '8px 2px 8px 2px',
                           background: p.btnBg,
                           boxShadow: p.btnShadow,
                           color: '#000000',
-                          fontFamily: "'Yoster Island',Volter,monospace",
-                          fontSize: '12px',
+                          fontFamily: 'VolterTitle,Volter,monospace',
+                          fontSize: '18px',
+                          lineHeight: '1.05',
+                          textAlign: 'center',
+                          textWrap: 'balance',
                         }}
                       >
                         <span>OPEN</span>
@@ -3644,7 +3664,7 @@ export const Screen = ({ v }: { v: View }) => (
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      height: '26px',
+                      minHeight: '26px',
                       padding: '0 10px',
                       border: '1px solid #000000',
                       borderRadius: '8px 2px 8px 2px',
@@ -3652,15 +3672,18 @@ export const Screen = ({ v }: { v: View }) => (
                       boxShadow:
                         '0 -2px 0 0 #7E84E6 inset, 0 2px 0 0 #FFF inset',
                       color: '#000000',
-                      fontFamily: "'Yoster Island',Volter,monospace",
-                      fontSize: '10px',
+                      fontFamily: 'VolterTitle,Volter,monospace',
+                      fontSize: '15px',
+                      lineHeight: '1.05',
+                      textAlign: 'center',
+                      textWrap: 'balance',
                     }}
                   >
                     HOME
                   </div>
                   <div
                     style={{
-                      fontFamily: "'Yoster Island',Volter,monospace",
+                      fontFamily: 'VolterTitle,Volter,monospace',
                       fontSize: '15px',
                       color: '#FFF2B0',
                     }}
@@ -3700,13 +3723,15 @@ export const Screen = ({ v }: { v: View }) => (
                       }}
                     ></div>
                     <div
+                      data-fx="coins"
                       style={{
-                        fontFamily: "'Yoster Island',Volter,monospace",
+                        fontFamily: 'VolterTitle,Volter,monospace',
                         fontSize: '12px',
                         color: '#FCE370',
+                        animation: v.coinAnim,
                       }}
                     >
-                      {v.coins}
+                      {v.coinsShown}
                     </div>
                   </div>
                   <div
@@ -3733,13 +3758,15 @@ export const Screen = ({ v }: { v: View }) => (
                       }}
                     ></div>
                     <div
+                      data-fx="gems"
                       style={{
-                        fontFamily: "'Yoster Island',Volter,monospace",
+                        fontFamily: 'VolterTitle,Volter,monospace',
                         fontSize: '12px',
                         color: '#8FE3FF',
+                        animation: v.gemAnim,
                       }}
                     >
-                      {v.gems}
+                      {v.gemsShown}
                     </div>
                   </div>
                 </div>
@@ -3748,7 +3775,7 @@ export const Screen = ({ v }: { v: View }) => (
               <div
                 style={{
                   display: 'flex',
-                  height: '30px',
+                  height: '42px',
                   width: '100%',
                   background: '#141D2E',
                   borderRadius: '4px',
@@ -3770,8 +3797,8 @@ export const Screen = ({ v }: { v: View }) => (
                         gap: '5px',
                         borderRadius: '3px',
                         background: t.bg,
-                        fontFamily: "'Yoster Island',Volter,monospace",
-                        fontSize: '10px',
+                        fontFamily: 'VolterTitle,Volter,monospace',
+                        fontSize: '15px',
                         color: t.fg,
                       }}
                     >
@@ -3781,13 +3808,13 @@ export const Screen = ({ v }: { v: View }) => (
                           display: t.badgeDisplay,
                           alignItems: 'center',
                           justifyContent: 'center',
-                          minWidth: '14px',
-                          height: '14px',
-                          padding: '0 3px',
-                          borderRadius: '7px',
+                          minWidth: '20px',
+                          height: '20px',
+                          padding: '0 5px',
+                          borderRadius: '10px',
                           background: '#FF4D4D',
                           color: '#FFFFFF',
-                          fontSize: '8px',
+                          fontSize: '12px',
                         }}
                       >
                         {t.badge}
@@ -3818,7 +3845,7 @@ export const Screen = ({ v }: { v: View }) => (
                   alignItems: 'center',
                   justifyContent: 'center',
                   padding: '24px 0',
-                  fontFamily: "'Yoster Island',Volter,monospace",
+                  fontFamily: 'VolterTitle,Volter,monospace',
                   fontSize: '11px',
                   color: '#8A9BBF',
                 }}
@@ -3834,19 +3861,86 @@ export const Screen = ({ v }: { v: View }) => (
                 }}
               >
                 <div
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <div
+                    style={{
+                      display: v.metaDisplay,
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontFamily: 'VolterTitle,Volter,monospace',
+                        fontSize: '13px',
+                        color: '#FFF2B0',
+                      }}
+                    >
+                      DUTIES
+                    </span>
+                    {(v.metaPips || []).map((m: any, mI: number) => (
+                      <div
+                        key={mI}
+                        style={{
+                          width: '18px',
+                          height: '18px',
+                          border: `2px solid ${m.bd}`,
+                          borderRadius: '3px',
+                          background: m.bg,
+                          boxShadow: 'inset 0 -3px 0 rgba(0,0,0,.25)',
+                          animation: m.anim,
+                        }}
+                      ></div>
+                    ))}
+                    <span
+                      style={{
+                        fontFamily: 'VolterTitle,Volter,monospace',
+                        fontSize: '12px',
+                        color: '#CBD9EC',
+                      }}
+                    >
+                      {v.metaLabel}
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      marginLeft: 'auto',
+                      fontFamily: 'VolterTitle,Volter,monospace',
+                      fontSize: '9px',
+                      color: '#8A9BBF',
+                    }}
+                  >
+                    {v.questResetLine}
+                  </div>
+                </div>
+                <div
+                  onClick={v.claimAll}
                   style={{
-                    alignSelf: 'flex-end',
-                    fontFamily: "'Yoster Island',Volter,monospace",
-                    fontSize: '9px',
-                    color: '#8A9BBF',
+                    display: v.claimAllDisplay,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minHeight: '46px',
+                    border: '3px solid #000000',
+                    borderRadius: '8px 2px 8px 2px',
+                    background: '#FCE270',
+                    boxShadow: '0 -4px 0 0 #FF961D inset, 0 4px 0 0 #FFF inset',
+                    color: '#000000',
+                    fontFamily: 'VolterTitle,Volter,monospace',
+                    fontSize: '21px',
+                    cursor: 'pointer',
+                    animation: 'glClaimBounce 2s ease-in-out infinite',
                   }}
                 >
-                  {v.questResetLine}
+                  CLAIM ALL
                 </div>
                 {(v.questRows || []).map((q: any, qI: number) => (
                   <Fragment key={qI}>
                     <div
+                      data-fx-quest={q.id}
                       style={{
+                        position: 'relative',
+                        overflow: 'hidden',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '10px',
@@ -3855,12 +3949,25 @@ export const Screen = ({ v }: { v: View }) => (
                         borderRadius: '8px 0 8px 0',
                         padding: '9px',
                         opacity: q.opacity,
+                        animation: `${q.rowIn}, ${q.glowAnim}`,
                       }}
                     >
                       <div
+                        style={{
+                          display: q.shineDisplay,
+                          position: 'absolute',
+                          inset: '0',
+                          pointerEvents: 'none',
+                          background:
+                            'linear-gradient(110deg,transparent 40%,rgba(255,242,176,.22) 50%,transparent 60%)',
+                          backgroundSize: '250% 100%',
+                          animation: 'glShineSweep 2.6s ease-in-out infinite',
+                        }}
+                      ></div>
+                      <div
                         title={q.rewardTitle}
                         style={{
-                          width: '44px',
+                          minWidth: '44px',
                           flexShrink: '0',
                           display: 'flex',
                           flexDirection: 'column',
@@ -3869,6 +3976,7 @@ export const Screen = ({ v }: { v: View }) => (
                         }}
                       >
                         <div
+                          data-fx-reward
                           style={{
                             width: '30px',
                             height: '30px',
@@ -3877,12 +3985,13 @@ export const Screen = ({ v }: { v: View }) => (
                             backgroundRepeat: 'no-repeat',
                             backgroundPosition: 'center',
                             imageRendering: 'pixelated',
+                            animation: q.iconAnim,
                           }}
                         ></div>
                         <div
                           style={{
-                            fontFamily: "'Yoster Island',Volter,monospace",
-                            fontSize: '9px',
+                            fontFamily: 'VolterTitle,Volter,monospace',
+                            fontSize: '12px',
                             color: q.rewardColor,
                             whiteSpace: 'nowrap',
                           }}
@@ -3901,8 +4010,8 @@ export const Screen = ({ v }: { v: View }) => (
                       >
                         <div
                           style={{
-                            fontFamily: "'Yoster Island',Volter,monospace",
-                            fontSize: '12px',
+                            fontFamily: 'VolterTitle,Volter,monospace',
+                            fontSize: '14px',
                             color: '#FFF2B0',
                           }}
                         >
@@ -3927,25 +4036,30 @@ export const Screen = ({ v }: { v: View }) => (
                           <div
                             style={{
                               flex: '1',
-                              height: '8px',
-                              background: '#141D2E',
-                              border: '1px solid #000000',
-                              borderRadius: '2px',
-                              overflow: 'hidden',
+                              minWidth: '0',
+                              display: 'flex',
+                              gap: '2px',
+                              height: '10px',
                             }}
                           >
-                            <div
-                              style={{
-                                width: q.barW,
-                                height: '100%',
-                                background: q.barBg,
-                              }}
-                            ></div>
+                            {(q.segs || []).map((sg: any, sgI: number) => (
+                              <div
+                                key={sgI}
+                                style={{
+                                  flex: '1',
+                                  minWidth: '0',
+                                  background: sg.bg,
+                                  border: '1px solid #000000',
+                                  boxShadow: 'inset 0 -2px 0 rgba(0,0,0,.25)',
+                                  animation: sg.anim,
+                                }}
+                              ></div>
+                            ))}
                           </div>
                           <div
                             style={{
                               flexShrink: '0',
-                              fontFamily: "'Yoster Island',Volter,monospace",
+                              fontFamily: 'VolterTitle,Volter,monospace',
                               fontSize: '9px',
                               color: '#CBD9EC',
                             }}
@@ -3955,23 +4069,28 @@ export const Screen = ({ v }: { v: View }) => (
                         </div>
                       </div>
                       <div
+                        data-fx-claim
                         onClick={q.run}
                         style={{
+                          animation: q.claimAnim,
                           cursor: q.cursor,
                           flexShrink: '0',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           minWidth: '58px',
-                          height: '34px',
+                          minHeight: '34px',
                           padding: '0 10px',
                           border: '2px solid #000000',
                           borderRadius: '8px 2px 8px 2px',
                           background: q.btnBg,
                           boxShadow: q.btnShadow,
                           color: '#000000',
-                          fontFamily: "'Yoster Island',Volter,monospace",
-                          fontSize: '11px',
+                          fontFamily: 'VolterTitle,Volter,monospace',
+                          fontSize: '16.5px',
+                          lineHeight: '1.05',
+                          textAlign: 'center',
+                          textWrap: 'balance',
                         }}
                       >
                         {q.btnLabel}
@@ -4024,7 +4143,7 @@ export const Screen = ({ v }: { v: View }) => (
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      height: '26px',
+                      minHeight: '26px',
                       padding: '0 10px',
                       border: '1px solid #000000',
                       borderRadius: '8px 2px 8px 2px',
@@ -4032,15 +4151,18 @@ export const Screen = ({ v }: { v: View }) => (
                       boxShadow:
                         '0 -2px 0 0 #7E84E6 inset, 0 2px 0 0 #FFF inset',
                       color: '#000000',
-                      fontFamily: "'Yoster Island',Volter,monospace",
-                      fontSize: '10px',
+                      fontFamily: 'VolterTitle,Volter,monospace',
+                      fontSize: '15px',
+                      lineHeight: '1.05',
+                      textAlign: 'center',
+                      textWrap: 'balance',
                     }}
                   >
                     HOME
                   </div>
                   <div
                     style={{
-                      fontFamily: "'Yoster Island',Volter,monospace",
+                      fontFamily: 'VolterTitle,Volter,monospace',
                       fontSize: '15px',
                       color: '#FFF2B0',
                     }}
@@ -4073,13 +4195,15 @@ export const Screen = ({ v }: { v: View }) => (
                     }}
                   ></div>
                   <div
+                    data-fx="coins"
                     style={{
-                      fontFamily: "'Yoster Island',Volter,monospace",
+                      fontFamily: 'VolterTitle,Volter,monospace',
                       fontSize: '12px',
                       color: '#FCE370',
+                      animation: v.coinAnim,
                     }}
                   >
-                    {v.coins}
+                    {v.coinsShown}
                   </div>
                 </div>
               </div>
@@ -4087,7 +4211,7 @@ export const Screen = ({ v }: { v: View }) => (
               <div
                 style={{
                   display: 'flex',
-                  height: '30px',
+                  height: '42px',
                   width: '100%',
                   background: '#141D2E',
                   borderRadius: '4px',
@@ -4109,13 +4233,13 @@ export const Screen = ({ v }: { v: View }) => (
                         gap: '5px',
                         borderRadius: '3px',
                         background: t.bg,
-                        fontFamily: "'Yoster Island',Volter,monospace",
-                        fontSize: '10px',
+                        fontFamily: 'VolterTitle,Volter,monospace',
+                        fontSize: '15px',
                         color: t.fg,
                       }}
                     >
                       <span>{t.label}</span>
-                      <span style={{ fontSize: '9px', opacity: '.75' }}>
+                      <span style={{ fontSize: '14px', opacity: '.75' }}>
                         {t.count}
                       </span>
                     </div>
@@ -4144,6 +4268,7 @@ export const Screen = ({ v }: { v: View }) => (
                         border: `2px solid ${p.tint}`,
                         borderRadius: '8px 0 8px 0',
                         padding: '9px',
+                        animation: p.inAnim,
                       }}
                     >
                       <div
@@ -4170,8 +4295,8 @@ export const Screen = ({ v }: { v: View }) => (
                       >
                         <div
                           style={{
-                            fontFamily: "'Yoster Island',Volter,monospace",
-                            fontSize: '11px',
+                            fontFamily: 'VolterTitle,Volter,monospace',
+                            fontSize: '14px',
                             color: '#FFFFFF',
                           }}
                         >
@@ -4189,7 +4314,7 @@ export const Screen = ({ v }: { v: View }) => (
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          height: '32px',
+                          minHeight: '32px',
                           padding: '0 12px',
                           border: '2px solid #000000',
                           borderRadius: '8px 2px 8px 2px',
@@ -4197,8 +4322,11 @@ export const Screen = ({ v }: { v: View }) => (
                           boxShadow:
                             '0 -3px 0 0 #FF961D inset, 0 3px 0 0 #FFF inset',
                           color: '#000000',
-                          fontFamily: "'Yoster Island',Volter,monospace",
-                          fontSize: '11px',
+                          fontFamily: 'VolterTitle,Volter,monospace',
+                          fontSize: '16.5px',
+                          lineHeight: '1.05',
+                          textAlign: 'center',
+                          textWrap: 'balance',
                         }}
                       >
                         OPEN
@@ -4235,7 +4363,7 @@ export const Screen = ({ v }: { v: View }) => (
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      height: '32px',
+                      minHeight: '32px',
                       padding: '0 14px',
                       border: '2px solid #000000',
                       borderRadius: '8px 2px 8px 2px',
@@ -4243,8 +4371,11 @@ export const Screen = ({ v }: { v: View }) => (
                       boxShadow:
                         '0 -3px 0 0 #7E84E6 inset, 0 3px 0 0 #FFF inset',
                       color: '#000000',
-                      fontFamily: "'Yoster Island',Volter,monospace",
-                      fontSize: '11px',
+                      fontFamily: 'VolterTitle,Volter,monospace',
+                      fontSize: '16.5px',
+                      lineHeight: '1.05',
+                      textAlign: 'center',
+                      textWrap: 'balance',
                     }}
                   >
                     GO TO SHOP
@@ -4264,9 +4395,9 @@ export const Screen = ({ v }: { v: View }) => (
               >
                 <div
                   style={{
-                    fontSize: '9px',
+                    fontSize: '13px',
                     color: '#9DB4D4',
-                    lineHeight: '1.6',
+                    lineHeight: '1.5',
                   }}
                 >
                   {v.collectionLine}
@@ -4288,6 +4419,7 @@ export const Screen = ({ v }: { v: View }) => (
                           aspectRatio: '1/1',
                           cursor: 'pointer',
                           opacity: c.opacity,
+                          animation: c.inAnim,
                         }}
                       >
                         <div
@@ -4307,7 +4439,7 @@ export const Screen = ({ v }: { v: View }) => (
                               left: '0',
                               right: '0',
                               top: '0',
-                              bottom: '11px',
+                              bottom: '30px',
                               padding: '5px',
                               boxSizing: 'border-box',
                             }}
@@ -4332,12 +4464,12 @@ export const Screen = ({ v }: { v: View }) => (
                               top: '-2px',
                               display: c.countDisplay,
                               alignItems: 'center',
-                              height: '14px',
-                              padding: '0 3px',
+                              height: '18px',
+                              padding: '0 4px',
                               borderRadius: '0 0 4px 0',
                               background: '#141212',
-                              fontFamily: "'Yoster Island',Volter,monospace",
-                              fontSize: '8px',
+                              fontFamily: 'VolterTitle,Volter,monospace',
+                              fontSize: '12px',
                               color: '#FFF2B0',
                             }}
                           >
@@ -4349,14 +4481,19 @@ export const Screen = ({ v }: { v: View }) => (
                               left: '0',
                               bottom: '0',
                               width: '100%',
-                              padding: '0 3px',
+                              padding: '2px 3px',
                               background: c.bd,
-                              fontFamily: "'Yoster Island',Volter,monospace",
-                              fontSize: '7px',
-                              lineHeight: '1.6',
+                              fontFamily: 'VolterTitle,Volter,monospace',
+                              fontSize: '12px',
+                              lineHeight: '1.1',
                               color: '#141212',
                               overflow: 'hidden',
-                              whiteSpace: 'nowrap',
+                              whiteSpace: 'normal',
+                              textWrap: 'balance',
+                              overflowWrap: 'anywhere',
+                              minHeight: '30px',
+                              display: 'flex',
+                              alignItems: 'center',
                             }}
                           >
                             {c.short}
@@ -4393,7 +4530,7 @@ export const Screen = ({ v }: { v: View }) => (
                     background: '#CDD6F6',
                     borderRadius: '8px',
                     padding: '6px',
-                    animation: 'glPop 240ms ease-out',
+                    animation: 'glFadeUp 240ms ease-out',
                   }}
                 >
                   <div
@@ -4451,7 +4588,7 @@ export const Screen = ({ v }: { v: View }) => (
                       >
                         <div
                           style={{
-                            fontFamily: "'Yoster Island',Volter,monospace",
+                            fontFamily: 'VolterTitle,Volter,monospace',
                             fontSize: '14px',
                             color: '#3C63FF',
                             textWrap: 'pretty',
@@ -4583,15 +4720,18 @@ export const Screen = ({ v }: { v: View }) => (
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        height: '40px',
+                        minHeight: '40px',
                         border: '3px solid #000000',
                         borderRadius: '8px 2px 8px 2px',
                         background: '#B5C0FF',
                         boxShadow:
                           '0 -4px 0 0 #7E84E6 inset, 0 4px 0 0 #FFF inset, 0 2px 0 0 rgba(0,0,0,.25)',
                         color: '#000000',
-                        fontFamily: "'Yoster Island',Volter,monospace",
-                        fontSize: '12px',
+                        fontFamily: 'VolterTitle,Volter,monospace',
+                        fontSize: '18px',
+                        lineHeight: '1.05',
+                        textAlign: 'center',
+                        textWrap: 'balance',
                       }}
                     >
                       CLOSE
@@ -4608,6 +4748,7 @@ export const Screen = ({ v }: { v: View }) => (
             <div
               onClick={v.revealNext}
               style={{
+                visibility: 'hidden',
                 flex: '1',
                 minHeight: '0',
                 display: 'flex',
@@ -4622,9 +4763,20 @@ export const Screen = ({ v }: { v: View }) => (
                 overflow: 'hidden',
               }}
             >
+              {/* The pack-opening stage (src/client/fx/packStage) draws here;
+                  the classic reveal below stays mounted but hidden. */}
+              <div
+                data-fx-stage
+                style={{
+                  position: 'absolute',
+                  inset: '0',
+                  zIndex: '30',
+                  visibility: 'visible',
+                }}
+              ></div>
               <div
                 style={{
-                  fontFamily: "'Yoster Island',Volter,monospace",
+                  fontFamily: 'VolterTitle,Volter,monospace',
                   fontSize: '13px',
                   color: '#FFF2B0',
                   textAlign: 'center',
@@ -4769,7 +4921,7 @@ export const Screen = ({ v }: { v: View }) => (
                           padding: '0 4px',
                           borderRadius: '0 0 4px 0',
                           background: '#AEE45D',
-                          fontFamily: "'Yoster Island',Volter,monospace",
+                          fontFamily: 'VolterTitle,Volter,monospace',
                           fontSize: '8px',
                           color: '#141212',
                         }}
@@ -4788,7 +4940,7 @@ export const Screen = ({ v }: { v: View }) => (
                           padding: '0 4px',
                           borderRadius: '0 0 0 4px',
                           background: '#141212',
-                          fontFamily: "'Yoster Island',Volter,monospace",
+                          fontFamily: 'VolterTitle,Volter,monospace',
                           fontSize: '8px',
                           color: '#FCE370',
                         }}
@@ -4814,7 +4966,7 @@ export const Screen = ({ v }: { v: View }) => (
                           width: '100%',
                           padding: '1px 3px',
                           background: c.bd,
-                          fontFamily: "'Yoster Island',Volter,monospace",
+                          fontFamily: 'VolterTitle,Volter,monospace',
                           fontSize: '7px',
                           lineHeight: '1.5',
                           color: '#141212',
@@ -4852,15 +5004,18 @@ export const Screen = ({ v }: { v: View }) => (
                     display: v.skipDisplay,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    height: '32px',
+                    minHeight: '32px',
                     padding: '0 14px',
                     border: '2px solid #000000',
                     borderRadius: '8px 2px 8px 2px',
                     background: '#B5C0FF',
                     boxShadow: '0 -3px 0 0 #7E84E6 inset, 0 3px 0 0 #FFF inset',
                     color: '#000000',
-                    fontFamily: "'Yoster Island',Volter,monospace",
-                    fontSize: '11px',
+                    fontFamily: 'VolterTitle,Volter,monospace',
+                    fontSize: '16.5px',
+                    lineHeight: '1.05',
+                    textAlign: 'center',
+                    textWrap: 'balance',
                   }}
                 >
                   REVEAL ALL
@@ -4872,15 +5027,18 @@ export const Screen = ({ v }: { v: View }) => (
                     display: v.collectDisplay,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    height: '38px',
+                    minHeight: '38px',
                     padding: '0 20px',
                     border: '2px solid #000000',
                     borderRadius: '8px 2px 8px 2px',
                     background: '#FCE270',
                     boxShadow: '0 -3px 0 0 #FF961D inset, 0 3px 0 0 #FFF inset',
                     color: '#000000',
-                    fontFamily: "'Yoster Island',Volter,monospace",
-                    fontSize: '13px',
+                    fontFamily: 'VolterTitle,Volter,monospace',
+                    fontSize: '19.5px',
+                    lineHeight: '1.05',
+                    textAlign: 'center',
+                    textWrap: 'balance',
                   }}
                 >
                   COLLECT
@@ -4906,7 +5064,7 @@ export const Screen = ({ v }: { v: View }) => (
             >
               <div
                 style={{
-                  fontFamily: "'Yoster Island',Volter,monospace",
+                  fontFamily: 'VolterTitle,Volter,monospace',
                   fontSize: '17px',
                   color: '#FFF2B0',
                   flexShrink: '0',
@@ -5032,7 +5190,7 @@ export const Screen = ({ v }: { v: View }) => (
                 >
                   <div
                     style={{
-                      fontFamily: "'Yoster Island',Volter,monospace",
+                      fontFamily: 'VolterTitle,Volter,monospace',
                       fontSize: '13px',
                       color: '#FFFFFF',
                     }}
@@ -5081,15 +5239,17 @@ export const Screen = ({ v }: { v: View }) => (
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    height: '46px',
+                    minHeight: '46px',
                     border: '3px solid #000000',
                     borderRadius: '8px 2px 8px 2px',
                     background: '#FCE270',
                     boxShadow: '0 -3px 0 0 #FF961D inset, 0 3px 0 0 #FFF inset',
                     color: '#000000',
-                    fontFamily: "'Yoster Island',Volter,monospace",
-                    fontSize: '14px',
+                    fontFamily: 'VolterTitle,Volter,monospace',
+                    fontSize: '21px',
                     textAlign: 'center',
+                    lineHeight: '1.05',
+                    textWrap: 'balance',
                   }}
                 >
                   {v.optInPrimaryLabel}
@@ -5101,14 +5261,17 @@ export const Screen = ({ v }: { v: View }) => (
                     display: v.optInFriendlyDisplay,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    height: '38px',
+                    minHeight: '38px',
                     border: '2px solid #000000',
                     borderRadius: '8px 2px 8px 2px',
                     background: '#B5C0FF',
                     boxShadow: '0 -2px 0 0 #7E84E6 inset, 0 2px 0 0 #FFF inset',
                     color: '#000000',
-                    fontFamily: "'Yoster Island',Volter,monospace",
-                    fontSize: '12px',
+                    fontFamily: 'VolterTitle,Volter,monospace',
+                    fontSize: '18px',
+                    lineHeight: '1.05',
+                    textAlign: 'center',
+                    textWrap: 'balance',
                   }}
                 >
                   FRIENDLY DUELS ONLY
@@ -5169,15 +5332,18 @@ export const Screen = ({ v }: { v: View }) => (
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    height: '26px',
+                    minHeight: '26px',
                     padding: '0 10px',
                     border: '1px solid #000000',
                     borderRadius: '8px 2px 8px 2px',
                     background: '#B5C0FF',
                     boxShadow: '0 -2px 0 0 #7E84E6 inset, 0 2px 0 0 #FFF inset',
                     color: '#000000',
-                    fontFamily: "'Yoster Island',Volter,monospace",
-                    fontSize: '10px',
+                    fontFamily: 'VolterTitle,Volter,monospace',
+                    fontSize: '15px',
+                    lineHeight: '1.05',
+                    textAlign: 'center',
+                    textWrap: 'balance',
                   }}
                 >
                   HOME
@@ -5210,7 +5376,7 @@ export const Screen = ({ v }: { v: View }) => (
                       boxShadow:
                         '0 -2px 0 0 #7E84E6 inset, 0 2px 0 0 #FFF inset',
                       color: '#000000',
-                      fontFamily: "'Yoster Island',Volter,monospace",
+                      fontFamily: 'VolterTitle,Volter,monospace',
                       fontSize: '12px',
                     }}
                   >
@@ -5262,7 +5428,7 @@ export const Screen = ({ v }: { v: View }) => (
                         bottom: '-4px',
                         display: v.leagueNumeralDisplay,
                         lineHeight: '1',
-                        fontFamily: "'Yoster Island',Volter,monospace",
+                        fontFamily: 'VolterTitle,Volter,monospace',
                         fontSize: '11px',
                         color: '#FFFFFF',
                         WebkitTextStroke: '1.5px #000000',
@@ -5275,7 +5441,7 @@ export const Screen = ({ v }: { v: View }) => (
                   <div
                     style={{
                       flex: '1',
-                      fontFamily: "'Yoster Island',Volter,monospace",
+                      fontFamily: 'VolterTitle,Volter,monospace',
                       fontSize: '15px',
                       color: v.leagueColor,
                     }}
@@ -5373,7 +5539,7 @@ export const Screen = ({ v }: { v: View }) => (
                     >
                       <div
                         style={{
-                          fontFamily: "'Yoster Island',Volter,monospace",
+                          fontFamily: 'VolterTitle,Volter,monospace',
                           fontSize: '11px',
                           color: '#FFFFFF',
                         }}
@@ -5419,7 +5585,7 @@ export const Screen = ({ v }: { v: View }) => (
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      height: '24px',
+                      minHeight: '24px',
                       padding: '0 9px',
                       border: '1px solid #000000',
                       borderRadius: '8px 2px 8px 2px',
@@ -5427,8 +5593,11 @@ export const Screen = ({ v }: { v: View }) => (
                       boxShadow:
                         '0 -2px 0 0 #7E84E6 inset, 0 2px 0 0 #FFF inset',
                       color: '#000000',
-                      fontFamily: "'Yoster Island',Volter,monospace",
-                      fontSize: '9px',
+                      fontFamily: 'VolterTitle,Volter,monospace',
+                      fontSize: '13.5px',
+                      lineHeight: '1.05',
+                      textAlign: 'center',
+                      textWrap: 'balance',
                     }}
                   >
                     EDIT
@@ -5470,15 +5639,18 @@ export const Screen = ({ v }: { v: View }) => (
                       display: v.duelListedToggleDisplay,
                       alignItems: 'center',
                       justifyContent: 'center',
-                      height: '28px',
+                      minHeight: '28px',
                       border: '1px solid #000000',
                       borderRadius: '8px 2px 8px 2px',
                       background: '#B5C0FF',
                       boxShadow:
                         '0 -2px 0 0 #7E84E6 inset, 0 2px 0 0 #FFF inset',
                       color: '#000000',
-                      fontFamily: "'Yoster Island',Volter,monospace",
-                      fontSize: '9px',
+                      fontFamily: 'VolterTitle,Volter,monospace',
+                      fontSize: '13.5px',
+                      lineHeight: '1.05',
+                      textAlign: 'center',
+                      textWrap: 'balance',
                     }}
                   >
                     {v.duelListedToggleLabel}
@@ -5491,15 +5663,18 @@ export const Screen = ({ v }: { v: View }) => (
                       display: v.shareDisplay,
                       alignItems: 'center',
                       justifyContent: 'center',
-                      height: '28px',
+                      minHeight: '28px',
                       border: '1px solid #000000',
                       borderRadius: '8px 2px 8px 2px',
                       background: '#FCE270',
                       boxShadow:
                         '0 -2px 0 0 #FF961D inset, 0 2px 0 0 #FFF inset',
                       color: '#000000',
-                      fontFamily: "'Yoster Island',Volter,monospace",
-                      fontSize: '9px',
+                      fontFamily: 'VolterTitle,Volter,monospace',
+                      fontSize: '13.5px',
+                      lineHeight: '1.05',
+                      textAlign: 'center',
+                      textWrap: 'balance',
                     }}
                   >
                     POST CHALLENGE
@@ -5512,7 +5687,7 @@ export const Screen = ({ v }: { v: View }) => (
                       display: v.challengeDisplay,
                       alignItems: 'center',
                       justifyContent: 'center',
-                      height: '28px',
+                      minHeight: '28px',
                       padding: '0 9px',
                       border: '1px solid #000000',
                       borderRadius: '8px 2px 8px 2px',
@@ -5520,8 +5695,11 @@ export const Screen = ({ v }: { v: View }) => (
                       boxShadow:
                         '0 -2px 0 0 #6FA02E inset, 0 2px 0 0 #FFF inset',
                       color: '#000000',
-                      fontFamily: "'Yoster Island',Volter,monospace",
-                      fontSize: '9px',
+                      fontFamily: 'VolterTitle,Volter,monospace',
+                      fontSize: '13.5px',
+                      lineHeight: '1.05',
+                      textAlign: 'center',
+                      textWrap: 'balance',
                     }}
                   >
                     VIEW POST
@@ -5554,16 +5732,19 @@ export const Screen = ({ v }: { v: View }) => (
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    height: '24px',
+                    minHeight: '24px',
                     padding: '0 10px',
                     border: '1px solid #000000',
                     borderRadius: '8px 2px 8px 2px',
                     background: '#B5C0FF',
                     boxShadow: '0 -2px 0 0 #7E84E6 inset, 0 2px 0 0 #FFF inset',
                     color: '#000000',
-                    fontFamily: "'Yoster Island',Volter,monospace",
-                    fontSize: '9px',
+                    fontFamily: 'VolterTitle,Volter,monospace',
+                    fontSize: '13.5px',
                     opacity: v.refreshOpacity,
+                    lineHeight: '1.05',
+                    textAlign: 'center',
+                    textWrap: 'balance',
                   }}
                 >
                   REFRESH
@@ -5630,7 +5811,7 @@ export const Screen = ({ v }: { v: View }) => (
                         >
                           <div
                             style={{
-                              fontFamily: "'Yoster Island',Volter,monospace",
+                              fontFamily: 'VolterTitle,Volter,monospace',
                               fontSize: '11px',
                               color: '#FFFFFF',
                               overflow: 'hidden',
@@ -5693,7 +5874,7 @@ export const Screen = ({ v }: { v: View }) => (
                       <div
                         style={{
                           flexShrink: '0',
-                          fontFamily: "'Yoster Island',Volter,monospace",
+                          fontFamily: 'VolterTitle,Volter,monospace',
                           fontSize: '11px',
                           color: '#FCE370',
                         }}
@@ -5749,12 +5930,12 @@ export const Screen = ({ v }: { v: View }) => (
                   border: '2px solid #3A4C74',
                   borderRadius: '8px 0 8px 0',
                   padding: '12px',
-                  animation: 'glPop 240ms ease-out',
+                  animation: 'glFadeUp 240ms ease-out',
                 }}
               >
                 <div
                   style={{
-                    fontFamily: "'Yoster Island',Volter,monospace",
+                    fontFamily: 'VolterTitle,Volter,monospace',
                     fontSize: '13px',
                     color: '#FFFFFF',
                   }}
@@ -5876,15 +6057,18 @@ export const Screen = ({ v }: { v: View }) => (
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    height: '32px',
+                    minHeight: '32px',
                     flexShrink: '0',
                     border: '1px solid #000000',
                     borderRadius: '8px 2px 8px 2px',
                     background: '#B5C0FF',
                     boxShadow: '0 -2px 0 0 #7E84E6 inset, 0 2px 0 0 #FFF inset',
                     color: '#000000',
-                    fontFamily: "'Yoster Island',Volter,monospace",
-                    fontSize: '11px',
+                    fontFamily: 'VolterTitle,Volter,monospace',
+                    fontSize: '16.5px',
+                    lineHeight: '1.05',
+                    textAlign: 'center',
+                    textWrap: 'balance',
                   }}
                 >
                   GOT IT
@@ -5921,9 +6105,12 @@ export const Screen = ({ v }: { v: View }) => (
                   onClick={v.backToLobby}
                   style={{
                     ...btn('#B5C0FF', '#7E84E6'),
-                    height: '26px',
+                    minHeight: '26px',
                     padding: '0 10px',
-                    fontSize: '10px',
+                    fontSize: '15px',
+                    lineHeight: '1.05',
+                    textAlign: 'center',
+                    textWrap: 'balance',
                   }}
                 >
                   LOBBY
@@ -5957,9 +6144,12 @@ export const Screen = ({ v }: { v: View }) => (
                       ...btn('#B5C0FF', '#7E84E6'),
                       marginLeft: 'auto',
                       flexShrink: '0',
-                      height: '22px',
+                      minHeight: '22px',
                       padding: '0 8px',
-                      fontSize: '9px',
+                      fontSize: '13.5px',
+                      lineHeight: '1.05',
+                      textAlign: 'center',
+                      textWrap: 'balance',
                     }}
                   >
                     CHANGE
@@ -6048,10 +6238,13 @@ export const Screen = ({ v }: { v: View }) => (
                 onClick={v.confirmDuel}
                 style={{
                   ...btn('#FCE270', '#FF961D'),
-                  height: '44px',
+                  minHeight: '44px',
                   flexShrink: '0',
-                  fontSize: '15px',
+                  fontSize: '22.5px',
                   letterSpacing: '.06em',
+                  lineHeight: '1.05',
+                  textAlign: 'center',
+                  textWrap: 'balance',
                 }}
               >
                 START DUEL
@@ -6063,6 +6256,7 @@ export const Screen = ({ v }: { v: View }) => (
         {v.isDuel ? (
           <>
             <div
+              data-juice="column"
               ref={v.duelArenaRef}
               style={{
                 flex: '1',
@@ -6087,7 +6281,7 @@ export const Screen = ({ v }: { v: View }) => (
                 <div
                   style={{
                     flex: '1',
-                    fontFamily: "'Yoster Island',Volter,monospace",
+                    fontFamily: 'VolterTitle,Volter,monospace',
                     fontSize: '13px',
                     color: v.duelClockColor,
                   }}
@@ -6165,7 +6359,7 @@ export const Screen = ({ v }: { v: View }) => (
                 >
                   <div
                     style={{
-                      fontFamily: "'Yoster Island',Volter,monospace",
+                      fontFamily: 'VolterTitle,Volter,monospace',
                       fontSize: '11px',
                       color: v.foeBannerColor,
                       overflow: 'hidden',
@@ -6210,7 +6404,7 @@ export const Screen = ({ v }: { v: View }) => (
                   ></div>
                   <span
                     style={{
-                      fontFamily: "'Yoster Island',Volter,monospace",
+                      fontFamily: 'VolterTitle,Volter,monospace',
                       fontSize: '10px',
                       color: '#FF9EA1',
                     }}
@@ -6244,7 +6438,7 @@ export const Screen = ({ v }: { v: View }) => (
                   ></div>
                   <span
                     style={{
-                      fontFamily: "'Yoster Island',Volter,monospace",
+                      fontFamily: 'VolterTitle,Volter,monospace',
                       fontSize: '10px',
                       color: '#FFC24B',
                     }}
@@ -6304,27 +6498,35 @@ export const Screen = ({ v }: { v: View }) => (
                     <Fragment key={cI}>
                       <div
                         style={{
-                          borderRadius: '3px',
-                          border: '1px solid rgba(0,0,0,.35)',
-                          background: c.bg,
+                          position: 'relative',
                           opacity: c.opacity,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
                           animation: c.anim,
                         }}
                       >
                         <div
                           style={{
-                            width: '72%',
-                            height: '72%',
-                            backgroundImage: `url(${c.icon})`,
-                            backgroundSize: 'contain',
-                            backgroundRepeat: 'no-repeat',
-                            backgroundPosition: 'center',
-                            imageRendering: 'pixelated',
+                            position: 'absolute',
+                            inset: '0',
+                            borderRadius: '3px',
+                            border: '1px solid rgba(0,0,0,.35)',
+                            background: c.face,
                           }}
                         ></div>
+                        <div
+                          style={{
+                            position: 'absolute',
+                            inset: '1px',
+                            pointerEvents: 'none',
+                          }}
+                        >
+                          <div
+                            style={{
+                              position: 'absolute',
+                              inset: '13%',
+                              background: `url(${c.icon}) center/contain no-repeat`,
+                            }}
+                          ></div>
+                        </div>
                       </div>
                     </Fragment>
                   ))}
@@ -6340,6 +6542,7 @@ export const Screen = ({ v }: { v: View }) => (
                   }}
                 >
                   <div
+                    data-juice-board="foe"
                     style={{
                       position: 'relative',
                       width: `${v.duelBoardW}px`,
@@ -6363,7 +6566,7 @@ export const Screen = ({ v }: { v: View }) => (
                             textAlign: 'center',
                             pointerEvents: 'none',
                             zIndex: '8',
-                            fontFamily: "'Yoster Island',Volter,monospace",
+                            fontFamily: 'VolterTitle,Volter,monospace',
                             fontSize: '15px',
                             color: p.color,
                             WebkitTextStroke: '4px #000000',
@@ -6381,16 +6584,28 @@ export const Screen = ({ v }: { v: View }) => (
                           style={{
                             position: 'relative',
                             minHeight: '0',
-                            borderRadius: '6px',
-                            border: `2px solid ${c.bd}`,
-                            background: c.bg,
                             opacity: c.opacity,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
                             animation: c.anim,
                           }}
                         >
+                          <div
+                            style={{
+                              position: 'absolute',
+                              inset: '0',
+                              borderRadius: '8px',
+                              border: `2px solid ${c.bd}`,
+                              background: c.face,
+                            }}
+                          ></div>
+                          <div
+                            style={{
+                              position: 'absolute',
+                              inset: '0',
+                              borderRadius: '8px',
+                              pointerEvents: 'none',
+                              animation: c.glowAnim,
+                            }}
+                          ></div>
                           <div
                             style={{
                               position: 'absolute',
@@ -6403,15 +6618,20 @@ export const Screen = ({ v }: { v: View }) => (
                           ></div>
                           <div
                             style={{
-                              width: '72%',
-                              height: '72%',
-                              backgroundImage: `url(${c.icon})`,
-                              backgroundSize: 'contain',
-                              backgroundRepeat: 'no-repeat',
-                              backgroundPosition: 'center',
-                              imageRendering: 'pixelated',
+                              position: 'absolute',
+                              inset: '2px',
+                              pointerEvents: 'none',
                             }}
-                          ></div>
+                          >
+                            <div
+                              style={{
+                                position: 'absolute',
+                                inset: '13%',
+                                background: `url(${c.icon}) center/contain no-repeat`,
+                                filter: 'drop-shadow(0 2px 0 rgba(0,0,0,.45))',
+                              }}
+                            ></div>
+                          </div>
                         </div>
                       </Fragment>
                     ))}
@@ -6456,7 +6676,7 @@ export const Screen = ({ v }: { v: View }) => (
                             textAlign: 'center',
                             pointerEvents: 'none',
                             zIndex: '8',
-                            fontFamily: "'Yoster Island',Volter,monospace",
+                            fontFamily: 'VolterTitle,Volter,monospace',
                             fontSize: '14px',
                             color: p.color,
                             WebkitTextStroke: '4px #000000',
@@ -6531,8 +6751,7 @@ export const Screen = ({ v }: { v: View }) => (
                                   position: 'absolute',
                                   right: '-2px',
                                   bottom: '-3px',
-                                  fontFamily:
-                                    "'Yoster Island',Volter,monospace",
+                                  fontFamily: 'VolterTitle,Volter,monospace',
                                   fontSize: '7px',
                                   lineHeight: '1',
                                   color: '#FFFFFF',
@@ -6631,7 +6850,7 @@ export const Screen = ({ v }: { v: View }) => (
                       flexShrink: '0',
                       display: 'flex',
                       alignItems: 'center',
-                      fontFamily: "'Yoster Island',Volter,monospace",
+                      fontFamily: 'VolterTitle,Volter,monospace',
                       fontSize: '9px',
                       color: '#8A9BBF',
                     }}
@@ -6687,8 +6906,7 @@ export const Screen = ({ v }: { v: View }) => (
                                   position: 'absolute',
                                   right: '-2px',
                                   bottom: '-3px',
-                                  fontFamily:
-                                    "'Yoster Island',Volter,monospace",
+                                  fontFamily: 'VolterTitle,Volter,monospace',
                                   fontSize: '7px',
                                   lineHeight: '1',
                                   color: '#FFFFFF',
@@ -6844,6 +7062,7 @@ export const Screen = ({ v }: { v: View }) => (
                   }}
                 >
                   <div
+                    data-juice-board="duel"
                     onPointerDown={v.onDown}
                     onPointerMove={v.onMove}
                     onPointerUp={v.onUp}
@@ -6867,17 +7086,31 @@ export const Screen = ({ v }: { v: View }) => (
                           style={{
                             position: 'relative',
                             minHeight: '0',
-                            borderRadius: '8px',
-                            border: `2px solid ${c.bd}`,
-                            background: c.bg,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
                             transform: c.scale,
+                            transition:
+                              'transform 160ms cubic-bezier(.34,1.8,.64,1)',
                             opacity: c.opacity,
                             animation: c.anim,
                           }}
                         >
+                          <div
+                            style={{
+                              position: 'absolute',
+                              inset: '0',
+                              borderRadius: '8px',
+                              border: `2px solid ${c.bd}`,
+                              background: c.face,
+                            }}
+                          ></div>
+                          <div
+                            style={{
+                              position: 'absolute',
+                              inset: '0',
+                              borderRadius: '8px',
+                              pointerEvents: 'none',
+                              animation: c.glowAnim,
+                            }}
+                          ></div>
                           <div
                             style={{
                               position: 'absolute',
@@ -6890,16 +7123,20 @@ export const Screen = ({ v }: { v: View }) => (
                           ></div>
                           <div
                             style={{
-                              width: '75%',
-                              height: '75%',
-                              backgroundImage: `url(${c.icon})`,
-                              backgroundSize: 'contain',
-                              backgroundRepeat: 'no-repeat',
-                              backgroundPosition: 'center',
-                              imageRendering: 'pixelated',
+                              position: 'absolute',
+                              inset: '2px',
                               pointerEvents: 'none',
                             }}
-                          ></div>
+                          >
+                            <div
+                              style={{
+                                position: 'absolute',
+                                inset: '13%',
+                                background: `url(${c.icon}) center/contain no-repeat`,
+                                filter: 'drop-shadow(0 2px 0 rgba(0,0,0,.45))',
+                              }}
+                            ></div>
+                          </div>
                           <div
                             style={{
                               position: 'absolute',
@@ -6950,7 +7187,7 @@ export const Screen = ({ v }: { v: View }) => (
                             textAlign: 'center',
                             pointerEvents: 'none',
                             zIndex: '8',
-                            fontFamily: "'Yoster Island',Volter,monospace",
+                            fontFamily: 'VolterTitle,Volter,monospace',
                             fontSize: '16px',
                             color: p.color,
                             WebkitTextStroke: '4px #000000',
@@ -6991,12 +7228,12 @@ export const Screen = ({ v }: { v: View }) => (
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '9px',
-                    animation: 'glPop 260ms ease-out',
+                    animation: 'glFadeUp 260ms ease-out',
                   }}
                 >
                   <div
                     style={{
-                      fontFamily: "'Yoster Island',Volter,monospace",
+                      fontFamily: 'VolterTitle,Volter,monospace',
                       fontSize: '14px',
                       color: '#141D2E',
                     }}
@@ -7067,7 +7304,7 @@ export const Screen = ({ v }: { v: View }) => (
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          height: '30px',
+                          minHeight: '30px',
                           padding: '0 14px',
                           border: '2px solid #000000',
                           borderRadius: '8px 2px 8px 2px',
@@ -7075,8 +7312,11 @@ export const Screen = ({ v }: { v: View }) => (
                           boxShadow:
                             '0 -3px 0 0 #FF961D inset, 0 3px 0 0 #FFF inset',
                           color: '#000000',
-                          fontFamily: "'Yoster Island',Volter,monospace",
-                          fontSize: '11px',
+                          fontFamily: 'VolterTitle,Volter,monospace',
+                          fontSize: '16.5px',
+                          lineHeight: '1.05',
+                          textAlign: 'center',
+                          textWrap: 'balance',
                         }}
                       >
                         {v.duelFtueNext}
@@ -7109,12 +7349,12 @@ export const Screen = ({ v }: { v: View }) => (
                     border: '2px solid #3A4C74',
                     borderRadius: '12px 0 12px 0',
                     padding: '18px',
-                    animation: 'glPop 300ms ease-out',
+                    animation: 'glFadeUp 300ms ease-out',
                   }}
                 >
                   <div
                     style={{
-                      fontFamily: "'Yoster Island',Volter,monospace",
+                      fontFamily: 'VolterTitle,Volter,monospace',
                       fontSize: '20px',
                       color: v.duelOverColor,
                     }}
@@ -7133,7 +7373,7 @@ export const Screen = ({ v }: { v: View }) => (
                   </div>
                   <div
                     style={{
-                      fontFamily: "'Yoster Island',Volter,monospace",
+                      fontFamily: 'VolterTitle,Volter,monospace',
                       fontSize: '14px',
                       color: '#FCE370',
                     }}
@@ -7154,8 +7394,10 @@ export const Screen = ({ v }: { v: View }) => (
                         boxShadow:
                           '0 -3px 0 0 #7E84E6 inset, 0 3px 0 0 #FFF inset',
                         color: '#000000',
-                        fontFamily: "'Yoster Island',Volter,monospace",
-                        fontSize: '12px',
+                        fontFamily: 'VolterTitle,Volter,monospace',
+                        fontSize: '18px',
+                        lineHeight: '1.05',
+                        textWrap: 'balance',
                       }}
                     >
                       {v.duelLobbyLabel}
@@ -7175,8 +7417,11 @@ export const Screen = ({ v }: { v: View }) => (
                         boxShadow:
                           '0 -3px 0 0 #FF961D inset, 0 3px 0 0 #FFF inset',
                         color: '#000000',
-                        fontFamily: "'Yoster Island',Volter,monospace",
-                        fontSize: '12px',
+                        fontFamily: 'VolterTitle,Volter,monospace',
+                        fontSize: '18px',
+                        lineHeight: '1.05',
+                        textAlign: 'center',
+                        textWrap: 'balance',
                       }}
                     >
                       REMATCH
@@ -7206,12 +7451,12 @@ export const Screen = ({ v }: { v: View }) => (
                   Neura Knights battle result modal heads its result. */}
               <div
                 style={{
-                  fontFamily: "'Yoster Island',Volter,monospace",
+                  fontFamily: 'VolterTitle,Volter,monospace',
                   fontSize: '28px',
                   color: '#FFFFFF',
                   textShadow: '0 0 15px rgba(255, 255, 255, 0.60)',
                   textAlign: 'center',
-                  animation: 'glPop 320ms ease-out both',
+                  animation: 'glFadeUp 320ms ease-out both',
                 }}
               >
                 {withHash(v.endTitle)}
@@ -7281,7 +7526,7 @@ export const Screen = ({ v }: { v: View }) => (
                               display: 'flex',
                               alignItems: 'center',
                               gap: '6px',
-                              fontFamily: "'Yoster Island',Volter,monospace",
+                              fontFamily: 'VolterTitle,Volter,monospace',
                               fontSize: '22px',
                               color: e.color,
                             }}
@@ -7323,15 +7568,18 @@ export const Screen = ({ v }: { v: View }) => (
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    height: '44px',
+                    minHeight: '44px',
                     border: '3px solid #000000',
                     borderRadius: '8px 2px 8px 2px',
                     background: '#FCE270',
                     boxShadow:
                       '0 -4px 0 0 #FF961D inset, 0 4px 0 0 #FFF inset, 0 2px 0 0 rgba(0,0,0,.25)',
                     color: '#000000',
-                    fontFamily: "'Yoster Island',Volter,monospace",
-                    fontSize: '14px',
+                    fontFamily: 'VolterTitle,Volter,monospace',
+                    fontSize: '21px',
+                    lineHeight: '1.05',
+                    textAlign: 'center',
+                    textWrap: 'balance',
                   }}
                 >
                   {v.endActionLabel}
@@ -7343,15 +7591,18 @@ export const Screen = ({ v }: { v: View }) => (
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    height: '40px',
+                    minHeight: '40px',
                     border: '3px solid #000000',
                     borderRadius: '8px 2px 8px 2px',
                     background: '#AEE45D',
                     boxShadow:
                       '0 -4px 0 0 rgba(0,0,0,.3) inset, 0 4px 0 0 #FFFFCB inset, 0 2px 0 0 rgba(0,0,0,.25)',
                     color: '#000000',
-                    fontFamily: "'Yoster Island',Volter,monospace",
-                    fontSize: '12px',
+                    fontFamily: 'VolterTitle,Volter,monospace',
+                    fontSize: '21px',
+                    lineHeight: '1.05',
+                    textAlign: 'center',
+                    textWrap: 'balance',
                   }}
                 >
                   HOME
@@ -7363,15 +7614,18 @@ export const Screen = ({ v }: { v: View }) => (
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    height: '40px',
+                    minHeight: '40px',
                     border: '3px solid #000000',
                     borderRadius: '8px 2px 8px 2px',
                     background: '#B5C0FF',
                     boxShadow:
                       '0 -4px 0 0 #7E84E6 inset, 0 4px 0 0 #FFF inset, 0 2px 0 0 rgba(0,0,0,.25)',
                     color: '#000000',
-                    fontFamily: "'Yoster Island',Volter,monospace",
-                    fontSize: '12px',
+                    fontFamily: 'VolterTitle,Volter,monospace',
+                    fontSize: '21px',
+                    lineHeight: '1.05',
+                    textAlign: 'center',
+                    textWrap: 'balance',
                   }}
                 >
                   BLACKSMITHS
@@ -7425,7 +7679,7 @@ export const Screen = ({ v }: { v: View }) => (
                 >
                   <div
                     style={{
-                      fontFamily: "'Yoster Island',Volter,monospace",
+                      fontFamily: 'VolterTitle,Volter,monospace',
                       fontSize: '15px',
                       color: '#3C63FF',
                       textAlign: 'center',
@@ -7547,7 +7801,7 @@ export const Screen = ({ v }: { v: View }) => (
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            height: '40px',
+                            minHeight: '40px',
                             marginTop: '12px',
                             boxSizing: 'border-box',
                             border: '3px solid #000000',
@@ -7557,7 +7811,10 @@ export const Screen = ({ v }: { v: View }) => (
                               '0 -4px 0 0 #7E84E6 inset, 0 4px 0 0 #FFF inset, 0 2px 0 0 rgba(0,0,0,.25)',
                             color: '#000000',
                             fontFamily: PIXEL,
-                            fontSize: '12px',
+                            fontSize: '18px',
+                            lineHeight: '1.05',
+                            textAlign: 'center',
+                            textWrap: 'balance',
                           }}
                         >
                           DEFAULT
@@ -7574,14 +7831,17 @@ export const Screen = ({ v }: { v: View }) => (
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          height: '40px',
+                          minHeight: '40px',
                           border: '3px solid #000000',
                           borderRadius: '8px 2px 8px 2px',
                           background: a.bg,
                           boxShadow: a.shadow,
                           color: '#000000',
-                          fontFamily: "'Yoster Island',Volter,monospace",
-                          fontSize: '12px',
+                          fontFamily: 'VolterTitle,Volter,monospace',
+                          fontSize: '18px',
+                          lineHeight: '1.05',
+                          textAlign: 'center',
+                          textWrap: 'balance',
                         }}
                       >
                         {a.label}
@@ -7698,7 +7958,7 @@ export const Screen = ({ v }: { v: View }) => (
                 >
                   <div
                     style={{
-                      fontFamily: "'Yoster Island',Volter,monospace",
+                      fontFamily: 'VolterTitle,Volter,monospace',
                       fontSize: '14px',
                       color: '#141D2E',
                     }}
@@ -7829,7 +8089,7 @@ export const Screen = ({ v }: { v: View }) => (
                           display: v.ftueNextDisplay,
                           alignItems: 'center',
                           justifyContent: 'center',
-                          height: '30px',
+                          minHeight: '30px',
                           padding: '0 14px',
                           border: '2px solid #000000',
                           borderRadius: '8px 2px 8px 2px',
@@ -7837,8 +8097,11 @@ export const Screen = ({ v }: { v: View }) => (
                           boxShadow:
                             '0 -3px 0 0 #FF961D inset, 0 3px 0 0 #FFF inset',
                           color: '#000000',
-                          fontFamily: "'Yoster Island',Volter,monospace",
-                          fontSize: '11px',
+                          fontFamily: 'VolterTitle,Volter,monospace',
+                          fontSize: '16.5px',
+                          lineHeight: '1.05',
+                          textAlign: 'center',
+                          textWrap: 'balance',
                         }}
                       >
                         {v.ftueNextLabel}
@@ -7887,7 +8150,7 @@ export const Screen = ({ v }: { v: View }) => (
         >
           <div
             style={{
-              fontFamily: "'Yoster Island',Volter,monospace",
+              fontFamily: 'VolterTitle,Volter,monospace',
               fontSize: '13px',
               color: '#141D2E',
             }}
@@ -7945,15 +8208,18 @@ export const Screen = ({ v }: { v: View }) => (
                   display: v.duelSetupNextDisplay,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  height: '28px',
+                  minHeight: '28px',
                   padding: '0 14px',
                   border: '2px solid #000000',
                   borderRadius: '8px 2px 8px 2px',
                   background: '#FCE270',
                   boxShadow: '0 -3px 0 0 #FF961D inset, 0 3px 0 0 #FFF inset',
                   color: '#000000',
-                  fontFamily: "'Yoster Island',Volter,monospace",
-                  fontSize: '11px',
+                  fontFamily: 'VolterTitle,Volter,monospace',
+                  fontSize: '16.5px',
+                  lineHeight: '1.05',
+                  textAlign: 'center',
+                  textWrap: 'balance',
                 }}
               >
                 NEXT
@@ -7992,7 +8258,7 @@ export const Screen = ({ v }: { v: View }) => (
               border: '2px solid #FF9EA1',
               borderRadius: '8px 0 8px 0',
               padding: '14px',
-              animation: 'glPop 240ms ease-out',
+              animation: 'glFadeUp 240ms ease-out',
             }}
           >
             <div
@@ -8030,8 +8296,11 @@ export const Screen = ({ v }: { v: View }) => (
                 style={{
                   ...btn('#B5C0FF', '#7E84E6'),
                   flex: '1',
-                  height: '40px',
-                  fontSize: '11px',
+                  minHeight: '40px',
+                  fontSize: '16.5px',
+                  lineHeight: '1.05',
+                  textAlign: 'center',
+                  textWrap: 'balance',
                 }}
               >
                 NOT YET
@@ -8041,8 +8310,11 @@ export const Screen = ({ v }: { v: View }) => (
                 style={{
                   ...btn('#FCE270', '#FF961D'),
                   flex: '1.4',
-                  height: '40px',
-                  fontSize: '12px',
+                  minHeight: '40px',
+                  fontSize: '18px',
+                  lineHeight: '1.05',
+                  textAlign: 'center',
+                  textWrap: 'balance',
                 }}
               >
                 LOCK IN &amp; ENTER
@@ -8081,7 +8353,7 @@ export const Screen = ({ v }: { v: View }) => (
               border: '2px solid #FCE370',
               borderRadius: '8px 0 8px 0',
               padding: '16px',
-              animation: 'glPop 240ms ease-out',
+              animation: 'glFadeUp 240ms ease-out',
             }}
           >
             <div
@@ -8164,8 +8436,11 @@ export const Screen = ({ v }: { v: View }) => (
               style={{
                 ...btn('#FCE270', '#FF961D'),
                 alignSelf: 'stretch',
-                height: '40px',
-                fontSize: '13px',
+                minHeight: '40px',
+                fontSize: '19.5px',
+                lineHeight: '1.05',
+                textAlign: 'center',
+                textWrap: 'balance',
               }}
             >
               COLLECT

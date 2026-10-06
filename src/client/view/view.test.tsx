@@ -714,6 +714,8 @@ void test('the quest tab carries an alert dot only while something is claimable'
     !renders('home with nothing to claim', {
       phase: 'home',
       quests: none,
+      // Unopened packs light the BAG dot; this is about the quest dot.
+      profile: { ...profile, packs: {} },
     }).includes(dot)
   );
 });

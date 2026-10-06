@@ -1,0 +1,99 @@
+/* WorldMap (focus diorama). Ported from the "World Map" design component.
+ * Keyframes carry a `wm` prefix: the design's `glFloat` collides with a
+ * different `glFloat` in game.css, so the whole set is namespaced. Fonts
+ * ('Yoster Island', 'Volter') are already declared by game.css. */
+
+.wm-root,
+.wm-root * {
+  box-sizing: border-box;
+}
+
+.wm-root {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* The design's `style-active` attribute: an !important rule, so the press
+   scale wins over the breathing animation. */
+.wm-enter:active {
+  transform: scale(0.94) !important;
+}
+
+@keyframes wmSway {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(2.5deg);
+  }
+  75% {
+    transform: rotate(-2.5deg);
+  }
+}
+
+@keyframes wmFloat {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  25% {
+    transform: translate3d(0, -4px, 0);
+  }
+  75% {
+    transform: translate3d(0, 4px, 0);
+  }
+}
+
+@keyframes wmShadow {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(0.8);
+  }
+  75% {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes wmSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes wmDrift {
+  from {
+    transform: translate3d(-40%, 0, 0);
+  }
+  to {
+    transform: translate3d(115%, 0, 0);
+  }
+}
+
+@keyframes wmTwinkle {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
+@keyframes wmFrames {
+  to {
+    transform: translate3d(-100%, 0, 0);
+  }
+}
+
+@keyframes wmBreath {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}

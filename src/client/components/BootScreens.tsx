@@ -10,7 +10,7 @@ const shellStyle = {
   fontFamily: 'Volter,ui-monospace,monospace',
 } as const;
 
-const titleFont = "'Yoster Island',Volter,monospace";
+const titleFont = 'VolterTitle,Volter,monospace';
 
 export const Booting = () => (
   <div style={shellStyle}>
