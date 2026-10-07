@@ -49,6 +49,11 @@ export const dateLabelFor = (dayKey: string): string => {
   return (MONTHS[Number(m) - 1] ?? '') + ' ' + Number(d);
 };
 
+const WEEKDAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+export const weekdayFor = (dayKey: string): string =>
+  WEEKDAYS[new Date(dayKey + 'T00:00:00Z').getUTCDay()] ?? '';
+
 /** The light each region is lit in, and the line its poster carries. */
 const REGION_LOOK: Record<string, { accent: string; tagline: string }> = {
   Forest: { accent: '#8CE06A', tagline: 'Bandits in the treeline.' },
@@ -101,10 +106,13 @@ export const posterFor = (
   top: DailyPoster['top'] = [],
   players = 0
 ): DailyPoster => {
-  const day = dailyNumber(Date.parse(dayKey + 'T00:00:00Z'));
+  const start = Date.parse(dayKey + 'T00:00:00Z');
+  const day = dailyNumber(start);
   return {
     day,
     dateLabel: dateLabelFor(dayKey),
+    weekday: weekdayFor(dayKey),
+    endsAt: start + DAY_MS,
     ...dailyFoe(day),
     top,
     players,

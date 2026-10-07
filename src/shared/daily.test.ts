@@ -51,6 +51,8 @@ void test('a poster is labelled with its own day', () => {
   const p = posterFor('2026-10-03');
   assert.equal(p.day, 3);
   assert.equal(p.dateLabel, 'OCT 3');
+  assert.equal(p.weekday, 'SAT');
+  assert.equal(p.endsAt, DAILY_EPOCH + 3 * DAY_MS);
   assert.equal(utcDayKey(DAILY_EPOCH), '2026-10-01');
 });
 

@@ -214,6 +214,10 @@ export type DailyPoster = {
   day: number;
   /** Short date for the chip, e.g. "OCT 1". */
   dateLabel: string;
+  /** Three-letter UTC weekday of the post's day, e.g. "THU". */
+  weekday: string;
+  /** When the day's battle closes: the UTC midnight after its day, in ms. */
+  endsAt: number;
   /** The foe on the poster, the stage it stands on, and its light. */
   foe: string;
   foeArt: string;

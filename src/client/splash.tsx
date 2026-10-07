@@ -137,6 +137,7 @@ export const Splash = () => {
       <Daily
         poster={res.poster}
         cta={<Enter label="PLAY TODAY'S BATTLE" sparkle />}
+        endedCta={<Enter label="OPEN GEARLINK" />}
       />
     );
   return <General cta={<Enter label="PLAY NOW" sparkle />} />;
