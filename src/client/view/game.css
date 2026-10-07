@@ -1547,3 +1547,199 @@ a:hover {
     display: none;
   }
 }
+
+/* Bag > Gear: the collection grid and its card-info modal. The modal borrows
+   the World Map focus moves (spinning rays, float + sway, a shine band, a
+   spring-in title and button), so wm* keyframes from worldMap.css are reused
+   here as well. All decoration; it stops under prefers-reduced-motion. */
+@keyframes glbScrimIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes glbPanelIn {
+  0% {
+    opacity: 0;
+    transform: translateY(36px) scale(0.86);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes glbBand {
+  0%,
+  40% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+@keyframes glbTileSheen {
+  0%,
+  70% {
+    transform: translateX(-120%) skewX(-18deg);
+  }
+  100% {
+    transform: translateX(260%) skewX(-18deg);
+  }
+}
+@keyframes glbFill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes glbNudgeL {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(-3px);
+  }
+}
+@keyframes glbNudgeR {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(3px);
+  }
+}
+.glb-tile {
+  transition:
+    transform 140ms cubic-bezier(0.3, 1.6, 0.5, 1),
+    filter 140ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.glb-tile:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.12);
+}
+.glb-tile:active {
+  transform: scale(0.92);
+}
+.glb-tile-sheen {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 40%;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0),
+    rgba(255, 255, 255, 0.55),
+    rgba(255, 255, 255, 0)
+  );
+  animation: glbTileSheen 3.6s ease-in-out infinite;
+}
+.glb-press {
+  transition:
+    transform 120ms ease,
+    filter 120ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.glb-press:hover {
+  filter: brightness(1.08);
+}
+/* !important so the press wins over a breathing animation, as on the map's
+   ENTER button. */
+.glb-press:active {
+  transform: scale(0.94) !important;
+}
+.glb-fill {
+  transform-origin: 0 50%;
+  animation: glbFill 700ms cubic-bezier(0.2, 0.9, 0.3, 1) 120ms both;
+}
+.glb-scrim {
+  animation: glbScrimIn 200ms ease-out both;
+}
+.glb-panel {
+  animation: glbPanelIn 420ms cubic-bezier(0.3, 1.4, 0.5, 1) both;
+}
+.glb-rays {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 260px;
+  height: 260px;
+  margin: -130px 0 0 -130px;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(
+    closest-side,
+    #000 18%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  mask-image: radial-gradient(closest-side, #000 18%, rgba(0, 0, 0, 0) 100%);
+  animation:
+    glbScrimIn 420ms ease 260ms both,
+    wmSpin 18s linear infinite;
+}
+.glb-hero-in {
+  animation: glsIconIn 620ms cubic-bezier(0.2, 1.4, 0.4, 1) 120ms both;
+}
+.glb-sway {
+  transform-origin: 50% 100%;
+  animation: wmSway 3.1s ease-in-out 750ms infinite;
+}
+.glb-float {
+  animation: wmFloat 2.3s ease-in-out 750ms infinite;
+}
+.glb-shadow {
+  animation: wmShadow 2.3s ease-in-out 750ms infinite;
+}
+.glb-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -100%;
+  width: 300%;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    rgba(255, 255, 255, 0) 42%,
+    rgba(255, 255, 255, 0.7) 50%,
+    rgba(255, 255, 255, 0) 58%
+  );
+  animation: glbBand 2.6s ease-in-out 900ms infinite;
+}
+.glb-title {
+  animation: glsDrop 520ms cubic-bezier(0.2, 1.5, 0.4, 1) 200ms both;
+}
+.glb-chip-in {
+  animation: glsOrbitIn 320ms cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+.glb-cta-in {
+  animation: glsOrbitIn 420ms cubic-bezier(0.3, 1.8, 0.5, 1) 520ms both;
+}
+.glb-nudge-l {
+  animation: glbNudgeL 1.4s ease-in-out infinite;
+}
+.glb-nudge-r {
+  animation: glbNudgeR 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-fx-bag],
+  [data-fx-bag] * {
+    animation: none !important;
+    transition: none !important;
+  }
+  [data-fx-bag] .gls-spark,
+  [data-fx-bag] .glb-band,
+  [data-fx-bag] .glb-tile-sheen {
+    display: none;
+  }
+}

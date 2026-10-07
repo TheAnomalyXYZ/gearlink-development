@@ -9,7 +9,7 @@
 import type { GearLinkApp } from '../GearLinkApp.js';
 import type { QuestReward } from '../../shared/engine/quests.js';
 import type { Gear } from '../../shared/engine/index.js';
-import type { AppState } from '../state/appState.js';
+import type { AppState, GearFilter } from '../state/appState.js';
 import type { FxEvent } from '../fx/screens.js';
 import {
   AFFIX_BLURB,
@@ -181,6 +181,43 @@ const clearDelays = (
 };
 
 export type View = Record<string, any>;
+
+// Full words, never mixed with abbreviations, so the chip row reads as one set.
+const GEAR_FILTER_LABEL: Record<GearFilter, string> = {
+  all: 'ALL',
+  owned: 'OWNED',
+  attack: 'ATTACK',
+  block: 'BLOCK',
+  effect: 'HEAL',
+};
+
+const GEAR_FILTERS: GearFilter[] = [
+  'all',
+  'owned',
+  'attack',
+  'block',
+  'effect',
+];
+
+/** The Bag > Gear grid, narrowed by its filter chip. The card-info arrows
+ *  walk this same list, so prev/next never jumps to a hidden card. */
+const gearInFilter = (f: GearFilter, owned: Record<string, number>): Gear[] =>
+  f === 'all'
+    ? GEAR
+    : f === 'owned'
+      ? GEAR.filter((g) => (owned[g.id] || 0) > 0)
+      : GEAR.filter((g) => g.effect === f);
+
+const BTN_BLUE = {
+  bg: '#B5C0FF',
+  shadow:
+    '0 -4px 0 0 #7E84E6 inset, 0 4px 0 0 #FFF inset, 0 2px 0 0 rgba(0,0,0,.25)',
+};
+const BTN_GOLD = {
+  bg: '#FCE270',
+  shadow:
+    '0 -4px 0 0 #FF961D inset, 0 4px 0 0 #FFF inset, 0 2px 0 0 rgba(0,0,0,.25)',
+};
 
 export const buildView = (app: GearLinkApp): View => {
   /* This function indexes the engine's tables by values the UI computes at
@@ -2228,6 +2265,8 @@ export const buildView = (app: GearLinkApp): View => {
       const ownedCount = GEAR.filter((g) => (gear[g.id] || 0) > 0).length;
       const tab = st.invTab || 'packs';
       const packTotal = PACKS.reduce((n, p) => n + (packs[p.id] || 0), 0);
+      const filter = st.gearFilter || 'all';
+      const shown = gearInFilter(filter, gear);
       return {
         bagPacks: bag,
         noPacksDisplay: bag.length ? 'none' : 'flex',
@@ -2253,22 +2292,66 @@ export const buildView = (app: GearLinkApp): View => {
           ownedCount +
           ' of ' +
           GEAR.length +
-          ' gear found. Only gear you own can go in a loadout.',
+          ' gear found. Tap a piece to inspect it - only gear you own can go in a loadout.',
+        collectionCount: ownedCount + '/' + GEAR.length,
+        collectionPct:
+          Math.round((ownedCount / Math.max(1, GEAR.length)) * 100) + '%',
+        rarityTally: RARITY_ORDER.map((r) => {
+          const all = GEAR.filter((g) => g.rarity === r);
+          const own = all.filter((g) => (gear[g.id] || 0) > 0).length;
+          return {
+            label: r.toUpperCase(),
+            color: RARITY_OUTLINE[r] || '#9FB3D1',
+            tally: own + '/' + all.length,
+            fg: own === all.length && all.length ? '#FFF2B0' : '#CBD9EC',
+          };
+        }),
+        gearFilters: GEAR_FILTERS.map((f) => {
+          const on = filter === f;
+          return {
+            label: GEAR_FILTER_LABEL[f],
+            count: String(gearInFilter(f, gear).length),
+            run: app.pickGearFilter(f),
+            bg: on ? '#FCE270' : '#1D2956',
+            fg: on ? '#000000' : '#CBD9EC',
+            bd: on ? '#000000' : '#304A69',
+            shadow: on
+              ? '0 -2px 0 0 #FF961D inset, 0 2px 0 0 #FFF inset'
+              : 'none',
+            badgeBg: on ? '#141D2E' : '#428FFB',
+          };
+        }),
+        collectionEmptyDisplay: shown.length ? 'none' : 'flex',
+        collectionEmptyLine:
+          filter === 'owned'
+            ? 'No gear yet. Open a pack to start the collection.'
+            : 'Nothing here yet.',
         // Unowned cards stay VISIBLE but blacked out, so the collection reads
         // as a set with holes rather than a short list.
-        collection: GEAR.map((g, gi) => {
+        collection: shown.map((g, gi) => {
           const n = gear[g.id] || 0;
+          const col = RARITY_OUTLINE[g.rarity] || '#9FB3D1';
+          const shiny =
+            n > 0 && (g.rarity === 'Epic' || g.rarity === 'Legendary');
           return {
             short: g.name.replace(/^(Warrior|Archer|Mage) /, ''),
             icon: getGearImageUrl(g.id) || EFFECT_ICON[g.effect],
-            bd: n > 0 ? RARITY_OUTLINE[g.rarity] || '#9FB3D1' : '#304A69',
+            typeIcon: EFFECT_ICON[g.effect],
+            typeDisplay: n > 0 ? 'block' : 'none',
+            bd: n > 0 ? col : '#304A69',
             opacity: n > 0 ? 1 : 0.45,
             filter: n > 0 ? 'none' : 'grayscale(1) brightness(.45)',
+            glow: shiny ? '0 0 10px 1px ' + col : 'none',
+            sheenDisplay: shiny ? 'block' : 'none',
+            sheenDelay: ((gi % 7) * 0.45).toFixed(2) + 's',
+            lockDisplay: n > 0 ? 'none' : 'flex',
             count: n > 1 ? 'x' + n : '',
             countDisplay: n > 1 ? 'flex' : 'none',
             inAnim: fxs.listIn(
               'bagGear',
-              st.phase === 'inventory' && st.invTab === 'gear' && 'gear',
+              st.phase === 'inventory' &&
+                st.invTab === 'gear' &&
+                'gear:' + filter,
               Math.floor(gi / 4) * 45 + (gi % 4) * 20
             ),
             inspect: app.inspectCard(g.id),
@@ -2359,9 +2442,32 @@ export const buildView = (app: GearLinkApp): View => {
           cardInfoRiderColor: '#CBD9EC',
           cardInfoRiderTitle: '',
           cardInfoRiderText: '',
+          cardInfoKey: '',
+          cardInfoGlow: '#8A93B5',
+          cardInfoRaysDisplay: 'none',
+          cardInfoSparkDisplay: 'none',
+          cardInfoLockDisplay: 'none',
+          cardInfoLinks: [],
+          cardInfoPos: '',
+          cardInfoNavDisplay: 'none',
+          cardInfoPrev: app.closeCardInfo,
+          cardInfoNext: app.closeCardInfo,
+          cardInfoCta: 'CLOSE',
+          cardInfoCtaRun: app.closeCardInfo,
+          cardInfoCtaBg: BTN_BLUE.bg,
+          cardInfoCtaShadow: BTN_BLUE.shadow,
+          cardInfoCtaAnim: 'none',
         };
       }
       const n = st.profile.gear[g.id] || 0;
+      const shiny = n > 0 && (g.rarity === 'Epic' || g.rarity === 'Legendary');
+      // Prev/next walk the same filtered list the grid shows, wrapping round.
+      const list = gearInFilter(st.gearFilter || 'all', st.profile.gear);
+      const at0 = list.findIndex((x) => x.id === g.id);
+      const step = (d: number) =>
+        at0 < 0 || list.length < 2
+          ? app.closeCardInfo
+          : app.inspectCard(list[(at0 + d + list.length) % list.length]!.id);
       const rd = riderOf(g.id);
       const R = rd ? RID[rd.r] : null;
       const m = app.mflags();
@@ -2415,6 +2521,32 @@ export const buildView = (app: GearLinkApp): View => {
           ? 'At link ' + rd!.at + '+, ' + R.verb(rd!.v) + '.'
           : '',
         cardInfoRiderText: R ? R.blurb : '',
+        cardInfoKey: g.id,
+        cardInfoGlow: n > 0 ? RARITY_OUTLINE[g.rarity] || '#9FB3D1' : '#8A93B5',
+        cardInfoRaysDisplay: n > 0 ? 'block' : 'none',
+        cardInfoSparkDisplay: shiny ? 'block' : 'none',
+        cardInfoLockDisplay: n > 0 ? 'none' : 'flex',
+        cardInfoLinks: [3, 4, 5].map((k, i) => ({
+          label: k + '-LINK',
+          value: String(at(k)),
+          unit: unit.trim().toUpperCase(),
+          color: EFFECT_COLOR[g.effect] || '#1D2956',
+          anim: fx.reduced()
+            ? 'none'
+            : 'glsRise 360ms cubic-bezier(.2,.9,.3,1) ' +
+              (380 + i * 70) +
+              'ms both',
+        })),
+        cardInfoPos: at0 < 0 ? '' : at0 + 1 + ' / ' + list.length,
+        cardInfoNavDisplay: at0 < 0 || list.length < 2 ? 'none' : 'flex',
+        cardInfoPrev: step(-1),
+        cardInfoNext: step(1),
+        cardInfoCta: n > 0 ? 'CLOSE' : 'GET PACKS',
+        cardInfoCtaRun: n > 0 ? app.closeCardInfo : app.goShop,
+        cardInfoCtaBg: n > 0 ? BTN_BLUE.bg : BTN_GOLD.bg,
+        cardInfoCtaShadow: n > 0 ? BTN_BLUE.shadow : BTN_GOLD.shadow,
+        cardInfoCtaAnim:
+          n > 0 || fx.reduced() ? 'none' : 'wmBreath 1.6s ease-in-out infinite',
       };
     })(),
 

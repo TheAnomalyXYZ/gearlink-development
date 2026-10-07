@@ -115,6 +115,7 @@ import type {
   PackFx,
   QuestFx,
   WalletFx,
+  GearFilter,
   GearTab,
   InvTab,
   OpenState,
@@ -2018,6 +2019,8 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     this.setState({ shopTab: t, shopMsg: null });
   pickInvTab = (t: InvTab) => (): void =>
     this.setState({ invTab: t, cardInfo: null });
+  pickGearFilter = (f: GearFilter) => (): void =>
+    this.setState({ gearFilter: f, cardInfo: null });
   inspectCard = (id: string) => (): void => this.setState({ cardInfo: id });
   closeCardInfo = (): void => this.setState({ cardInfo: null });
 

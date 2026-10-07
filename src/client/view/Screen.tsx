@@ -262,6 +262,14 @@ const Bullet = ({
    drop in, six pieces of gear orbiting the icon, sparks in the sky and motes
    rising off the bottom. Positions and delays are fixed so it reads the same
    every time. */
+/* Sparkles round an Epic or Legendary piece in the Bag > Gear card info. */
+const GEAR_SPARKS = [
+  { left: '20%', top: '22%', size: '10px', delay: '0s' },
+  { left: '76%', top: '18%', size: '8px', delay: '.6s' },
+  { left: '80%', top: '62%', size: '12px', delay: '1.2s' },
+  { left: '14%', top: '66%', size: '7px', delay: '1.8s' },
+];
+
 const SPLASH_TITLE = 'GEARLINK'.split('');
 const SPLASH_ORBIT = GENERAL_GEAR.slice(0, 6).map((src, i) => {
   const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
@@ -4386,7 +4394,16 @@ export const Screen = ({ v }: { v: View }) => (
                       }}
                     >
                       <span>{t.label}</span>
-                      <span style={{ fontSize: '14px', opacity: '.75' }}>
+                      <span
+                        style={{
+                          padding: '2px 5px',
+                          borderRadius: '8px',
+                          background: 'rgba(0,0,0,.28)',
+                          fontFamily: 'Volter,monospace',
+                          fontSize: '9px',
+                          lineHeight: '1',
+                        }}
+                      >
                         {t.count}
                       </span>
                     </div>
@@ -4399,6 +4416,7 @@ export const Screen = ({ v }: { v: View }) => (
                   flex: '1',
                   minHeight: '0',
                   overflowY: 'auto',
+                  overflowX: 'hidden',
                   display: v.packsPaneDisplay,
                   flexDirection: 'column',
                   gap: '8px',
@@ -4531,10 +4549,12 @@ export const Screen = ({ v }: { v: View }) => (
               </div>
 
               <div
+                data-fx-bag
                 style={{
                   flex: '1',
                   minHeight: '0',
                   overflowY: 'auto',
+                  overflowX: 'hidden',
                   display: v.gearPaneDisplay,
                   flexDirection: 'column',
                   gap: '8px',
@@ -4542,19 +4562,213 @@ export const Screen = ({ v }: { v: View }) => (
               >
                 <div
                   style={{
-                    fontSize: '13px',
-                    color: '#9DB4D4',
-                    lineHeight: '1.5',
+                    flexShrink: '0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '7px',
+                    background: '#1D2956',
+                    border: '1px solid #304A69',
+                    borderRadius: '8px 0 8px 0',
+                    padding: '8px 9px',
                   }}
                 >
-                  {v.collectionLine}
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '8px',
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontFamily: PIXEL,
+                        fontSize: '13px',
+                        color: '#FFF2B0',
+                      }}
+                    >
+                      COLLECTION
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: PIXEL,
+                        fontSize: '13px',
+                        color: '#FFFFFF',
+                      }}
+                    >
+                      {v.collectionCount}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      position: 'relative',
+                      height: '10px',
+                      background: '#141D2E',
+                      border: '1px solid #000000',
+                      borderRadius: '3px',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <div
+                      className="glb-fill"
+                      style={{
+                        position: 'relative',
+                        width: v.collectionPct,
+                        height: '100%',
+                        overflow: 'hidden',
+                        background:
+                          'linear-gradient(180deg,#FCE270 0 50%,#F4B740 50% 100%)',
+                      }}
+                    >
+                      <div className="glb-tile-sheen"></div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    {(v.rarityTally || []).map((r: any, rI: number) => (
+                      <Fragment key={rI}>
+                        <div
+                          style={{
+                            flex: '1',
+                            minWidth: '0',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '2px',
+                            padding: '3px 2px',
+                            background: '#141D2E',
+                            borderTop: `2px solid ${r.color}`,
+                            borderRadius: '2px',
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontSize: '8px',
+                              color: r.color,
+                              letterSpacing: '.04em',
+                              whiteSpace: 'nowrap',
+                              maxWidth: '100%',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
+                            {r.label}
+                          </div>
+                          <div
+                            style={{
+                              fontFamily: PIXEL,
+                              fontSize: '11px',
+                              color: r.fg,
+                            }}
+                          >
+                            {r.tally}
+                          </div>
+                        </div>
+                      </Fragment>
+                    ))}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: '9px',
+                      color: '#9DB4D4',
+                      lineHeight: '1.5',
+                    }}
+                  >
+                    {v.collectionLine}
+                  </div>
                 </div>
+
+                <div
+                  style={{
+                    flexShrink: '0',
+                    display: 'flex',
+                    gap: '5px',
+                    padding: '7px 4px 0 0',
+                  }}
+                >
+                  {(v.gearFilters || []).map((f: any, fI: number) => (
+                    <Fragment key={fI}>
+                      <div
+                        className="glb-press"
+                        onClick={f.run}
+                        style={{
+                          position: 'relative',
+                          cursor: 'pointer',
+                          flex: '1 1 0',
+                          minWidth: '0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minHeight: '28px',
+                          padding: '0 2px',
+                          border: `2px solid ${f.bd}`,
+                          borderRadius: '6px 2px 6px 2px',
+                          background: f.bg,
+                          boxShadow: f.shadow,
+                          color: f.fg,
+                          fontFamily: PIXEL,
+                          fontSize: '10px',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {f.label}
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: '-8px',
+                            right: '-4px',
+                            minWidth: '15px',
+                            height: '13px',
+                            padding: '0 3px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: '1px solid #000000',
+                            borderRadius: '7px',
+                            background: f.badgeBg,
+                            color: '#FFFFFF',
+                            fontFamily: 'Volter,monospace',
+                            fontSize: '8px',
+                            lineHeight: '1',
+                          }}
+                        >
+                          {f.count}
+                        </div>
+                      </div>
+                    </Fragment>
+                  ))}
+                </div>
+
+                <div
+                  style={{
+                    display: v.collectionEmptyDisplay,
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '9px',
+                    padding: '22px 12px',
+                    background: '#1D2956',
+                    border: '1px dashed #3A4C74',
+                    borderRadius: '6px',
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: '10px',
+                      color: '#CBD9EC',
+                      textAlign: 'center',
+                      lineHeight: '1.6',
+                    }}
+                  >
+                    {v.collectionEmptyLine}
+                  </div>
+                </div>
+
                 <div
                   style={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(4,1fr)',
                     gap: '6px',
                     justifyItems: 'center',
+                    paddingTop: '2px',
                   }}
                 >
                   {(v.collection || []).map((c: any, cI: number) => (
@@ -4570,6 +4784,7 @@ export const Screen = ({ v }: { v: View }) => (
                         }}
                       >
                         <div
+                          className="glb-tile"
                           style={{
                             position: 'relative',
                             width: '100%',
@@ -4577,6 +4792,7 @@ export const Screen = ({ v }: { v: View }) => (
                             border: `2px solid ${c.bd}`,
                             borderRadius: '3px',
                             backgroundColor: '#141D2E',
+                            boxShadow: c.glow,
                             overflow: 'hidden',
                           }}
                         >
@@ -4604,6 +4820,47 @@ export const Screen = ({ v }: { v: View }) => (
                               }}
                             ></div>
                           </div>
+                          <div
+                            style={{
+                              position: 'absolute',
+                              left: '0',
+                              right: '0',
+                              top: '0',
+                              bottom: '30px',
+                              display: c.lockDisplay,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontFamily: PIXEL,
+                              fontSize: '22px',
+                              color: '#7F93B8',
+                              textShadow: '0 2px 0 #000000',
+                            }}
+                          >
+                            ?
+                          </div>
+                          <div
+                            className="glb-tile-sheen"
+                            style={{
+                              display: c.sheenDisplay,
+                              animationDelay: c.sheenDelay,
+                            }}
+                          ></div>
+                          <div
+                            style={{
+                              position: 'absolute',
+                              left: '3px',
+                              top: '3px',
+                              display: c.typeDisplay,
+                              width: '12px',
+                              height: '12px',
+                              backgroundImage: `url(${c.typeIcon})`,
+                              backgroundSize: 'contain',
+                              backgroundRepeat: 'no-repeat',
+                              backgroundPosition: 'center',
+                              imageRendering: 'pixelated',
+                              filter: 'drop-shadow(0 1px 0 #000000)',
+                            }}
+                          ></div>
                           <div
                             style={{
                               position: 'absolute',
@@ -4653,6 +4910,8 @@ export const Screen = ({ v }: { v: View }) => (
               </div>
 
               <div
+                data-fx-bag
+                className="glb-scrim"
                 onClick={v.closeCardInfo}
                 style={{
                   position: 'absolute',
@@ -4662,226 +4921,487 @@ export const Screen = ({ v }: { v: View }) => (
                   alignItems: 'center',
                   justifyContent: 'center',
                   padding: '16px',
-                  background: 'rgba(6,27,62,.7)',
+                  background: 'rgba(6,27,62,.78)',
                   backdropFilter: 'blur(4px)',
                 }}
               >
                 <div
+                  key={v.cardInfoKey}
+                  className="glb-panel"
                   onClick={v.stop}
                   style={{
                     width: '100%',
                     maxWidth: '340px',
-                    maxHeight: '88%',
+                    maxHeight: '94%',
                     display: 'flex',
                     flexDirection: 'column',
                     background: '#CDD6F6',
                     borderRadius: '8px',
                     padding: '6px',
-                    animation: 'glFadeUp 240ms ease-out',
                   }}
                 >
                   <div
                     style={{
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: '11px',
                       overflowY: 'auto',
+                      overflowX: 'hidden',
                       background: '#F0F0F0',
                       border: '2px solid #F7F7F5',
                       borderRadius: '4px',
-                      padding: '16px',
                     }}
                   >
                     <div
                       style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: '12px',
+                        position: 'relative',
+                        flexShrink: '0',
+                        height: '186px',
+                        overflow: 'hidden',
+                        borderRadius: '2px 2px 0 0',
+                        background: `radial-gradient(circle at 50% 58%,${v.cardInfoGlow}66 0%,#1D2956 68%)`,
                       }}
                     >
                       <div
+                        className="glb-rays"
                         style={{
-                          width: '70px',
-                          height: '70px',
-                          flexShrink: '0',
-                          border: `2px solid ${v.cardInfoRarityColor}`,
-                          borderRadius: '4px',
-                          backgroundColor: '#1D2956',
-                          padding: '7px',
-                          boxSizing: 'border-box',
+                          display: v.cardInfoRaysDisplay,
+                          background: `repeating-conic-gradient(from 0deg,${v.cardInfoGlow}80 0deg 7deg,rgba(0,0,0,0) 7deg 22.5deg)`,
+                        }}
+                      ></div>
+                      {GEAR_SPARKS.map((s, sI) => (
+                        <Fragment key={sI}>
+                          <div
+                            className="gls-spark"
+                            style={{
+                              display: v.cardInfoSparkDisplay,
+                              left: s.left,
+                              top: s.top,
+                              width: s.size,
+                              height: s.size,
+                              animationDelay: s.delay,
+                            }}
+                          ></div>
+                        </Fragment>
+                      ))}
+                      <div
+                        style={{
+                          position: 'absolute',
+                          left: '50%',
+                          bottom: '22px',
+                          width: '120px',
+                          height: '20px',
+                          marginLeft: '-60px',
                         }}
                       >
                         <div
+                          className="glb-shadow"
                           style={{
                             width: '100%',
                             height: '100%',
-                            backgroundImage: `url(${v.cardInfoIcon})`,
-                            backgroundSize: 'contain',
-                            backgroundRepeat: 'no-repeat',
-                            backgroundPosition: 'center',
-                            imageRendering: 'pixelated',
-                            filter: v.cardInfoFilter,
+                            borderRadius: '50%',
+                            background:
+                              'radial-gradient(closest-side,rgba(6,8,20,.6),rgba(6,8,20,0))',
                           }}
                         ></div>
                       </div>
                       <div
                         style={{
-                          flex: '1',
-                          minWidth: '0',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '5px',
+                          position: 'absolute',
+                          left: '50%',
+                          top: '24px',
+                          width: '132px',
+                          height: '132px',
+                          marginLeft: '-66px',
                         }}
                       >
                         <div
+                          className="glb-hero-in"
+                          style={{ width: '100%', height: '100%' }}
+                        >
+                          <div
+                            className="glb-sway"
+                            style={{ width: '100%', height: '100%' }}
+                          >
+                            <div
+                              className="glb-float"
+                              style={{
+                                position: 'relative',
+                                width: '100%',
+                                height: '100%',
+                                filter: 'drop-shadow(0 5px 0 rgba(0,0,0,.35))',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  inset: '0',
+                                  backgroundImage: `url(${v.cardInfoIcon})`,
+                                  backgroundSize: 'contain',
+                                  backgroundRepeat: 'no-repeat',
+                                  backgroundPosition: 'center',
+                                  imageRendering: 'pixelated',
+                                  filter: v.cardInfoFilter,
+                                }}
+                              ></div>
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  inset: '0',
+                                  display: v.cardInfoRaysDisplay,
+                                  overflow: 'hidden',
+                                  WebkitMaskImage: `url(${v.cardInfoIcon})`,
+                                  maskImage: `url(${v.cardInfoIcon})`,
+                                  WebkitMaskSize: 'contain',
+                                  maskSize: 'contain',
+                                  WebkitMaskRepeat: 'no-repeat',
+                                  maskRepeat: 'no-repeat',
+                                  WebkitMaskPosition: 'center',
+                                  maskPosition: 'center',
+                                }}
+                              >
+                                <div className="glb-band"></div>
+                              </div>
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  inset: '0',
+                                  display: v.cardInfoLockDisplay,
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontFamily: PIXEL,
+                                  fontSize: '54px',
+                                  color: '#B5C0FF',
+                                  WebkitTextStroke: '6px #000000',
+                                  paintOrder: 'stroke fill',
+                                }}
+                              >
+                                ?
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div
+                        className="glb-press"
+                        onClick={v.closeCardInfo}
+                        style={{
+                          position: 'absolute',
+                          top: '8px',
+                          left: '8px',
+                          width: '34px',
+                          height: '34px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          border: '2px solid #000000',
+                          borderRadius: '8px 2px 8px 2px',
+                          background: '#B5C0FF',
+                          boxShadow:
+                            '0 -3px 0 0 #7E84E6 inset, 0 3px 0 0 #FFF inset',
+                          fontFamily: PIXEL,
+                          fontSize: '16px',
+                          color: '#000000',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        ✕
+                      </div>
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: '10px',
+                          right: '8px',
+                          display: v.cardInfoNavDisplay,
+                          padding: '3px 7px',
+                          border: '2px solid #000000',
+                          borderRadius: '6px 2px 6px 2px',
+                          background: 'rgba(20,29,46,.92)',
+                          fontFamily: PIXEL,
+                          fontSize: '11px',
+                          color: '#CBD9EC',
+                        }}
+                      >
+                        {v.cardInfoPos}
+                      </div>
+                      <div
+                        className="glb-press"
+                        onClick={v.cardInfoPrev}
+                        style={{
+                          position: 'absolute',
+                          left: '8px',
+                          top: '50%',
+                          marginTop: '-18px',
+                          width: '30px',
+                          height: '36px',
+                          display: v.cardInfoNavDisplay,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          border: '2px solid #000000',
+                          borderRadius: '8px 2px 8px 2px',
+                          background: '#FCE270',
+                          boxShadow:
+                            '0 -3px 0 0 #FF961D inset, 0 3px 0 0 #FFF inset',
+                          color: '#000000',
+                          fontSize: '13px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <span className="glb-nudge-l">◀</span>
+                      </div>
+                      <div
+                        className="glb-press"
+                        onClick={v.cardInfoNext}
+                        style={{
+                          position: 'absolute',
+                          right: '8px',
+                          top: '50%',
+                          marginTop: '-18px',
+                          width: '30px',
+                          height: '36px',
+                          display: v.cardInfoNavDisplay,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          border: '2px solid #000000',
+                          borderRadius: '8px 2px 8px 2px',
+                          background: '#FCE270',
+                          boxShadow:
+                            '0 -3px 0 0 #FF961D inset, 0 3px 0 0 #FFF inset',
+                          color: '#000000',
+                          fontSize: '13px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <span className="glb-nudge-r">▶</span>
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '0 14px 14px',
+                      }}
+                    >
+                      <div
+                        className="glb-title"
+                        style={{
+                          position: 'relative',
+                          marginTop: '-16px',
+                          fontFamily: PIXEL,
+                          fontSize: '22px',
+                          lineHeight: '1.1',
+                          color: '#FFF2B0',
+                          WebkitTextStroke: '5px #000000',
+                          paintOrder: 'stroke fill',
+                          textShadow: '0 3px 0 #141D2E',
+                          textAlign: 'center',
+                          textWrap: 'balance',
+                        }}
+                      >
+                        {v.cardInfoName}
+                      </div>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        <span
+                          className="glb-chip-in"
                           style={{
-                            fontFamily: 'VolterTitle,Volter,monospace',
-                            fontSize: '14px',
-                            color: '#3C63FF',
-                            textWrap: 'pretty',
+                            animationDelay: '320ms',
+                            fontSize: '9px',
+                            color: '#1D2956',
+                            background: v.cardInfoRarityColor,
+                            border: '1px solid #000000',
+                            borderRadius: '3px',
+                            padding: '2px 6px',
+                            letterSpacing: '.08em',
                           }}
                         >
-                          {v.cardInfoName}
-                        </div>
-                        <div
+                          {v.cardInfoRarity}
+                        </span>
+                        <span
+                          className="glb-chip-in"
                           style={{
+                            animationDelay: '380ms',
+                            fontSize: '9px',
+                            color: '#8B7355',
+                            background: '#E6E9F5',
+                            borderRadius: '3px',
+                            padding: '2px 6px',
+                          }}
+                        >
+                          {v.cardInfoClass}
+                        </span>
+                        <span
+                          className="glb-chip-in"
+                          style={{
+                            animationDelay: '440ms',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '7px',
-                            flexWrap: 'wrap',
+                            gap: '3px',
+                            background: '#E6E9F5',
+                            borderRadius: '3px',
+                            padding: '2px 6px',
                           }}
                         >
                           <span
                             style={{
-                              fontSize: '9px',
-                              color: '#1D2956',
-                              background: v.cardInfoRarityColor,
-                              borderRadius: '3px',
-                              padding: '1px 5px',
-                              letterSpacing: '.08em',
+                              width: '12px',
+                              height: '12px',
+                              backgroundImage: `url(${v.cardInfoTypeIcon})`,
+                              backgroundSize: 'contain',
+                              backgroundRepeat: 'no-repeat',
+                              backgroundPosition: 'center',
+                              imageRendering: 'pixelated',
                             }}
-                          >
-                            {v.cardInfoRarity}
-                          </span>
-                          <span style={{ fontSize: '9px', color: '#8B7355' }}>
-                            {v.cardInfoClass}
-                          </span>
-                          <div
+                          ></span>
+                          <span
                             style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '3px',
+                              fontSize: '9px',
+                              color: v.cardInfoTypeColor,
                             }}
                           >
-                            <div
-                              style={{
-                                width: '12px',
-                                height: '12px',
-                                backgroundImage: `url(${v.cardInfoTypeIcon})`,
-                                backgroundSize: 'contain',
-                                backgroundRepeat: 'no-repeat',
-                                backgroundPosition: 'center',
-                                imageRendering: 'pixelated',
-                              }}
-                            ></div>
-                            <span
-                              style={{
-                                fontSize: '9px',
-                                color: v.cardInfoTypeColor,
-                              }}
-                            >
-                              {v.cardInfoType}
-                            </span>
-                          </div>
-                        </div>
-                        <div
-                          style={{
-                            fontSize: '10px',
-                            color: v.cardInfoOwnColor,
-                          }}
-                        >
-                          {v.cardInfoOwn}
-                        </div>
+                            {v.cardInfoType}
+                          </span>
+                        </span>
                       </div>
-                    </div>
-                    <div
-                      style={{
-                        fontSize: '10px',
-                        color: '#8B7355',
-                        lineHeight: '1.7',
-                        borderTop: '1px solid #D8DCE6',
-                        paddingTop: '10px',
-                      }}
-                    >
-                      {v.cardInfoWhat}
-                    </div>
-                    <div
-                      style={{
-                        display: v.cardInfoRiderDisplay,
-                        alignItems: 'flex-start',
-                        gap: '8px',
-                        background: '#E6E9F5',
-                        borderRadius: '4px',
-                        padding: '8px 9px',
-                      }}
-                    >
                       <div
                         style={{
-                          width: '14px',
-                          height: '14px',
-                          flexShrink: '0',
-                          backgroundImage: `url(${v.cardInfoRiderIcon})`,
-                          backgroundSize: 'contain',
-                          backgroundRepeat: 'no-repeat',
-                          backgroundPosition: 'center',
-                          imageRendering: 'pixelated',
-                        }}
-                      ></div>
-                      <div
-                        style={{
-                          flex: '1',
-                          minWidth: '0',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '3px',
+                          fontSize: '10px',
+                          color: v.cardInfoOwnColor,
                         }}
                       >
-                        <div style={{ fontSize: '10px', color: '#1D2956' }}>
-                          {v.cardInfoRiderTitle}
-                        </div>
+                        {v.cardInfoOwn}
+                      </div>
+                      <div
+                        style={{
+                          width: '100%',
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(3,1fr)',
+                          gap: '6px',
+                        }}
+                      >
+                        {(v.cardInfoLinks || []).map((l: any, lI: number) => (
+                          <Fragment key={lI}>
+                            <div
+                              style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                gap: '2px',
+                                padding: '6px 4px',
+                                background: '#1D2956',
+                                border: '2px solid #000000',
+                                borderRadius: '6px 2px 6px 2px',
+                                animation: l.anim,
+                              }}
+                            >
+                              <div
+                                style={{ fontSize: '8px', color: '#9DB4D4' }}
+                              >
+                                {l.label}
+                              </div>
+                              <div
+                                style={{
+                                  fontFamily: PIXEL,
+                                  fontSize: '20px',
+                                  lineHeight: '1',
+                                  color: l.color,
+                                  textShadow: '0 2px 0 #000000',
+                                }}
+                              >
+                                {l.value}
+                              </div>
+                              <div
+                                style={{ fontSize: '8px', color: '#CBD9EC' }}
+                              >
+                                {l.unit}
+                              </div>
+                            </div>
+                          </Fragment>
+                        ))}
+                      </div>
+                      <div
+                        style={{
+                          width: '100%',
+                          display: v.cardInfoRiderDisplay,
+                          alignItems: 'flex-start',
+                          gap: '8px',
+                          background: '#E6E9F5',
+                          borderLeft: `3px solid ${v.cardInfoRiderColor}`,
+                          borderRadius: '4px',
+                          padding: '8px 9px',
+                          animation: 'glsRise 360ms ease-out 600ms both',
+                        }}
+                      >
                         <div
                           style={{
-                            fontSize: '10px',
-                            color: '#8B7355',
-                            lineHeight: '1.6',
+                            width: '14px',
+                            height: '14px',
+                            flexShrink: '0',
+                            backgroundImage: `url(${v.cardInfoRiderIcon})`,
+                            backgroundSize: 'contain',
+                            backgroundRepeat: 'no-repeat',
+                            backgroundPosition: 'center',
+                            imageRendering: 'pixelated',
+                          }}
+                        ></div>
+                        <div
+                          style={{
+                            flex: '1',
+                            minWidth: '0',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '3px',
                           }}
                         >
-                          {v.cardInfoRiderText}
+                          <div style={{ fontSize: '10px', color: '#1D2956' }}>
+                            {v.cardInfoRiderTitle}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: '10px',
+                              color: '#8B7355',
+                              lineHeight: '1.6',
+                            }}
+                          >
+                            {v.cardInfoRiderText}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div
-                      onClick={v.closeCardInfo}
-                      style={{
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        minHeight: '40px',
-                        border: '3px solid #000000',
-                        borderRadius: '8px 2px 8px 2px',
-                        background: '#B5C0FF',
-                        boxShadow:
-                          '0 -4px 0 0 #7E84E6 inset, 0 4px 0 0 #FFF inset, 0 2px 0 0 rgba(0,0,0,.25)',
-                        color: '#000000',
-                        fontFamily: 'VolterTitle,Volter,monospace',
-                        fontSize: '18px',
-                        lineHeight: '1.05',
-                        textAlign: 'center',
-                        textWrap: 'balance',
-                      }}
-                    >
-                      CLOSE
+                      <div className="glb-cta-in" style={{ width: '100%' }}>
+                        <div
+                          className="glb-press"
+                          onClick={v.cardInfoCtaRun}
+                          style={{
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            minHeight: '44px',
+                            border: '3px solid #000000',
+                            borderRadius: '8px 2px 8px 2px',
+                            background: v.cardInfoCtaBg,
+                            boxShadow: v.cardInfoCtaShadow,
+                            color: '#000000',
+                            fontFamily: PIXEL,
+                            fontSize: '18px',
+                            lineHeight: '1.05',
+                            textAlign: 'center',
+                            textWrap: 'balance',
+                            animation: v.cardInfoCtaAnim,
+                          }}
+                        >
+                          {v.cardInfoCta}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

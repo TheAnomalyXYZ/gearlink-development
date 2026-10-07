@@ -78,6 +78,8 @@ export type DuelOutcome = {
 export type GearTab = 'attack' | 'block' | 'effect';
 export type ShopTab = 'packs' | 'coins' | 'gems';
 export type InvTab = 'packs' | 'gear';
+/** Bag > Gear filter chips: everything, only owned, or one effect kind. */
+export type GearFilter = 'all' | 'owned' | 'attack' | 'block' | 'effect';
 export type QuestTab = 'daily' | 'weekly';
 
 export type AppState = {
@@ -161,6 +163,7 @@ export type AppState = {
   cardInfo: string | null;
   shopTab: ShopTab;
   invTab: InvTab;
+  gearFilter: GearFilter;
   shopMsg: string | null;
   openPack: OpenState | null;
 
@@ -345,6 +348,7 @@ export const INITIAL_STATE: AppState = {
   cardInfo: null,
   shopTab: 'packs',
   invTab: 'packs',
+  gearFilter: 'all',
   shopMsg: null,
   openPack: null,
   quests: null,

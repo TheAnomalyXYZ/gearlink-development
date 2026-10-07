@@ -7,6 +7,7 @@ import type { GearLinkApp } from '../GearLinkApp.js';
 import {
   DUEL_HP,
   FIRST_LOCATION,
+  GEAR,
   NO_STATUS,
   enemyDisplayFor,
   Run,
@@ -169,6 +170,7 @@ const fakeApp = (over: Record<string, unknown>): GearLinkApp => {
     cardInfo: null,
     shopTab: 'packs',
     invTab: 'packs',
+    gearFilter: 'all',
     shopMsg: null,
     openPack: null,
     quests: questBoard,
@@ -283,6 +285,7 @@ const fakeApp = (over: Record<string, unknown>): GearLinkApp => {
     equipFlair: curried,
     pickInvTab: curried,
     inspectCard: curried,
+    pickGearFilter: curried,
     buyCoins: curried,
     buyGems: curried,
     buyPack: curried,
@@ -452,6 +455,16 @@ void test('every screen renders', () => {
   renders('quests mid-claim', { phase: 'quests', questClaiming: 'd_battles' });
   renders('bag', { phase: 'inventory' });
   renders('collection', { phase: 'inventory', invTab: 'gear' });
+  renders('collection owned filter', {
+    phase: 'inventory',
+    invTab: 'gear',
+    gearFilter: 'owned',
+  });
+  renders('collection card info', {
+    phase: 'inventory',
+    invTab: 'gear',
+    cardInfo: GEAR[0]!.id,
+  });
   renders('duel lobby', { phase: 'duelLobby' });
   renders('duel lobby rules', { phase: 'duelLobby', duelRulesOpen: true });
   renders('duel opt-in', { phase: 'duelOptIn', flow: 'duel' });
