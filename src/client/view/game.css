@@ -1173,3 +1173,377 @@ a:hover {
     animation: none !important;
   }
 }
+
+/* The in-game splash (the screen behind PLAY). All decoration, so all of it
+   stops under prefers-reduced-motion below. */
+@keyframes glsSpin {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+@keyframes glsCounter {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+@keyframes glsBreathe {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: translate(-50%, -50%) scale(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+}
+@keyframes glsIconIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.2) rotate(-25deg);
+  }
+  65% {
+    opacity: 1;
+    transform: scale(1.18) rotate(6deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+@keyframes glsBob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(2deg);
+  }
+}
+@keyframes glsDrop {
+  0% {
+    opacity: 0;
+    transform: translateY(-40px) scale(0.6);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(5px) scale(1.12);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes glsWave {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+@keyframes glsGlint {
+  0%,
+  78%,
+  100% {
+    color: #fff2b0;
+    filter: none;
+  }
+  86% {
+    color: #ffffff;
+    filter: drop-shadow(0 0 10px #fff6c8);
+  }
+}
+@keyframes glsRise {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes glsOrbitIn {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes glsFloat {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-8deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(8deg);
+  }
+}
+@keyframes glsTwinkle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.4) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1) rotate(180deg);
+  }
+}
+@keyframes glsMote {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.6);
+  }
+  20% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-160px) scale(1);
+  }
+}
+@keyframes glsSheen {
+  0% {
+    transform: translateX(-160%) skewX(-14deg);
+  }
+  55%,
+  100% {
+    transform: translateX(420%) skewX(-14deg);
+  }
+}
+@keyframes glsHalo {
+  0% {
+    opacity: 0.75;
+    transform: scale(0.9, 0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.18, 1.5);
+  }
+}
+@keyframes glsNudge {
+  0%,
+  84%,
+  100% {
+    transform: scale(1);
+  }
+  88% {
+    transform: scale(1.06);
+  }
+  92% {
+    transform: scale(0.98);
+  }
+  96% {
+    transform: scale(1.02);
+  }
+}
+.gls-rays {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(220vw, 220vh);
+  aspect-ratio: 1;
+  pointer-events: none;
+  filter: blur(6px);
+  mask-image: radial-gradient(
+    circle,
+    transparent 3%,
+    #000 10%,
+    #000 22%,
+    transparent 42%
+  );
+  -webkit-mask-image: radial-gradient(
+    circle,
+    transparent 3%,
+    #000 10%,
+    #000 22%,
+    transparent 42%
+  );
+  transform: translate(-50%, -50%);
+}
+.gls-rays-a {
+  background: repeating-conic-gradient(
+    rgba(255, 255, 255, 0) 0deg,
+    rgba(255, 255, 255, 0.09) 7deg,
+    rgba(255, 255, 255, 0.09) 17deg,
+    rgba(255, 255, 255, 0) 24deg,
+    rgba(255, 255, 255, 0) 36deg
+  );
+  animation: glsSpin 40s linear infinite;
+}
+.gls-rays-b {
+  background: repeating-conic-gradient(
+    from 18deg,
+    rgba(255, 206, 96, 0) 0deg,
+    rgba(255, 206, 96, 0.12) 8deg,
+    rgba(255, 206, 96, 0.12) 20deg,
+    rgba(255, 206, 96, 0) 28deg,
+    rgba(255, 206, 96, 0) 45deg
+  );
+  animation: glsSpin 60s linear infinite reverse;
+}
+.gls-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 230px;
+  height: 230px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(
+    circle,
+    rgba(255, 226, 140, 0.5),
+    rgba(255, 190, 80, 0.16) 45%,
+    rgba(255, 190, 80, 0) 70%
+  );
+  animation: glsBreathe 3.2s ease-in-out infinite;
+}
+.gls-orbit {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 210px;
+  height: 210px;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  animation: glsSpin 28s linear infinite;
+}
+.gls-orbit-slot {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  margin: -15px 0 0 -15px;
+  animation: glsCounter 28s linear infinite;
+}
+.gls-orbit-in {
+  width: 100%;
+  height: 100%;
+  animation: glsOrbitIn 0.5s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+.gls-orbit-gear {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0 6px rgba(255, 220, 120, 0.6))
+    drop-shadow(0 3px 0 rgba(0, 0, 0, 0.5));
+  animation: glsFloat 2.4s ease-in-out infinite;
+}
+.gls-icon-in {
+  animation: glsIconIn 0.7s cubic-bezier(0.2, 1.4, 0.4, 1) 0.1s both;
+}
+.gls-icon {
+  filter: drop-shadow(0 0 14px rgba(255, 210, 110, 0.55))
+    drop-shadow(0 6px 0 rgba(0, 0, 0, 0.35));
+  animation: glsBob 3.4s ease-in-out 0.8s infinite;
+}
+.gls-letter {
+  display: inline-block;
+  animation:
+    glsDrop 0.55s cubic-bezier(0.2, 1.5, 0.4, 1) both,
+    glsWave 2.6s ease-in-out infinite,
+    glsGlint 3.2s linear infinite;
+}
+.gls-rise {
+  animation: glsRise 0.5s ease-out both;
+}
+.gls-spark {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+  background: #fff6c8;
+  clip-path: polygon(
+    50% 0,
+    61% 39%,
+    100% 50%,
+    61% 61%,
+    50% 100%,
+    39% 61%,
+    0 50%,
+    39% 39%
+  );
+  filter: drop-shadow(0 0 4px #ffd34e);
+  animation: glsTwinkle 2.4s ease-in-out infinite;
+}
+.gls-mote {
+  position: absolute;
+  bottom: 12%;
+  width: 3px;
+  height: 3px;
+  border-radius: 1px;
+  pointer-events: none;
+  opacity: 0;
+  animation: glsMote 4.5s ease-out infinite;
+}
+.gls-btn {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 0.1s,
+    filter 0.1s;
+}
+.gls-btn:hover {
+  filter: brightness(1.1);
+}
+.gls-btn:active {
+  transform: translateY(2px) scale(0.98);
+}
+.gls-sheen {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 44px;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0),
+    rgba(255, 255, 255, 0.75),
+    rgba(255, 255, 255, 0)
+  );
+  animation: glsSheen 2.8s ease-in-out 1.2s infinite;
+}
+.gls-halo {
+  position: absolute;
+  inset: -4px -8px;
+  border-radius: 12px;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 226, 112, 0.85),
+    rgba(255, 150, 29, 0) 70%
+  );
+  animation: glsHalo 1.8s ease-out 1.2s infinite;
+}
+.gls-nudge {
+  animation: glsNudge 3.6s ease-in-out 1.8s infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gls-rays-a,
+  .gls-rays-b,
+  .gls-glow,
+  .gls-orbit,
+  .gls-orbit-slot,
+  .gls-orbit-in,
+  .gls-orbit-gear,
+  .gls-icon-in,
+  .gls-icon,
+  .gls-letter,
+  .gls-rise,
+  .gls-sheen,
+  .gls-halo,
+  .gls-nudge {
+    animation: none;
+  }
+  .gls-spark,
+  .gls-mote,
+  .gls-halo {
+    display: none;
+  }
+}

@@ -18,6 +18,7 @@ import type { ReactNode } from 'react';
 import type { View } from './buildView.js';
 import { MenuIcon, SpeakerIcon, VolumeSlider } from './SettingsControls.js';
 import { WorldMap } from './WorldMap.js';
+import { GENERAL_GEAR } from '../splash-style.js';
 
 const PIXEL = 'VolterTitle,Volter,monospace';
 
@@ -257,6 +258,42 @@ const Bullet = ({
   </div>
 );
 
+/* The in-game splash's decoration: the title split into letters so each can
+   drop in, six pieces of gear orbiting the icon, sparks in the sky and motes
+   rising off the bottom. Positions and delays are fixed so it reads the same
+   every time. */
+const SPLASH_TITLE = 'GEARLINK'.split('');
+const SPLASH_ORBIT = GENERAL_GEAR.slice(0, 6).map((src, i) => {
+  const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
+  return {
+    src,
+    left: `${50 + 50 * Math.cos(a)}%`,
+    top: `${50 + 50 * Math.sin(a)}%`,
+    delay: `${0.55 + i * 0.08}s`,
+    float: `${i * 0.4}s`,
+  };
+});
+const SPLASH_SPARKS = [
+  { left: '10%', top: '12%', size: 10, delay: '0s' },
+  { right: '12%', top: '9%', size: 8, delay: '.9s' },
+  { left: '22%', top: '30%', size: 6, delay: '1.7s' },
+  { right: '20%', top: '26%', size: 9, delay: '.4s' },
+  { left: '7%', top: '52%', size: 7, delay: '2.1s' },
+  { right: '8%', top: '48%', size: 10, delay: '1.3s' },
+  { left: '34%', top: '5%', size: 6, delay: '2.6s' },
+  { right: '30%', top: '40%', size: 7, delay: '1.1s' },
+];
+const SPLASH_MOTES = [
+  { left: '18%', delay: '0s', tint: '#FFD34E' },
+  { left: '27%', delay: '1.4s', tint: '#5CC45A' },
+  { left: '38%', delay: '2.8s', tint: '#FFD34E' },
+  { left: '47%', delay: '.6s', tint: '#E8453C' },
+  { left: '55%', delay: '2.1s', tint: '#FFD34E' },
+  { left: '63%', delay: '3.4s', tint: '#8C7CFF' },
+  { left: '72%', delay: '1s', tint: '#FFD34E' },
+  { left: '81%', delay: '2.5s', tint: '#5CC45A' },
+];
+
 export const Screen = ({ v }: { v: View }) => (
   <div
     className="gl-page"
@@ -283,6 +320,7 @@ export const Screen = ({ v }: { v: View }) => (
             alignItems: 'center',
             justifyContent: 'flex-end',
             padding: '0',
+            overflow: 'hidden',
             backgroundColor: '#101528',
             backgroundImage: 'url(/art/PocketKnights/sky_v3.png)',
             backgroundSize: 'cover',
@@ -299,6 +337,33 @@ export const Screen = ({ v }: { v: View }) => (
             }}
           ></div>
 
+          {SPLASH_SPARKS.map((p, i) => (
+            <span
+              key={i}
+              className="gls-spark"
+              style={{
+                left: p.left,
+                right: p.right,
+                top: p.top,
+                width: `${p.size}px`,
+                height: `${p.size}px`,
+                animationDelay: p.delay,
+              }}
+            />
+          ))}
+          {SPLASH_MOTES.map((m, i) => (
+            <span
+              key={i}
+              className="gls-mote"
+              style={{
+                left: m.left,
+                background: m.tint,
+                boxShadow: `0 0 6px ${m.tint}`,
+                animationDelay: m.delay,
+              }}
+            />
+          ))}
+
           <div
             style={{
               position: 'relative',
@@ -310,30 +375,86 @@ export const Screen = ({ v }: { v: View }) => (
               padding: '0 24px',
             }}
           >
+            {/* The icon's stage: light wheeling behind it, a warm glow
+                breathing, and the gear it links orbiting round it. */}
             <div
               style={{
-                width: '96px',
-                height: '100px',
-                backgroundImage: `url(${v.gearlinkIcon})`,
-                backgroundSize: 'contain',
-                backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'center',
-              }}
-            ></div>
-            <div
-              style={{
-                fontFamily: 'VolterTitle,Volter,monospace',
-                fontSize: 'clamp(28px,6vw,48px)',
-                color: '#FFF2B0',
-                textAlign: 'center',
-                letterSpacing: '.02em',
-                textShadow: '0 4px 0 #141D2E',
+                position: 'relative',
+                width: '210px',
+                height: '210px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
             >
-              GEARLINK
+              <div className="gls-rays gls-rays-a" />
+              <div className="gls-rays gls-rays-b" />
+              <div className="gls-glow" />
+              <div className="gls-orbit">
+                {SPLASH_ORBIT.map((g) => (
+                  <div
+                    key={g.src}
+                    className="gls-orbit-slot"
+                    style={{ left: g.left, top: g.top }}
+                  >
+                    <div
+                      className="gls-orbit-in"
+                      style={{ animationDelay: g.delay }}
+                    >
+                      <img
+                        src={g.src}
+                        alt=""
+                        className="gls-orbit-gear"
+                        style={{ animationDelay: g.float }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="gls-icon-in" style={{ position: 'relative' }}>
+                <div
+                  className="gls-icon"
+                  style={{
+                    width: '112px',
+                    height: '116px',
+                    backgroundImage: `url(${v.gearlinkIcon})`,
+                    backgroundSize: 'contain',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'center',
+                  }}
+                ></div>
+              </div>
             </div>
             <div
+              aria-label="GEARLINK"
               style={{
+                fontFamily: 'VolterTitle,Volter,monospace',
+                fontSize: 'clamp(32px,7vw,52px)',
+                color: '#FFF2B0',
+                textAlign: 'center',
+                letterSpacing: '.04em',
+                WebkitTextStroke: '4px #141D2E',
+                paintOrder: 'stroke fill',
+                textShadow: '0 5px 0 #141D2E, 0 0 22px rgba(255,180,60,.5)',
+              }}
+            >
+              {SPLASH_TITLE.map((c, i) => (
+                <span
+                  key={i}
+                  aria-hidden="true"
+                  className="gls-letter"
+                  style={{
+                    animationDelay: `${0.35 + i * 0.06}s,${1.1 + i * 0.12}s,${1.5 + i * 0.08}s`,
+                  }}
+                >
+                  {c}
+                </span>
+              ))}
+            </div>
+            <div
+              className="gls-rise"
+              style={{
+                animationDelay: '.9s',
                 fontSize: '12px',
                 color: '#CBD9EC',
                 textAlign: 'center',
@@ -362,26 +483,39 @@ export const Screen = ({ v }: { v: View }) => (
             {(v.splashActions || []).map((a: any, aI: number) => (
               <Fragment key={aI}>
                 <div
-                  onClick={a.run}
+                  className="gls-rise"
                   style={{
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    minHeight: '48px',
-                    border: '3px solid #000000',
-                    borderRadius: '8px 2px 8px 2px',
-                    background: a.bg,
-                    boxShadow: a.shadow,
-                    color: '#000000',
-                    fontFamily: 'VolterTitle,Volter,monospace',
-                    fontSize: '24px',
-                    lineHeight: '1.05',
-                    textAlign: 'center',
-                    textWrap: 'balance',
+                    position: 'relative',
+                    animationDelay: `${1.05 + aI * 0.1}s`,
                   }}
                 >
-                  {a.label}
+                  <div className="gls-nudge" style={{ position: 'relative' }}>
+                    {aI === 0 ? <div className="gls-halo" /> : null}
+                    <div
+                      onClick={a.run}
+                      className="gls-btn"
+                      style={{
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minHeight: '48px',
+                        border: '3px solid #000000',
+                        borderRadius: '8px 2px 8px 2px',
+                        background: a.bg,
+                        boxShadow: a.shadow,
+                        color: '#000000',
+                        fontFamily: 'VolterTitle,Volter,monospace',
+                        fontSize: '24px',
+                        lineHeight: '1.05',
+                        textAlign: 'center',
+                        textWrap: 'balance',
+                      }}
+                    >
+                      <span style={{ position: 'relative' }}>{a.label}</span>
+                      {aI === 0 ? <span className="gls-sheen" /> : null}
+                    </div>
+                  </div>
                 </div>
               </Fragment>
             ))}
