@@ -787,7 +787,7 @@ export const Screen = ({ v }: { v: View }) => (
                     position: 'relative',
                     width: '100%',
                     maxWidth: '400px',
-                    height: '80px',
+                    height: '64px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -805,7 +805,6 @@ export const Screen = ({ v }: { v: View }) => (
                         style={{
                           flex: '1',
                           minWidth: '0',
-                          height: '96px',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -817,8 +816,9 @@ export const Screen = ({ v }: { v: View }) => (
                         <div
                           style={{
                             position: 'relative',
-                            height: '100%',
                             width: '100%',
+                            maxWidth: '80px',
+                            aspectRatio: '1 / 1',
                             borderRadius: '6px',
                             border: `2px solid ${n.bd}`,
                             background: n.bg,
