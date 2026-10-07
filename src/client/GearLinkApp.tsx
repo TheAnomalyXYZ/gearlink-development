@@ -26,7 +26,6 @@ import { context, navigateTo, showToast } from '@devvit/web/client';
 import { OrderResultStatus, purchase } from '@devvit/payments/client';
 import {
   DUEL_FTUE_STEPS,
-  DUEL_LOBBY_SIZE,
   DUEL_LOSS_TROPHIES,
   DUEL_THINK_MIN,
   DUEL_THINK_SKILL,
@@ -82,7 +81,11 @@ import type {
   RunState,
   StepResult,
 } from '../shared/engine/index.js';
-import type { Profile, SubmitRunRequest } from '../shared/api.js';
+import type {
+  DuelOpponentsResponse,
+  Profile,
+  SubmitRunRequest,
+} from '../shared/api.js';
 import { api } from './api.js';
 import {
   DEFAULT_VOLUMES,
@@ -1510,7 +1513,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       return;
     }
     this.setState({ phase: 'duelLobby', duelFoe: null, duelOutcome: null });
-    void this.loadOpponents(this.state.duelCursor);
+    void this.loadOpponents();
   };
 
   /** Borrow the hero and gear screens for the duel build, parking the run's own
@@ -1602,7 +1605,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
           phase: s.duelFoe ? 'duelConfirm' : 'duelLobby',
           duelOutcome: null,
         }));
-        void this.loadOpponents(0);
+        void this.loadOpponents();
         // The challenge post goes up when a player ENTERS, not every time an
         // entered player tweaks their five.
         if (listed && !wasListed) this.postChallenge();
@@ -1642,7 +1645,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       .setDuelListed(true)
       .then((r) => {
         this.adopt(r.profile, r.message);
-        void this.loadOpponents(this.state.duelCursor);
+        void this.loadOpponents();
         if (r.profile.duelListed) this.postChallenge();
       })
       .catch(this.fail);
@@ -1668,27 +1671,52 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
 
   /* ---------- the lobby ---------- */
 
-  private async loadOpponents(cursor: number): Promise<void> {
+  /** Re-read the lobby where today's cursor left it. */
+  private async loadOpponents(): Promise<void> {
     this.setState({ duelLoading: true });
     try {
-      const r = await api.duelOpponents(cursor);
-      this.setState({
-        duelOpponents: r.opponents,
-        duelCursor: cursor,
-        duelPadded: r.padded,
-        duelLoading: false,
-      });
+      this.adoptLobby(await api.duelOpponents());
     } catch (e) {
       this.setState({ duelLoading: false });
       this.fail(e);
     }
   }
 
+  private adoptLobby(r: Omit<DuelOpponentsResponse, 'type'>): void {
+    this.setState({
+      duelOpponents: r.opponents,
+      duelPadded: r.padded,
+      duelFreeRefreshes: r.freeRefreshes,
+      duelRefreshCost: r.refreshCost,
+      duelLoading: false,
+    });
+  }
+
   /** REFRESH walks the window along rather than re-rolling it, so pressing it
-   *  twice shows you two different neighbourhoods and not the same five. */
+   *  twice shows you two different neighbourhoods and not the same five. The
+   *  first few a day are free; after that the server charges coins for each. */
   refreshOpponents = (): void => {
-    if (this.state.duelLoading) return;
-    void this.loadOpponents(this.state.duelCursor + DUEL_LOBBY_SIZE);
+    const s = this.state;
+    if (s.duelLoading) return;
+    if (!s.duelFreeRefreshes && s.profile.coins < s.duelRefreshCost) {
+      this.fail(
+        new Error(
+          'Not enough coins to refresh (' + s.duelRefreshCost + ' coins).'
+        )
+      );
+      return;
+    }
+    this.setState({ duelLoading: true });
+    void api
+      .duelRefresh()
+      .then((r) => {
+        this.adopt(r.profile);
+        this.adoptLobby(r);
+      })
+      .catch((e) => {
+        this.setState({ duelLoading: false });
+        this.fail(e);
+      });
   };
 
   /** Tapping a lobby row picks the opponent; the fight starts from the
@@ -1713,7 +1741,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   backToLobby = (): void => {
     this.setState({ phase: 'duelLobby', duelFoe: null });
     // Arriving from a challenge post skips the lobby, so it may never have loaded.
-    if (!this.state.duelOpponents.length) void this.loadOpponents(0);
+    if (!this.state.duelOpponents.length) void this.loadOpponents();
   };
 
   confirmDuel = (): void => {
@@ -2003,7 +2031,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     this.setState({ phase: 'duelLobby', duelFoe: null, duelOutcome: null });
     // The result moved the trophy count, so the band the lobby matched against
     // is stale the moment the duel ends.
-    void this.loadOpponents(this.state.duelCursor);
+    void this.loadOpponents();
   };
 
   /* ---------- quests ---------- */

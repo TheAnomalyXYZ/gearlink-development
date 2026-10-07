@@ -6412,9 +6412,42 @@ export const Screen = ({ v }: { v: View }) => (
                     lineHeight: '1.05',
                     textAlign: 'center',
                     textWrap: 'balance',
+                    gap: '6px',
                   }}
                 >
                   REFRESH
+                  <div
+                    style={{
+                      display: v.refreshFreeDisplay,
+                      fontSize: '9px',
+                      letterSpacing: '.08em',
+                      color: '#2A2F7A',
+                    }}
+                  >
+                    {v.refreshFreeLabel}
+                  </div>
+                  <div
+                    style={{
+                      display: v.refreshCostDisplay,
+                      alignItems: 'center',
+                      gap: '3px',
+                      fontSize: '11px',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '12px',
+                        height: '12px',
+                        flexShrink: '0',
+                        backgroundImage: `url(${v.coinIcon})`,
+                        backgroundSize: 'contain',
+                        backgroundRepeat: 'no-repeat',
+                        backgroundPosition: 'center',
+                        imageRendering: 'pixelated',
+                      }}
+                    ></div>
+                    {v.refreshCostLabel}
+                  </div>
                 </div>
               </div>
               <div

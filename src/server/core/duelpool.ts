@@ -20,6 +20,7 @@ import type { DuelFoe } from '../../shared/engine/duel.js';
 import { duelWeekOf, leagueOf, tierRange } from '../../shared/engine/league.js';
 import { loadoutIsLegal } from '../../shared/engine/gear.js';
 import type { HeroClass } from '../../shared/engine/types.js';
+import { utcDayKey } from '../../shared/daily.js';
 
 const POOL_KEY = 'duelpool';
 const POOL_META = 'duelpoolmeta';
@@ -216,3 +217,58 @@ export const opponentsInTier = async (
 
   return { opponents, padded };
 };
+
+/**
+ * REFRESH, metered per UTC day. The server owns the cursor as well as the
+ * count: a cursor the client sent could walk the tier for free by skipping the
+ * metered endpoint. A new day is a new key, so both reset on their own.
+ *
+ *   duelrefresh:{userId}:{YYYY-MM-DD}   used, cursor
+ */
+const refreshKey = (userId: string, now: number) =>
+  `duelrefresh:${userId}:${utcDayKey(now)}`;
+
+/** Kept past midnight so a request that straddles it still finds its hash. */
+const REFRESH_TTL_SECONDS = 2 * 86_400;
+
+export type RefreshState = { used: number; cursor: number };
+
+export const readRefresh = async (
+  userId: string,
+  now = Date.now()
+): Promise<RefreshState> => {
+  const h = await redis.hGetAll(refreshKey(userId, now));
+  const used = Number(h['used']);
+  const cursor = Number(h['cursor']);
+  return {
+    used: Number.isFinite(used) ? Math.max(0, Math.floor(used)) : 0,
+    cursor: Number.isFinite(cursor) ? Math.floor(cursor) : 0,
+  };
+};
+
+/** Claim the next refresh. Counted before it is paid for, so two taps racing
+ *  past the free limit cannot both read the same count and both go free. */
+export const claimRefresh = async (
+  userId: string,
+  now = Date.now()
+): Promise<number> => {
+  const key = refreshKey(userId, now);
+  const n = await redis.hIncrBy(key, 'used', 1);
+  await redis.expire(key, REFRESH_TTL_SECONDS);
+  return n;
+};
+
+/** Hand back a refresh that could not be paid for. */
+export const releaseRefresh = async (
+  userId: string,
+  now = Date.now()
+): Promise<void> => {
+  await redis.hIncrBy(refreshKey(userId, now), 'used', -1);
+};
+
+/** Walk the lobby window on, past the rows just shown. */
+export const advanceRefreshCursor = async (
+  userId: string,
+  now = Date.now()
+): Promise<number> =>
+  redis.hIncrBy(refreshKey(userId, now), 'cursor', DUEL_LOBBY_SIZE);

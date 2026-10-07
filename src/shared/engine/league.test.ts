@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { DUEL_BOTS, botsInTier } from './duel.js';
+import {
+  DUEL_BOTS,
+  DUEL_FREE_REFRESHES,
+  DUEL_REFRESH_COST,
+  botsInTier,
+  duelRefreshCost,
+} from './duel.js';
 import {
   DEMOTE_LEVEL,
   LEAGUES,
@@ -154,4 +160,11 @@ void test('every tier has a house bot, and the low tiers have the most', () => {
   assert.ok(botsInTier(TROPHY_FLOOR).length >= 5, 'Bronze cannot fill a lobby');
   const ids = new Set(DUEL_BOTS.map((b) => b.id));
   assert.equal(ids.size, DUEL_BOTS.length, 'bot ids collide');
+});
+
+void test('lobby refreshes are free up to the daily limit, then cost coins', () => {
+  for (let n = 1; n <= DUEL_FREE_REFRESHES; n++)
+    assert.equal(duelRefreshCost(n), 0, 'refresh ' + n + ' should be free');
+  assert.equal(duelRefreshCost(DUEL_FREE_REFRESHES + 1), DUEL_REFRESH_COST);
+  assert.equal(duelRefreshCost(DUEL_FREE_REFRESHES + 40), DUEL_REFRESH_COST);
 });

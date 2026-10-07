@@ -13,6 +13,7 @@ import type {
   DonateResponse,
   DuelChallengeResponse,
   DuelOpponentsResponse,
+  DuelRefreshResponse,
   DuelResultRequest,
   SaveDuelLoadoutRequest,
   InitResponse,
@@ -77,8 +78,8 @@ export const api = {
     call<ProfileResponse>('/duel/loadout', req),
   setDuelListed: (listed: boolean) =>
     call<ProfileResponse>('/duel/listed', { listed }),
-  duelOpponents: (cursor: number) =>
-    call<DuelOpponentsResponse>('/duel/opponents?cursor=' + cursor),
+  duelOpponents: () => call<DuelOpponentsResponse>('/duel/opponents'),
+  duelRefresh: () => call<DuelRefreshResponse>('/duel/refresh', {}),
   duelChallenge: () => call<DuelChallengeResponse>('/duel/challenge', {}),
   /** What this post's inline view should draw. Used by the splash only. */
   challengeCard: () => call<ChallengeResponse>('/challenge'),

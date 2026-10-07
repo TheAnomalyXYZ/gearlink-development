@@ -160,10 +160,17 @@ export type DuelListedRequest = { listed: boolean };
 export type DuelOpponentsResponse = {
   type: 'opponents';
   opponents: DuelFoe[];
-  /** Echoed back on REFRESH to walk past the rows just shown. */
-  cursor: number;
   /** True when the pool had nobody close and the list was padded with bots. */
   padded: boolean;
+  /** Free REFRESHes left today. At 0, each one costs `refreshCost` coins. */
+  freeRefreshes: number;
+  refreshCost: number;
+};
+
+/** REFRESH: the next window, and the wallet it may have been paid from. */
+export type DuelRefreshResponse = Omit<DuelOpponentsResponse, 'type'> & {
+  type: 'refresh';
+  profile: Profile;
 };
 
 export type DuelChallengeResponse = {

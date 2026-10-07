@@ -215,6 +215,16 @@ export const botsInTier = (trophies: number): DuelFoe[] => {
 /** How many opponents the lobby shows at once. */
 export const DUEL_LOBBY_SIZE = 5;
 
+/** Lobby REFRESHes a player gets free each UTC day. Past that, each one costs
+ *  DUEL_REFRESH_COST coins, so walking the whole tier for the weakest name in
+ *  it is a price, not a habit. */
+export const DUEL_FREE_REFRESHES = 5;
+export const DUEL_REFRESH_COST = 20;
+
+/** What the refresh numbered `n` today (1-based) costs. */
+export const duelRefreshCost = (n: number): number =>
+  n > DUEL_FREE_REFRESHES ? DUEL_REFRESH_COST : 0;
+
 /**
  * Setup coaching, shown once before a player's first duel. It runs BEFORE the
  * lobby rather than inside a match: a duel loadout is a thing you keep and put

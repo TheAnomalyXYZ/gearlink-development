@@ -1522,7 +1522,17 @@ export const buildView = (app: GearLinkApp): View => {
     myDuelSlots: duelSlotTiles(st.profile.duelPicked ?? []),
 
     refreshOpponents: app.refreshOpponents,
-    refreshOpacity: st.duelLoading ? 0.5 : 1,
+    refreshOpacity:
+      st.duelLoading ||
+      (!st.duelFreeRefreshes && st.profile.coins < st.duelRefreshCost)
+        ? 0.5
+        : 1,
+    /* Free ones left today read as a count; past them, the button wears its
+       coin price so a paid refresh is never a surprise. */
+    refreshFreeLabel: st.duelFreeRefreshes + ' FREE',
+    refreshFreeDisplay: st.duelFreeRefreshes ? 'block' : 'none',
+    refreshCostLabel: String(st.duelRefreshCost),
+    refreshCostDisplay: st.duelFreeRefreshes ? 'none' : 'flex',
     duelPaddedDisplay: st.duelPadded ? 'block' : 'none',
     duelListEmptyDisplay:
       st.duelLoading && !st.duelOpponents.length ? 'block' : 'none',

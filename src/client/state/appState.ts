@@ -4,6 +4,8 @@
  * be read (and extended) without scrolling past every behaviour that touches it.
  */
 import {
+  DUEL_FREE_REFRESHES,
+  DUEL_REFRESH_COST,
   DUEL_MATCH_SECONDS,
   FIRST_LOCATION,
   NO_HEARTS,
@@ -156,14 +158,7 @@ export type AppState = {
   ftueSample: { damage: number; killed: boolean };
 
   preview: Preview | null;
-  modal:
-    | 'pause'
-    | 'how'
-    | 'board'
-    | 'settings'
-    | 'flair'
-    | 'warchest'
-    | null;
+  modal: 'pause' | 'how' | 'board' | 'settings' | 'flair' | 'warchest' | null;
   /** This week's war chest, once the panel has fetched it. */
   warChest: WarChest | null;
   /** The donation in flight, so a double tap cannot give twice. */
@@ -202,7 +197,9 @@ export type AppState = {
   duelSetup: number | null;
   duelSaving: boolean;
   duelOpponents: DuelFoe[];
-  duelCursor: number;
+  /** Free lobby REFRESHes left today, and what each one costs after. */
+  duelFreeRefreshes: number;
+  duelRefreshCost: number;
   duelLoading: boolean;
   duelPadded: boolean;
   challengeUrl: string | null;
@@ -380,7 +377,8 @@ export const INITIAL_STATE: AppState = {
   duelSetup: null,
   duelSaving: false,
   duelOpponents: [],
-  duelCursor: 0,
+  duelFreeRefreshes: DUEL_FREE_REFRESHES,
+  duelRefreshCost: DUEL_REFRESH_COST,
   duelLoading: false,
   duelPadded: false,
   challengeUrl: null,

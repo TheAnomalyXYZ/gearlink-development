@@ -13,6 +13,7 @@ import type {
   DuelChallengeResponse,
   DuelListedRequest,
   DuelOpponentsResponse,
+  DuelRefreshResponse,
   DuelResultRequest,
   EquipFlairRequest,
   SaveDuelLoadoutRequest,
@@ -49,8 +50,12 @@ import {
 import { coinBundleSku, packSku } from '../../shared/admin.js';
 import { getLeaderboard, recordScore } from '../core/leaderboard.js';
 import {
+  advanceRefreshCursor,
+  claimRefresh,
   listInPool,
   opponentsInTier,
+  readRefresh,
+  releaseRefresh,
   removeFromPool,
   syncPoolScore,
 } from '../core/duelpool.js';
@@ -76,7 +81,9 @@ import {
   heartPiecesForBoss,
   heartsFor,
   locationIndex,
+  DUEL_FREE_REFRESHES,
   DUEL_LOSS_TROPHIES,
+  DUEL_REFRESH_COST,
   DUEL_MATCH_SECONDS,
   DUEL_WIN_TROPHIES,
   bundleById,
@@ -87,6 +94,7 @@ import {
   applyDuelDelta,
   boostedCoins,
   donationIsLegal,
+  duelRefreshCost,
   verifyRun,
 } from '../../shared/engine/index.js';
 import type { PulledCard } from '../../shared/engine/economy.js';
@@ -646,24 +654,70 @@ api.post('/duel/listed', async (c) => {
   return c.json(profileJson(await loadProfile(me.userId, me.username)));
 });
 
-/** Five opponents in the asker's tier. `cursor` is what REFRESH
- *  advances, so the button walks the neighbourhood instead of re-rolling it. */
+/** The lobby window plus what the next REFRESH will cost. */
+const lobbyFor = async (
+  userId: string,
+  trophies: number,
+  refresh: { used: number; cursor: number }
+) => {
+  const { opponents, padded } = await opponentsInTier(
+    userId,
+    trophies,
+    refresh.cursor
+  );
+  return {
+    opponents,
+    padded,
+    freeRefreshes: Math.max(0, DUEL_FREE_REFRESHES - refresh.used),
+    refreshCost: DUEL_REFRESH_COST,
+  };
+};
+
+/** Five opponents in the asker's tier, at today's cursor. Reading the lobby
+ *  never moves it - only REFRESH does, and that is metered. */
 api.get('/duel/opponents', async (c) => {
   const me = who();
   if (!me) return unauthorised(c);
-  const raw = Number(c.req.query('cursor'));
-  const cursor = Number.isFinite(raw) ? Math.floor(raw) : 0;
-  const profile = await loadProfile(me.userId, me.username);
-  const { opponents, padded } = await opponentsInTier(
-    me.userId,
-    profile.trophies,
-    cursor
-  );
+  const [profile, refresh] = await Promise.all([
+    loadProfile(me.userId, me.username),
+    readRefresh(me.userId),
+  ]);
   return c.json<DuelOpponentsResponse>({
     type: 'opponents',
-    opponents,
-    cursor,
-    padded,
+    ...(await lobbyFor(me.userId, profile.trophies, refresh)),
+  });
+});
+
+/** REFRESH: the first DUEL_FREE_REFRESHES a day are free, every one after
+ *  costs DUEL_REFRESH_COST coins. A wallet that cannot cover it gets the
+ *  refresh handed back and the lobby left where it was. */
+api.post('/duel/refresh', async (c) => {
+  const me = who();
+  if (!me) return unauthorised(c);
+  const now = Date.now();
+  const n = await claimRefresh(me.userId, now);
+  const cost = duelRefreshCost(n);
+  const profile = await loadProfile(me.userId, me.username);
+  if (profile.coins < cost) {
+    await releaseRefresh(me.userId, now);
+    return c.json<ErrorResponse>(
+      {
+        status: 'error',
+        message: 'Not enough coins to refresh (' + cost + ' coins).',
+      },
+      400
+    );
+  }
+  if (cost > 0) {
+    await saveProfile(me.userId, { coins: profile.coins - cost });
+    await recordSpend(me.userId, me.username, 'duel_refresh', 'coins', cost);
+  }
+  const cursor = await advanceRefreshCursor(me.userId, now);
+  const after = await loadProfile(me.userId, me.username);
+  return c.json<DuelRefreshResponse>({
+    type: 'refresh',
+    profile: after,
+    ...(await lobbyFor(me.userId, after.trophies, { used: n, cursor })),
   });
 });
 
