@@ -39,4 +39,4 @@ The top score on the post's ladder holds the crown for the day. The post's previ
 
 - The Daily Battle posts automatically once a day.
 - If it's missing, use the subreddit menu item **"Post today's Daily Battle"**. It only ever posts once per day, so it's safe to press.
-- **"Create a GearLink Battle post"** makes a general post you can play from or pin.
+- **"Create a GearLink post"** makes a general post you can play from or pin.

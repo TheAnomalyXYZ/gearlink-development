@@ -108,6 +108,30 @@ filter:drop-shadow(0 0 3px #FFF2A8) drop-shadow(0 0 6px #FFB84D)}
 .glk-m0{left:22%;animation-delay:0s}.glk-m1{left:34%;animation-delay:1.3s}
 .glk-m2{left:47%;animation-delay:2.6s}.glk-m3{left:58%;animation-delay:.7s}
 .glk-m4{left:69%;animation-delay:2s}.glk-m5{left:79%;animation-delay:3.2s}
+.glk-m6{left:28%;animation-delay:.4s}.glk-m7{left:52%;animation-delay:1.8s}
+.glk-m8{left:64%;animation-delay:3.6s}.glk-m9{left:40%;animation-delay:2.9s}
+@keyframes glk-drop{0%{opacity:0;transform:translateY(-36px) scale(.6)}60%{opacity:1;transform:translateY(4px) scale(1.12)}100%{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes glk-wave{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes glk-glint{0%,78%,100%{color:#FFE16A;filter:none}86%{color:#FFFFFF;filter:drop-shadow(0 0 8px #FFF6C8)}}
+@keyframes glk-land{0%{opacity:0;transform:translateY(-40px) scale(.9)}55%{opacity:1;transform:translateY(3px) scale(1.04,.96)}75%{transform:translateY(-4px) scale(.98,1.02)}100%{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes glk-shadow{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.78);opacity:.55}}
+@keyframes glk-gear-in{0%{opacity:0;transform:scale(0) rotate(-200deg)}70%{opacity:1;transform:scale(1.2) rotate(12deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
+@keyframes glk-flash{0%{opacity:.75}100%{opacity:0}}
+@keyframes glk-halo{0%{opacity:.7;transform:scale(.85)}100%{opacity:0;transform:scale(1.35)}}
+@keyframes glk-nudge{0%,84%,100%{transform:scale(1) rotate(0)}88%{transform:scale(1.08) rotate(-2deg)}92%{transform:scale(.97) rotate(1.5deg)}96%{transform:scale(1.02) rotate(0)}}
+@keyframes glk-sway{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(2deg)}}
+.glk-letter{display:inline-block;animation:glk-drop .55s cubic-bezier(.2,1.5,.4,1) both,glk-wave 2.6s ease-in-out infinite,glk-glint 3.2s linear infinite}
+.glk-land{animation:glk-land .7s cubic-bezier(.3,1.3,.5,1) both}
+.glk-shadow{animation:glk-shadow 3.2s ease-in-out infinite}
+.glk-gear-in{animation:glk-gear-in .6s cubic-bezier(.2,1.4,.4,1) both}
+.glk-flash{animation:glk-flash .7s ease-out both}
+.glk-halo{animation:glk-halo 1.8s ease-out infinite}
+.glk-nudge{animation:glk-nudge 3.6s ease-in-out 1.6s infinite}
+.glk-sway{animation:glk-pop .5s cubic-bezier(.2,1.5,.4,1) .55s both,glk-sway 3s ease-in-out 1.05s infinite}
+.glk-spark{position:absolute;pointer-events:none;background:#FFF6C8;opacity:0;
+clip-path:polygon(50% 0,61% 39%,100% 50%,61% 61%,50% 100%,39% 61%,0 50%,39% 39%);
+filter:drop-shadow(0 0 4px #FFD34E);animation:glk-twinkle 2.4s ease-in-out infinite}
 @media (prefers-reduced-motion:reduce){
-.glk-bob,.glk-breathe,.glk-pop,.glk-sheen,.glk-blink,.glk-rise,.glk-star,.glk-spin,.glk-drift,.glk-drift-rev,.glk-float,.glk-mote{animation:none}
+.glk-bob,.glk-breathe,.glk-pop,.glk-sheen,.glk-blink,.glk-rise,.glk-star,.glk-spin,.glk-drift,.glk-drift-rev,.glk-float,.glk-mote,.glk-letter,.glk-land,.glk-shadow,.glk-gear-in,.glk-halo,.glk-nudge,.glk-sway,.glk-spark{animation:none}
+.glk-flash{display:none}
 }`;

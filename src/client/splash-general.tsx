@@ -1,10 +1,11 @@
 /**
- * The inline view of the general GearLink Battle post - the one a sub pins as
+ * The inline view of the general GearLink post - the one a sub pins as
  * the place to play from.
  *
  * It belongs to no day, no region and no foe, so it sells the game itself: the
- * three heroes standing full height in the game's own sky, the gear they link
- * floating round them, and light wheeling behind the title.
+ * three heroes landing full height in the game's own sky, the gear they link
+ * spinning in round them, the title dropping in letter by letter with a glint
+ * running along it, and light wheeling behind it all.
  *
  * Its own module, like the other feed cards, so it renders in a test without
  * the stylesheet the feed entry point imports.
@@ -51,6 +52,23 @@ const RAYS = [
 const RAY_MASK =
   'radial-gradient(circle,transparent 3%,#000 12%,#000 26%,transparent 46%)';
 
+/** Where the four-point sparks twinkle in the sky, and when. */
+const SPARKS: { at: CSSProperties; size: number; delay: number }[] = [
+  { at: { left: '8%', top: '14%' }, size: 10, delay: 0 },
+  { at: { right: '10%', top: '10%' }, size: 8, delay: 0.9 },
+  { at: { left: '20%', top: '34%' }, size: 6, delay: 1.7 },
+  { at: { right: '22%', top: '30%' }, size: 9, delay: 0.4 },
+  { at: { left: '6%', top: '58%' }, size: 7, delay: 2.1 },
+  { at: { right: '6%', top: '54%' }, size: 10, delay: 1.3 },
+  { at: { left: '30%', top: '6%' }, size: 6, delay: 2.6 },
+  { at: { right: '32%', top: '4%' }, size: 7, delay: 1.1 },
+];
+
+/** Motes rising off the stage, in gold and the heroes' own colours. */
+const MOTE_TINT = ['#FFD34E', '#5CC45A', '#FFD34E', '#E8453C', '#8C7CFF'];
+
+const TITLE = 'GEARLINK';
+
 const STROKE: CSSProperties = {
   WebkitTextStroke: '4px #000',
   paintOrder: 'stroke fill',
@@ -71,17 +89,26 @@ const Stander = ({
   const mid = i === 1;
   return (
     <div
-      className={`glk-rise glk-d${i + 1} relative flex flex-col items-center justify-end`}
-      style={{ zIndex: mid ? 2 : 1, width: mid ? '30%' : '24%' }}
+      className="glk-land relative flex flex-col items-center justify-end"
+      style={{
+        zIndex: mid ? 2 : 1,
+        width: mid ? '30%' : '24%',
+        // The middle one lands last, as the headline act.
+        animationDelay: `${0.25 + (mid ? 0.3 : i * 0.08)}s`,
+      }}
     >
-      <div
-        className="absolute bottom-0 left-1/2 h-[10px] w-[70%] -translate-x-1/2"
-        style={{
-          borderRadius: '50%',
-          background: 'rgba(10,30,70,.45)',
-          filter: 'blur(3px)',
-        }}
-      />
+      {/* The shadow shrinks as the hero bobs up, on the same beat. */}
+      <div className="absolute bottom-0 left-1/2 h-[10px] w-[70%] -translate-x-1/2">
+        <div
+          className="glk-shadow h-full w-full"
+          style={{
+            borderRadius: '50%',
+            background: 'rgba(10,30,70,.45)',
+            filter: 'blur(3px)',
+            animationDelay: `${i * 0.45}s`,
+          }}
+        />
+      </div>
       <img
         src={hero.art}
         alt={hero.name}
@@ -117,6 +144,8 @@ export const General = ({ cta }: { cta?: ReactNode }) => (
     }}
   >
     <style>{MOTION}</style>
+    {/* A white flash as the card opens, so it arrives rather than appears. */}
+    <div className="glk-flash pointer-events-none absolute inset-0 z-50 bg-white" />
     {/* A soft lift at the bottom so the line and the button read over the
         clouds, without darkening the sky. */}
     <div
@@ -144,9 +173,24 @@ export const General = ({ cta }: { cta?: ReactNode }) => (
       />
     ))}
 
-    {/* Title. */}
-    <div className="glk-pop relative z-10 flex shrink-0 flex-col items-center leading-none">
+    {SPARKS.map((p, i) => (
+      <span
+        key={i}
+        className="glk-spark z-[5]"
+        style={{
+          ...p.at,
+          width: p.size,
+          height: p.size,
+          animationDelay: `${p.delay}s`,
+        }}
+      />
+    ))}
+
+    {/* Title: each letter drops in on its own, then the word waves gently
+        and a glint runs along it. */}
+    <div className="relative z-10 flex shrink-0 flex-col items-center leading-none">
       <div
+        aria-label={TITLE}
         style={{
           fontFamily: PIXEL,
           fontSize: 'clamp(28px,8.5vw,44px)',
@@ -155,22 +199,40 @@ export const General = ({ cta }: { cta?: ReactNode }) => (
           textShadow: '0 5px 0 #000, 0 0 22px rgba(255,180,60,.55)',
         }}
       >
-        GEARLINK
+        {TITLE.split('').map((c, i) => (
+          <span
+            key={i}
+            aria-hidden="true"
+            className="glk-letter"
+            style={{
+              animationDelay: `${i * 0.06}s,${0.8 + i * 0.12}s,${1.2 + i * 0.08}s`,
+            }}
+          >
+            {c}
+          </span>
+        ))}
       </div>
       <div
-        className="-mt-0.5 px-2.5 py-0.5"
+        className="glk-sway relative -mt-0.5 overflow-hidden px-2.5 py-0.5"
         style={{
           fontFamily: PIXEL,
-          fontSize: 'clamp(13px,3.8vw,18px)',
+          fontSize: 'clamp(10px,3vw,14px)',
           color: '#FFF',
-          letterSpacing: '.3em',
+          letterSpacing: '.18em',
           background: 'linear-gradient(180deg,#E8453C,#A81F22)',
           border: '2px solid #000',
           borderRadius: '6px 2px 6px 2px',
           boxShadow: '0 3px 0 0 rgba(0,0,0,.4)',
         }}
       >
-        BATTLE
+        MATCH · LINK · SLAY
+        <span
+          className="glk-sheen pointer-events-none absolute inset-y-0 left-0 w-8 -skew-x-12"
+          style={{
+            background:
+              'linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.6),rgba(255,255,255,0))',
+          }}
+        />
       </div>
     </div>
 
@@ -178,28 +240,44 @@ export const General = ({ cta }: { cta?: ReactNode }) => (
     <div className="relative flex min-h-0 w-full max-w-[400px] flex-1 items-center justify-center py-2">
       <div className="pointer-events-none absolute inset-y-0 left-1/2 z-20 w-[min(150%,100vw)] max-w-[600px] -translate-x-1/2">
         {GENERAL_GEAR.map((g, i) => (
-          <img
+          <span
             key={g}
-            src={g}
-            alt=""
-            className="glk-float absolute h-[clamp(24px,7vw,36px)] w-[clamp(24px,7vw,36px)] object-contain"
-            style={{
-              ...GEAR_SPOT[i],
-              imageRendering: 'pixelated',
-              animationDelay: `${i * 0.35}s`,
-              filter:
-                'drop-shadow(0 0 6px rgba(255,220,120,.6)) drop-shadow(0 3px 0 rgba(0,0,0,.5))',
-            }}
-          />
+            className="glk-gear-in absolute h-[clamp(24px,7vw,36px)] w-[clamp(24px,7vw,36px)]"
+            style={{ ...GEAR_SPOT[i], animationDelay: `${0.6 + i * 0.07}s` }}
+          >
+            <img
+              src={g}
+              alt=""
+              className="glk-float h-full w-full object-contain"
+              style={{
+                imageRendering: 'pixelated',
+                animationDelay: `${i * 0.35}s`,
+                filter:
+                  'drop-shadow(0 0 6px rgba(255,220,120,.6)) drop-shadow(0 3px 0 rgba(0,0,0,.5))',
+              }}
+            />
+          </span>
         ))}
       </div>
-      {[0, 1, 2, 3, 4, 5].map((i) => (
-        <span
-          key={i}
-          className={`glk-mote glk-m${i}`}
-          style={{ background: '#FFD34E', boxShadow: '0 0 6px #FFD34E' }}
-        />
-      ))}
+      {/* A warm pool of light behind the heroes, breathing. */}
+      <div
+        className="glk-breathe pointer-events-none absolute top-1/2 left-1/2 aspect-square w-[80%] -translate-x-1/2 -translate-y-1/2"
+        style={{
+          borderRadius: '50%',
+          background:
+            'radial-gradient(circle,rgba(255,226,140,.45),rgba(255,190,80,.15) 45%,rgba(255,190,80,0) 70%)',
+        }}
+      />
+      {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => {
+        const tint = MOTE_TINT[i % MOTE_TINT.length] ?? '#FFD34E';
+        return (
+          <span
+            key={i}
+            className={`glk-mote glk-m${i}`}
+            style={{ background: tint, boxShadow: `0 0 6px ${tint}` }}
+          />
+        );
+      })}
       {/* The row is only as tall as its tallest hero, and that row is what
           gets centred - so the group sits in the middle, feet still level. */}
       <div className="absolute inset-0 z-10 flex items-center justify-center">
@@ -221,7 +299,19 @@ export const General = ({ cta }: { cta?: ReactNode }) => (
       >
         Pick a hero, link your gear, and break every wave they throw at you.
       </div>
-      {cta}
+      {/* The button gets a halo pulsing out from behind it and a little
+          nudge every few seconds - it is the one thing here to press. */}
+      <div className="glk-nudge relative">
+        <div
+          className="glk-halo pointer-events-none absolute inset-[-6px_-10px]"
+          style={{
+            borderRadius: 12,
+            background:
+              'radial-gradient(ellipse at center,rgba(255,226,112,.85),rgba(255,150,29,0) 70%)',
+          }}
+        />
+        {cta}
+      </div>
     </div>
   </div>
 );

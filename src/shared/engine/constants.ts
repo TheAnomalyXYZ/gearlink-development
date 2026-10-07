@@ -1,6 +1,6 @@
 /**
  * Tuning constants for the GearLink engine, lifted verbatim from the POC
- * (GearLink Battle V3.3) so a run here plays the run the design plays.
+ * (GearLink design POC V3.3) so a run here plays the run the design plays.
  *
  * Everything in this folder is PURE: no DOM, no timers, no `Math.random`. The
  * server replays a submitted run through the same code to verify a score, so a

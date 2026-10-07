@@ -1,4 +1,4 @@
-# GearLink Battle: Social Post Copy
+# GearLink: Social Post Copy
 
 Ready-to-use copy. Swap `r/YOURSUB` for the real subreddit and add a screenshot or GIF where noted.
 
@@ -16,7 +16,7 @@ Ready-to-use copy. Swap `r/YOURSUB` for the real subreddit and add a screenshot 
 
 ## Launch: Reddit post
 
-**Title:** GearLink Battle is live: a match-and-link roguelike you play right in the post
+**Title:** GearLink is live: a match-and-link roguelike you play right in the post
 
 **Body:**
 
@@ -46,7 +46,7 @@ Ready-to-use copy. Swap `r/YOURSUB` for the real subreddit and add a screenshot 
 
 ## Launch: short posts (X / Threads / Bluesky)
 
-> GearLink Battle is live on Reddit ⚔️
+> GearLink is live on Reddit ⚔️
 > Equip 5 pieces of gear, link matching orbs to attack, block and heal, and fight your way to The King.
 > Play it right in the post: r/YOURSUB
 
@@ -56,7 +56,7 @@ Ready-to-use copy. Swap `r/YOURSUB` for the real subreddit and add a screenshot 
 > r/YOURSUB
 
 > Three heroes. Six locations. One King.
-> GearLink Battle is out now on Reddit. r/YOURSUB
+> GearLink is out now on Reddit. r/YOURSUB
 
 ---
 
@@ -91,7 +91,7 @@ Ready-to-use copy. Swap `r/YOURSUB` for the real subreddit and add a screenshot 
 Use one per post for a week of content.
 
 **1. Gear = the board**
-> In GearLink Battle, your loadout *is* the board. Every piece of gear you equip becomes an orb colour. Choose your five wisely.
+> In GearLink, your loadout *is* the board. Every piece of gear you equip becomes an orb colour. Choose your five wisely.
 
 **2. Bombs**
 > Link 6 or more and you forge a bomb. Tap it to blast a 3×3 area, and every orb caught fires its gear. Bombs set off bombs. 💥

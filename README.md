@@ -1,4 +1,4 @@
-# GearLink Battle
+# GearLink
 
 A match-and-link roguelike, running as a Devvit app on Reddit. Equip
 five pieces of gear, link orbs of the same gear to attack, block or heal, and

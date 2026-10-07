@@ -1,6 +1,6 @@
-# GearLink Battle Wiki
+# GearLink Wiki
 
-GearLink Battle is a match-and-link roguelike you play right inside Reddit posts. Equip five pieces of gear, drag across matching orbs to attack, block and heal, and fight your way across the map to The King.
+GearLink is a match-and-link roguelike you play right inside Reddit posts. Equip five pieces of gear, drag across matching orbs to attack, block and heal, and fight your way across the map to The King.
 
 ## Pages
 

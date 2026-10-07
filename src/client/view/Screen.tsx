@@ -330,7 +330,7 @@ export const Screen = ({ v }: { v: View }) => (
                 textShadow: '0 4px 0 #141D2E',
               }}
             >
-              GEARLINK BATTLE
+              GEARLINK
             </div>
             <div
               style={{

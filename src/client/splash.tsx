@@ -94,7 +94,7 @@ const Enter = ({
  *
  * Three answers. A CHALLENGE post gets the duellist who made it. A Daily
  * Battle post gets the day's poster - its foe, its region and the top of its
- * own ladder. Every other post is the general GearLink Battle splash. Until
+ * own ladder. Every other post is the general GearLink splash. Until
  * the answer lands the card is a bare dark shell, so a challenge or daily post
  * never flashes the general splash first; if the lookup fails, the general
  * splash is drawn.

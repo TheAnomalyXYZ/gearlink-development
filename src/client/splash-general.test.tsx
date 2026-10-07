@@ -9,7 +9,6 @@ import { WAVE_ENEMIES } from '../shared/engine/monsters.js';
 void test('the general post sells the game, not a day, a place or a foe', () => {
   const html = renderToStaticMarkup(<General />);
   assert.ok(html.includes('GEARLINK'));
-  assert.ok(html.includes('BATTLE'));
   for (const h of GENERAL_HEROES) assert.ok(html.includes(h.art));
   assert.ok(!html.includes('DAILY'), 'the daily poster leaked in');
   assert.ok(!html.includes('/Monsters/'), 'a foe leaked in');
