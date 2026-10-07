@@ -10,6 +10,7 @@ import type { GearLinkApp } from '../GearLinkApp.js';
 import type { QuestReward } from '../../shared/engine/quests.js';
 import type { Gear } from '../../shared/engine/index.js';
 import type { AppState, GearFilter } from '../state/appState.js';
+import type { WarChest } from '../../shared/api.js';
 import type { FxEvent } from '../fx/screens.js';
 import {
   AFFIX_BLURB,
@@ -48,6 +49,8 @@ import {
   PACKS,
   QUESTS,
   FLAIRS,
+  DONATION_AMOUNTS,
+  WAR_CHEST_TIERS,
   RARITY_ORDER,
   RARITY_OUTLINE,
   RIDERS,
@@ -906,6 +909,8 @@ export const buildView = (app: GearLinkApp): View => {
   let modalTitle = '',
     modalRows: any[] = [],
     modalSliders: any[] = [],
+    modalBar: any = null,
+    modalChips: any[] = [],
     modalFooter = '',
     modalClose = app.closeModal,
     modalActions = [
@@ -1066,6 +1071,91 @@ export const buildView = (app: GearLinkApp): View => {
         shadow: BTN.secondary.shadow,
       },
     ];
+  } else if (st.modal === 'warchest') {
+    /* The subreddit's shared pot. A bar filling toward the top tier, one row
+       per tier saying what it pays everyone, the week's biggest donors, and
+       the give buttons underneath. */
+    const chest: WarChest | null = st.warChest;
+    const top = WAR_CHEST_TIERS[WAR_CHEST_TIERS.length - 1]!;
+    const fmt = (n: number) => n.toLocaleString('en-US');
+    const total = chest ? chest.total : 0;
+    modalTitle = 'WAR CHEST';
+    modalBar = {
+      w: Math.min(100, (total / top.at) * 100) + '%',
+      label: fmt(total) + ' / ' + fmt(top.at),
+      status:
+        chest && chest.bonusPct > 0
+          ? '+' + chest.bonusPct + '% BATTLE COINS LIVE'
+          : 'NO BONUS YET',
+      statusColor: chest && chest.bonusPct > 0 ? '#3FAF6E' : '#8B7355',
+      ticks: WAR_CHEST_TIERS.map((t) => ({
+        left: (t.at / top.at) * 100 + '%',
+        reached: total >= t.at,
+      })),
+    };
+    const tierRows = WAR_CHEST_TIERS.map((t) => {
+      const live = total >= t.at;
+      return {
+        title: '+' + t.bonusPct + '% battle coins',
+        detail: 'At ' + fmt(t.at) + ' coins, for everyone here this week.',
+        meta: live ? 'LIVE' : fmt(t.at - total) + '\nTO GO',
+        metaColor: live ? '#3FAF6E' : '#9DB4D4',
+      };
+    });
+    const donorRows = !chest
+      ? []
+      : chest.top.length
+        ? chest.top.map((d, i) => ({
+            title: '#' + (i + 1) + ' ' + d.username + (d.isYou ? ' (you)' : ''),
+            detail: '',
+            meta: fmt(d.amount),
+            metaColor: d.isYou ? '#428FFB' : '#8A5A2B',
+          }))
+        : [
+            {
+              title: 'No donors yet',
+              detail: 'Be the first to fill the chest this week.',
+              meta: '',
+              metaColor: '#9DB4D4',
+            },
+          ];
+    modalRows = chest
+      ? [...tierRows, ...donorRows]
+      : [
+          {
+            title: 'Opening the chest...',
+            detail: '',
+            meta: '',
+            metaColor: '#9DB4D4',
+          },
+        ];
+    modalChips = DONATION_AMOUNTS.map((amount) => {
+      const afford = st.profile.coins >= amount;
+      const busy = st.donating === amount;
+      return {
+        label: busy ? '...' : 'GIVE ' + fmt(amount),
+        icon: COIN_ICON,
+        run: chest && afford ? app.donate(amount) : undefined,
+        bg: afford ? BTN_GOLD.bg : BTN.disabled.bg,
+        shadow: afford ? BTN_GOLD.shadow : BTN.disabled.shadow,
+        opacity: chest && afford ? 1 : 0.55,
+      };
+    });
+    const left = chest ? Math.max(0, chest.resetAt - Date.now()) : 0;
+    const days = Math.floor(left / 86_400_000);
+    const hours = Math.floor((left % 86_400_000) / 3_600_000);
+    modalFooter = chest
+      ? 'You gave ' +
+        fmt(chest.yours) +
+        ' this week. ' +
+        chest.donors +
+        (chest.donors === 1 ? ' donor' : ' donors') +
+        '.\nEmpties in ' +
+        days +
+        'D ' +
+        hours +
+        'H. Coins given are spent for good.'
+      : '';
   } else if (st.modal === 'flair') {
     /* Every flair in the catalogue, locked ones included, so the picker also
        says what is left to earn. Tapping an unlocked row wears it. */
@@ -2634,6 +2724,7 @@ export const buildView = (app: GearLinkApp): View => {
     homeMenuItems: [
       { label: 'BLACKSMITHS', icon: 'board', run: app.openBoardFromMenu },
       { label: 'HOW TO PLAY', icon: 'how', run: app.openHowFromMenu },
+      { label: 'WAR CHEST', icon: 'chest', run: app.openWarChestFromMenu },
       { label: 'FLAIR', icon: 'flair', run: app.openFlairFromMenu },
       { label: 'SETTINGS', icon: 'settings', run: app.openSettingsFromMenu },
     ],
@@ -3022,12 +3113,27 @@ export const buildView = (app: GearLinkApp): View => {
                 anim: 'glPop 320ms 320ms ease-out both',
               },
             ]
+      )
+      .concat(
+        !st.coinsEarned || !st.chestBonusPct
+          ? []
+          : [
+              {
+                label: 'WAR CHEST BONUS',
+                value: '+' + st.chestBonusPct + '%',
+                color: '#3FAF6E',
+                icon: '',
+                anim: 'glPop 320ms 360ms ease-out both',
+              },
+            ]
       ),
     modalOpen: !!st.modal,
     modalTitle,
     modalRows,
     modalActions,
     modalSliders,
+    modalBar,
+    modalChips,
     modalFooter,
     resetVolumes: app.resetVolumes,
     openPause: app.openPause,

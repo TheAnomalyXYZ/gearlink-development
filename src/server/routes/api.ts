@@ -9,6 +9,7 @@ import type {
   ChallengeResponse,
   ClaimQuestRequest,
   ClaimQuestResponse,
+  DonateResponse,
   DuelChallengeResponse,
   DuelListedRequest,
   DuelOpponentsResponse,
@@ -25,6 +26,7 @@ import type {
   QuestsResponse,
   SubmitRunRequest,
   SubmitRunResponse,
+  WarChestResponse,
 } from '../../shared/api.js';
 import {
   countDuel,
@@ -35,6 +37,7 @@ import {
 } from '../core/profile.js';
 import { isModeratorSafe } from '../core/mods.js';
 import { equipFlair, syncFlairs } from '../core/flair.js';
+import { donate, liveChestBonusPct, loadWarChest } from '../core/warchest.js';
 import {
   recordDuel,
   recordEvent,
@@ -82,6 +85,8 @@ import {
   rollPack,
   runQuestEvents,
   applyDuelDelta,
+  boostedCoins,
+  donationIsLegal,
   verifyRun,
 } from '../../shared/engine/index.js';
 import type { PulledCard } from '../../shared/engine/economy.js';
@@ -220,7 +225,12 @@ api.post('/run', async (c) => {
     );
 
   const { score, state, won, waveCount } = replay;
-  const coinsEarned = Math.floor(score / COINS_PER_SCORE);
+  // The subreddit's war chest pays every battle a share more while it is full.
+  const chestBonusPct = await liveChestBonusPct().catch(() => 0);
+  const coinsEarned = boostedCoins(
+    Math.floor(score / COINS_PER_SCORE),
+    chestBonusPct
+  );
   const isNewBest = !profile.best || score > profile.best.score;
   const best = isNewBest
     ? {
@@ -297,6 +307,7 @@ api.post('/run', async (c) => {
     waves: state.wavesCleared,
     chain: state.maxChain,
     coinsEarned,
+    chestBonusPct,
     isBest,
     rank,
     won,
@@ -878,4 +889,48 @@ api.post('/flair/equip', async (c) => {
   return c.json(
     profileJson(await loadProfile(me.userId, me.username), res.message)
   );
+});
+
+/* ---------- war chest ---------- */
+
+api.get('/warchest', async (c) => {
+  const me = who();
+  if (!me) return unauthorised(c);
+  return c.json<WarChestResponse>({
+    type: 'warChest',
+    chest: await loadWarChest(me.userId),
+  });
+});
+
+/** Give coins to the subreddit's war chest. The amount is the only thing the
+ *  client names; the wallet and the chest are both the server's. */
+api.post('/warchest/donate', async (c) => {
+  const me = who();
+  if (!me) return unauthorised(c);
+  const body: unknown = await c.req.json().catch(() => null);
+  const amount =
+    body && typeof body === 'object' && 'amount' in body ? body.amount : null;
+  if (typeof amount !== 'number' || !donationIsLegal(amount))
+    return c.json<ErrorResponse>(
+      { status: 'error', message: 'not a donation the chest takes' },
+      400
+    );
+  const profile = await loadProfile(me.userId, me.username);
+  const res = await donate(me.userId, me.username, profile, amount);
+  if (!res.ok)
+    return c.json<ErrorResponse>(
+      { status: 'error', message: res.message },
+      400
+    );
+  await recordSpend(me.userId, me.username, 'warchest', 'coins', amount);
+  const [after, chest] = await Promise.all([
+    loadProfile(me.userId, me.username).then((p) => syncFlairs(me.userId, p)),
+    loadWarChest(me.userId),
+  ]);
+  return c.json<DonateResponse>({
+    type: 'warChestDonate',
+    chest,
+    profile: after,
+    message: res.message,
+  });
 });

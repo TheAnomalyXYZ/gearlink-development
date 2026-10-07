@@ -23,6 +23,7 @@ import type {
   Profile,
   ProfileResponse,
   QuestBoard,
+  WarChest,
 } from '../../shared/api.js';
 import type { FtueStep } from '../ftue.js';
 import { DEFAULT_VOLUMES } from '../audio/audio.js';
@@ -96,6 +97,8 @@ export type AppState = {
 
   endT: number;
   coinsEarned: number;
+  /** The war chest bonus the last banked battle was paid at, in percent. */
+  chestBonusPct: number;
   endReason: 'dead' | 'stuck' | 'ended' | 'won' | null;
 
   /** The map node the next run is for. Chosen on the map, kept through the
@@ -153,7 +156,18 @@ export type AppState = {
   ftueSample: { damage: number; killed: boolean };
 
   preview: Preview | null;
-  modal: 'pause' | 'how' | 'board' | 'settings' | 'flair' | null;
+  modal:
+    | 'pause'
+    | 'how'
+    | 'board'
+    | 'settings'
+    | 'flair'
+    | 'warchest'
+    | null;
+  /** This week's war chest, once the panel has fetched it. */
+  warChest: WarChest | null;
+  /** The donation in flight, so a double tap cannot give twice. */
+  donating: number | null;
   homeMenu: boolean;
   /** Music and SFX slider values, 0-100. Read from browser storage on mount. */
   volumes: Volumes;
@@ -251,6 +265,7 @@ export const EMPTY_PROFILE: Profile = {
   duelPrize: null,
   flairs: [],
   flair: null,
+  donated: 0,
 };
 
 /** The design ships mutators as authoring knobs; this build runs the base rules. */
@@ -290,6 +305,7 @@ export const BATTLE_RESET = {
   dying: null,
   swing: null,
   coinsEarned: 0,
+  chestBonusPct: 0,
   runWon: false,
   ascended: false,
   heartPiecesEarned: 0,
@@ -354,6 +370,8 @@ export const INITIAL_STATE: AppState = {
   quests: null,
   questTab: 'daily',
   questClaiming: null,
+  warChest: null,
+  donating: null,
   crispGen: 0,
   fxGen: 0,
   wmFocused: false,

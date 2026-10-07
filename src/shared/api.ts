@@ -48,6 +48,8 @@ export type Profile = {
   flairs: string[];
   /** The unlocked flair this player chose to wear, or null for none. */
   flair: string | null;
+  /** Coins this player has given to the subreddit's war chest, over all weeks. */
+  donated: number;
 };
 
 export type BestRun = {
@@ -108,7 +110,10 @@ export type SubmitRunResponse = {
   score: number;
   waves: number;
   chain: number;
+  /** Already includes the war chest's bonus. */
   coinsEarned: number;
+  /** The war chest bonus this battle was paid at, in percent; 0 for none. */
+  chestBonusPct: number;
   isBest: boolean;
   rank: number | null;
   /** The location's boss fell. */
@@ -294,6 +299,42 @@ export type ClaimQuestResponse = {
   type: 'questClaim';
   profile: Profile;
   board: QuestBoard;
+  message: string;
+};
+
+/** One named donor on the war chest. */
+export type WarChestDonor = {
+  username: string;
+  amount: number;
+  /** True for the row belonging to the player asking. */
+  isYou: boolean;
+};
+
+/** This week's war chest, as the asking player sees it. The tiers themselves
+ *  are static and live in `shared/engine/warchest.ts`. */
+export type WarChest = {
+  /** Coins in the chest this week. */
+  total: number;
+  /** The battle-coin bonus live right now, in percent. */
+  bonusPct: number;
+  /** What the asking player has given this week. */
+  yours: number;
+  /** Biggest donors this week, biggest first. */
+  top: WarChestDonor[];
+  /** How many players have given anything this week. */
+  donors: number;
+  /** When the chest empties, in epoch ms (Monday 00:00 UTC). */
+  resetAt: number;
+};
+
+export type WarChestResponse = { type: 'warChest'; chest: WarChest };
+
+export type DonateRequest = { amount: number };
+
+export type DonateResponse = {
+  type: 'warChestDonate';
+  chest: WarChest;
+  profile: Profile;
   message: string;
 };
 

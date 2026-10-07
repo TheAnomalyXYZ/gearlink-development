@@ -52,6 +52,7 @@ const profile: Profile = {
   duelPrize: null,
   flairs: ['apprentice'],
   flair: 'apprentice',
+  donated: 300,
 };
 
 /** One of each row state: claimable, in progress, claimed. */
@@ -283,6 +284,7 @@ const fakeApp = (over: Record<string, unknown>): GearLinkApp => {
     pickQuestTab: curried,
     claimQuest: curried,
     equipFlair: curried,
+    donate: curried,
     pickInvTab: curried,
     inspectCard: curried,
     pickGearFilter: curried,
@@ -685,6 +687,45 @@ void test('modals render', () => {
   const flair = renders('flair', { phase: 'home', modal: 'flair' });
   assert.ok(flair.includes('WEARING'));
   assert.ok(flair.includes('TAKE OFF'));
+  const loading = renders('war chest loading', {
+    phase: 'home',
+    modal: 'warchest',
+  });
+  assert.ok(loading.includes('Opening the chest'));
+  const chest = renders('war chest', {
+    phase: 'home',
+    modal: 'warchest',
+    warChest: {
+      total: 6_000,
+      bonusPct: 10,
+      yours: 250,
+      top: [
+        { username: 'smith', amount: 5_750, isYou: false },
+        { username: 'tester', amount: 250, isYou: true },
+      ],
+      donors: 2,
+      resetAt: Date.now() + 3 * 86_400_000,
+    },
+  });
+  assert.ok(chest.includes('+10% BATTLE COINS LIVE'));
+  assert.ok(chest.includes('LIVE'));
+  assert.ok(chest.includes('smith'));
+  assert.ok(chest.includes('(you)'));
+  assert.ok(chest.includes('GIVE 50'));
+  const empty = renders('war chest empty', {
+    phase: 'home',
+    modal: 'warchest',
+    warChest: {
+      total: 0,
+      bonusPct: 0,
+      yours: 0,
+      top: [],
+      donors: 0,
+      resetAt: Date.now() + 86_400_000,
+    },
+  });
+  assert.ok(empty.includes('NO BONUS YET'));
+  assert.ok(empty.includes('No donors yet'));
   const settings = renders('settings', { phase: 'home', modal: 'settings' });
   assert.ok(settings.includes('Background Music'));
   assert.ok(settings.includes('Sound Effects'));

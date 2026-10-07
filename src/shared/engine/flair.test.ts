@@ -15,6 +15,7 @@ const NONE: FlairFacts = {
   bestScore: 0,
   bestChain: 0,
   trophies: 0,
+  donated: 0,
 };
 
 const def = (unlock: FlairDef['unlock']): FlairDef => ({
@@ -47,6 +48,7 @@ void test('each unlock kind is a threshold on its own fact', () => {
     [{ kind: 'bestScore', min: 3 }, 'bestScore'],
     [{ kind: 'bestChain', min: 3 }, 'bestChain'],
     [{ kind: 'trophies', min: 3 }, 'trophies'],
+    [{ kind: 'donated', min: 3 }, 'donated'],
   ];
   for (const [unlock, fact] of cases) {
     assert.equal(flairUnlocked(def(unlock), { ...NONE, [fact]: 2 }), false);
@@ -62,6 +64,7 @@ void test('only flairs not already owned come back as new', () => {
     bestScore: 1e9,
     bestChain: 1e9,
     trophies: 1e9,
+    donated: 1e9,
   };
   assert.deepEqual(newlyUnlockedFlairs(rich, []), all);
   assert.deepEqual(newlyUnlockedFlairs(rich, all), []);

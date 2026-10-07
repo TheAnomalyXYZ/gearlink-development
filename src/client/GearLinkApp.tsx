@@ -842,6 +842,36 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         this.flairBusy = false;
       });
   };
+  /* ---------- war chest ---------- */
+
+  openWarChestFromMenu = (): void => {
+    this.setState({ modal: 'warchest', homeMenu: false });
+    void api
+      .warChest()
+      .then((r) => this.setState({ warChest: r.chest }))
+      .catch(this.fail);
+  };
+
+  /** Give coins to the subreddit's war chest. Both the wallet and the chest
+   *  that come back are the server's. */
+  donate = (amount: number) => (): void => {
+    if (this.state.donating !== null) return;
+    if (this.state.profile.coins < amount) {
+      safeToast(showToast, 'Not enough coins for that donation.');
+      return;
+    }
+    this.setState({ donating: amount });
+    void api
+      .donate(amount)
+      .then((r) => {
+        this.adopt(r.profile);
+        this.setState({ warChest: r.chest });
+        safeToast(showToast, r.message);
+      })
+      .catch(this.fail)
+      .finally(() => this.setState({ donating: null }));
+  };
+
   openSettings = (): void => this.setState({ modal: 'settings' });
   openSettingsFromMenu = (): void =>
     this.setState({ modal: 'settings', homeMenu: false });
@@ -1033,7 +1063,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   private async submitRun(): Promise<void> {
     const spec = this.runSpec;
     if (!this.run || !spec || !this.moves.length) {
-      this.setState({ coinsEarned: 0, runBanked: 'none' });
+      this.setState({ coinsEarned: 0, chestBonusPct: 0, runBanked: 'none' });
       return;
     }
     const moves = this.moves;
@@ -1045,6 +1075,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         profile: res.profile,
         leaderboard: res.leaderboard,
         coinsEarned: res.coinsEarned,
+        chestBonusPct: res.chestBonusPct,
         runWon: res.won,
         ascended: res.ascended,
         heartPiecesEarned: res.heartPiecesEarned,
@@ -1055,7 +1086,11 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       this.refreshQuests();
     } catch (e) {
       // The run is over on screen either way; say plainly that it did not bank.
-      this.setState({ coinsEarned: 0, runBanked: 'failed' });
+      this.setState({
+        coinsEarned: 0,
+        chestBonusPct: 0,
+        runBanked: 'failed',
+      });
       this.fail(e);
     }
   }

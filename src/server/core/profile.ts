@@ -237,6 +237,7 @@ export const loadProfile = async (
       .filter((f) => f.startsWith(FLAIR_FIELD) && h[f] === '1')
       .map((f) => f.slice(FLAIR_FIELD.length)),
     flair: h['flair'] || null,
+    donated: Math.max(0, Math.floor(num(h['donated'], 0))),
   };
 };
 

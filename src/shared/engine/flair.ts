@@ -13,6 +13,7 @@
  * Wearing one is a separate choice: the player picks it from what they have
  * unlocked, and the server sets it as their flair in the subreddit.
  */
+import { PATRON_DONATED } from './warchest.js';
 
 export type FlairTextColor = 'dark' | 'light';
 
@@ -29,7 +30,9 @@ export type FlairUnlock =
   /** Longest link in the best run. */
   | { kind: 'bestChain'; min: number }
   /** Duel trophies, as currently held. */
-  | { kind: 'trophies'; min: number };
+  | { kind: 'trophies'; min: number }
+  /** Coins given to the subreddit's war chest, over all weeks. */
+  | { kind: 'donated'; min: number };
 
 export type FlairDef = {
   /** Stored against unlocks, so a retuned flair keeps its id and one that is
@@ -55,6 +58,7 @@ export type FlairFacts = {
   bestScore: number;
   bestChain: number;
   trophies: number;
+  donated: number;
 };
 
 export const FLAIR_TEXT_MAX = 64;
@@ -80,6 +84,14 @@ export const FLAIRS: FlairDef[] = [
     textColor: 'dark',
     backgroundColor: '#FFC24B',
   },
+  {
+    id: 'patron',
+    text: 'War Chest Patron',
+    blurb: 'Give ' + PATRON_DONATED.toLocaleString('en-US') + ' coins to the war chest.',
+    unlock: { kind: 'donated', min: PATRON_DONATED },
+    textColor: 'dark',
+    backgroundColor: '#AEE45D',
+  },
 ];
 
 export const flairById = (id: string): FlairDef | null =>
@@ -100,6 +112,8 @@ export const flairUnlocked = (def: FlairDef, facts: FlairFacts): boolean => {
       return facts.bestChain >= u.min;
     case 'trophies':
       return facts.trophies >= u.min;
+    case 'donated':
+      return facts.donated >= u.min;
   }
 };
 

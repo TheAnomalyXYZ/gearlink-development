@@ -22,6 +22,7 @@ export const flairFacts = (p: Profile): FlairFacts => ({
   bestScore: p.best?.score ?? 0,
   bestChain: p.best?.chain ?? 0,
   trophies: p.trophies,
+  donated: p.donated,
 });
 
 /**

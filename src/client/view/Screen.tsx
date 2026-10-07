@@ -8354,6 +8354,64 @@ export const Screen = ({ v }: { v: View }) => (
                   >
                     {v.modalTitle}
                   </div>
+                  {v.modalBar ? (
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px',
+                      }}
+                    >
+                      <div
+                        style={{
+                          position: 'relative',
+                          height: '14px',
+                          background: '#1D2956',
+                          border: '2px solid #000000',
+                          borderRadius: '4px',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: v.modalBar.w,
+                            height: '100%',
+                            background: '#FCE270',
+                            boxShadow: '0 -3px 0 0 #FF961D inset',
+                            transition: 'width 400ms ease-out',
+                          }}
+                        />
+                        {v.modalBar.ticks.map((t: any, tI: number) => (
+                          <div
+                            key={tI}
+                            style={{
+                              position: 'absolute',
+                              top: '0',
+                              bottom: '0',
+                              left: t.left,
+                              width: '2px',
+                              marginLeft: '-2px',
+                              background: t.reached ? '#3FAF6E' : '#F0F0F0',
+                            }}
+                          />
+                        ))}
+                      </div>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          fontSize: '10px',
+                        }}
+                      >
+                        <span style={{ color: '#1D2956' }}>
+                          {v.modalBar.label}
+                        </span>
+                        <span style={{ color: v.modalBar.statusColor }}>
+                          {v.modalBar.status}
+                        </span>
+                      </div>
+                    </div>
+                  ) : null}
                   {(v.modalRows || []).map((r: any, rI: number) => (
                     <Fragment key={rI}>
                       <div
@@ -8402,6 +8460,41 @@ export const Screen = ({ v }: { v: View }) => (
                       </div>
                     </Fragment>
                   ))}
+                  {v.modalChips && v.modalChips.length ? (
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      {v.modalChips.map((ch: any, cI: number) => (
+                        <div
+                          key={cI}
+                          onClick={ch.run}
+                          style={{
+                            flex: '1',
+                            cursor: ch.run ? 'pointer' : 'default',
+                            opacity: ch.opacity,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '4px',
+                            minHeight: '40px',
+                            border: '3px solid #000000',
+                            borderRadius: '8px 2px 8px 2px',
+                            background: ch.bg,
+                            boxShadow: ch.shadow,
+                            color: '#000000',
+                            fontFamily: PIXEL,
+                            fontSize: '12px',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          <img
+                            src={ch.icon}
+                            alt=""
+                            style={{ width: '14px', height: '14px' }}
+                          />
+                          {ch.label}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                   {v.modalSliders && v.modalSliders.length ? (
                     <div
                       style={{

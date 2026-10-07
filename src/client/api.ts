@@ -10,6 +10,7 @@ import type {
   ChallengeResponse,
   ClaimQuestResponse,
   CollectPackRequest,
+  DonateResponse,
   DuelChallengeResponse,
   DuelOpponentsResponse,
   DuelResultRequest,
@@ -21,6 +22,7 @@ import type {
   QuestsResponse,
   SubmitRunRequest,
   SubmitRunResponse,
+  WarChestResponse,
 } from '../shared/api.js';
 import type {
   AdminActionResponse,
@@ -88,6 +90,9 @@ export const api = {
   prizeSeen: () => call<ProfileResponse>('/duel/prize/seen', {}),
   equipFlair: (flairId: string | null) =>
     call<ProfileResponse>('/flair/equip', { flairId }),
+  warChest: () => call<WarChestResponse>('/warchest'),
+  donate: (amount: number) =>
+    call<DonateResponse>('/warchest/donate', { amount }),
 };
 
 /** The moderator panel. The server refuses every one of these for anyone else. */
