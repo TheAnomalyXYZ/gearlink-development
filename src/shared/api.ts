@@ -70,8 +70,9 @@ export type LeaderboardEntry = {
   isYou: boolean;
 };
 
-/** A Daily Battle post's fight: its number and the location it is fought at. */
-export type DailyBattle = { day: number; locationId: string };
+/** A Daily Battle post's fight: its number, the location it is fought at,
+ *  and when it closes (the UTC midnight after its day, in ms). */
+export type DailyBattle = { day: number; locationId: string; endsAt: number };
 
 export type InitResponse = {
   type: 'init';

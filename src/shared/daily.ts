@@ -95,8 +95,9 @@ export const dailyLocationId = (day: number): string =>
 
 /** The fight a post dated YYYY-MM-DD holds. */
 export const dailyBattleFor = (dayKey: string): DailyBattle => {
-  const day = dailyNumber(Date.parse(dayKey + 'T00:00:00Z'));
-  return { day, locationId: dailyLocationId(day) };
+  const start = Date.parse(dayKey + 'T00:00:00Z');
+  const day = dailyNumber(start);
+  return { day, locationId: dailyLocationId(day), endsAt: start + DAY_MS };
 };
 
 /** The poster for one day's post. With no ladder given it is what a fresh

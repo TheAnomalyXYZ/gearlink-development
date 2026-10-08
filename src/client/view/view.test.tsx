@@ -379,7 +379,7 @@ const renders = (label: string, over: Record<string, unknown>) => {
 };
 
 void test("a Daily Battle's end screen reports the day's ladder", () => {
-  const daily = { day: 4, locationId: 'caves' };
+  const daily = { day: 4, locationId: 'caves', endsAt: 0 };
   const won = buildView(
     fakeApp({
       phase: 'end',

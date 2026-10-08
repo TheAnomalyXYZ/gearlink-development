@@ -64,5 +64,6 @@ void test("a day is fought at the map location in its foe's region", () => {
   assert.deepEqual(dailyBattleFor('2026-10-01'), {
     day: 1,
     locationId: dailyLocationId(1),
+    endsAt: Date.parse('2026-10-02T00:00:00Z'),
   });
 });

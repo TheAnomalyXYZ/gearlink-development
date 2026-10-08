@@ -135,7 +135,7 @@ const GiveableChest = ({
       signedIn={signedIn}
       busy={busy}
       onGive={give}
-      cta={<Enter label="OPEN GEARLINK" />}
+      cta={<Enter label="PLAY" />}
     />
   );
 };
@@ -197,7 +197,7 @@ export const Splash = () => {
       <Daily
         poster={res.poster}
         cta={<Enter label="PLAY TODAY'S BATTLE" sparkle />}
-        endedCta={<Enter label="OPEN GEARLINK" />}
+        endedCta={<Enter label="PLAY" />}
       />
     );
   return <General cta={<Enter label="PLAY NOW" sparkle />} />;

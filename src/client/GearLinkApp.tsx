@@ -307,7 +307,8 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         // screen against its poster - by way of the duel build if there is no
         // loadout yet, which hands back to that screen once it is saved.
         // Opened from a Daily Battle post: straight into that location's
-        // pre-fight build, whether or not the climb has reached it.
+        // pre-fight build, whether or not the climb has reached it - unless
+        // its day is over, when it opens like any other post.
         () => {
           const foe = res.challenger;
           if (foe) {
@@ -315,7 +316,10 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
             else this.openDuelSetup(foe);
             return;
           }
-          if (res.daily) this.pickLocation(res.daily.locationId)();
+          if (res.daily) {
+            if (Date.now() < res.daily.endsAt)
+              this.pickLocation(res.daily.locationId)();
+          }
           // Opened from a War Chest post: straight to the chest.
           else if (res.warChestPost) this.openWarChest();
         }
