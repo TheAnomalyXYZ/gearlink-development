@@ -698,12 +698,69 @@ a:hover {
     transform: translateY(-38px);
   }
 }
-::-webkit-scrollbar {
-  width: 6px;
+/* Scroll panes keep scrolling but draw no bar. A classic (non-overlay)
+   scrollbar takes its width out of the pane, so a fixed-width grid or card
+   row inside got squeezed or shoved sideways the moment content overflowed.
+   Phones already overlay their scrollbars; this makes desktop match.
+   `scrollbar-width` covers Chrome 121+, Firefox and Safari 18.2+; the
+   webkit rule covers older Safari / WebView. */
+* {
+  scrollbar-width: none;
 }
-::-webkit-scrollbar-thumb {
-  background: #213854;
-  border-radius: 6px;
+::-webkit-scrollbar {
+  display: none;
+}
+/* Stand-in for the hidden bar: see fx/scrollHints.ts. */
+[data-scroll-hints] {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9400;
+}
+.gl-scroll-hint {
+  position: fixed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #000000;
+  border-radius: 50%;
+  background: rgba(11, 16, 32, 0.78);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transition: opacity 0.18s ease-out;
+}
+.gl-scroll-hint.is-on {
+  opacity: 0.9;
+}
+.gl-scroll-hint-up svg {
+  transform: rotate(180deg);
+}
+.gl-scroll-hint-down.is-on {
+  animation: glScrollHintDown 1.1s ease-in-out infinite;
+}
+.gl-scroll-hint-up.is-on {
+  animation: glScrollHintUp 1.1s ease-in-out infinite;
+}
+.is-still .gl-scroll-hint.is-on {
+  animation: none;
+}
+@keyframes glScrollHintDown {
+  0%,
+  100% {
+    transform: translateY(-2px);
+  }
+  50% {
+    transform: translateY(3px);
+  }
+}
+@keyframes glScrollHintUp {
+  0%,
+  100% {
+    transform: translateY(2px);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
 }
 /* ---------------------------------------------------------------------------
    SHELL
