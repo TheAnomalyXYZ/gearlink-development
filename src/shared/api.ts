@@ -86,6 +86,8 @@ export type InitResponse = {
   daily: DailyBattle | null;
   /** Moderators of the subreddit get the admin panel in settings. */
   isModerator: boolean;
+  /** True on a War Chest post: opening it goes straight to the chest. */
+  warChestPost: boolean;
 };
 
 /** A finished run, as the client played it. The server re-runs the moves; the
@@ -251,6 +253,8 @@ export type ChallengeResponse = {
   /** The day's poster on a Daily Battle post. Null on any other post - a
    *  challenge post draws `card`, and a general post draws the plain splash. */
   poster: DailyPoster | null;
+  /** The chest on a War Chest post. Null on any other post. */
+  chest: WarChestPost | null;
   /** Who is reading, when Reddit says. Null for a logged-out visitor. */
   viewer: ChallengeViewer | null;
 };
@@ -320,6 +324,8 @@ export type WarChestDonor = {
 /** This week's war chest, as the asking player sees it. The tiers themselves
  *  are static and live in `shared/engine/warchest.ts`. */
 export type WarChest = {
+  /** Which week this is, counted the way `duelWeekOf` counts. */
+  week: number;
   /** Coins in the chest this week. */
   total: number;
   /** The battle-coin bonus live right now, in percent. */
@@ -332,6 +338,17 @@ export type WarChest = {
   donors: number;
   /** When the chest empties, in epoch ms (Monday 00:00 UTC). */
   resetAt: number;
+};
+
+/** What the inline view of a War Chest post draws. */
+export type WarChestPost = {
+  /** The chest of the week the post was made for. */
+  chest: WarChest;
+  /** That week is over: the post shows its final tally, and giving goes to
+   *  the current week's chest from inside the game. */
+  ended: boolean;
+  /** The reader's wallet, or null for a logged-out visitor. */
+  coins: number | null;
 };
 
 export type WarChestResponse = { type: 'warChest'; chest: WarChest };

@@ -10,6 +10,43 @@
  * and the weekly quests, so one week is one push.
  */
 
+/** Neura Knights' treasure art: the open chest brimming with gold is the
+ *  chest's portrait, the closed one is its menu icon. */
+export const WAR_CHEST_ART = '/art/PocketKnights/Item/Treasure_V2.png';
+export const WAR_CHEST_ICON = '/art/PocketKnights/Icons/TreasureBox.png';
+
+const DAY_MS = 86_400_000;
+
+/** When a chest week opens, in epoch ms. Weeks are counted the way
+ *  `duelWeekOf` counts them: from the epoch, starting Monday 00:00 UTC. */
+export const warChestStartsAt = (week: number): number =>
+  (week * 7 - 3) * DAY_MS;
+
+/** When a chest week empties, in epoch ms. */
+export const warChestEndsAt = (week: number): number =>
+  warChestStartsAt(week + 1);
+
+const MONTHS = [
+  'JAN',
+  'FEB',
+  'MAR',
+  'APR',
+  'MAY',
+  'JUN',
+  'JUL',
+  'AUG',
+  'SEP',
+  'OCT',
+  'NOV',
+  'DEC',
+];
+
+/** "OCT 5" - the Monday a chest week opens on. */
+export const warChestWeekLabel = (week: number): string => {
+  const d = new Date(warChestStartsAt(week));
+  return MONTHS[d.getUTCMonth()] + ' ' + d.getUTCDate();
+};
+
 export type WarChestTier = {
   /** Coins the chest must hold for this tier to be live. */
   at: number;
@@ -41,9 +78,7 @@ export const WAR_CHEST_TOP = 5;
 
 /** Whether `amount` is a donation the server will take. */
 export const donationIsLegal = (amount: number): boolean =>
-  Number.isInteger(amount) &&
-  amount >= MIN_DONATION &&
-  amount <= MAX_DONATION;
+  Number.isInteger(amount) && amount >= MIN_DONATION && amount <= MAX_DONATION;
 
 /** The highest tier a chest holding `total` has reached, or null for none. */
 export const warChestTier = (total: number): WarChestTier | null => {

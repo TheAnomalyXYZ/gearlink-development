@@ -8395,6 +8395,17 @@ export const Screen = ({ v }: { v: View }) => (
                         gap: '6px',
                       }}
                     >
+                      {v.modalBar.art ? (
+                        <img
+                          src={v.modalBar.art}
+                          alt=""
+                          style={{
+                            alignSelf: 'center',
+                            height: '72px',
+                            imageRendering: 'pixelated',
+                          }}
+                        />
+                      ) : null}
                       <div
                         style={{
                           position: 'relative',

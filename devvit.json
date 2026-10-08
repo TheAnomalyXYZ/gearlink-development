@@ -32,6 +32,13 @@
         "location": "subreddit",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/daily-post"
+      },
+      {
+        "label": "Post this week's War Chest",
+        "description": "Put up this week's War Chest post now, if it is not up yet",
+        "location": "subreddit",
+        "forUserType": "moderator",
+        "endpoint": "/internal/menu/warchest-post"
       }
     ]
   },
@@ -40,6 +47,10 @@
       "dailyBattle": {
         "endpoint": "/internal/scheduler/daily-post",
         "cron": "0 0 * * *"
+      },
+      "warChest": {
+        "endpoint": "/internal/scheduler/warchest-post",
+        "cron": "5 0 * * 1"
       }
     }
   },

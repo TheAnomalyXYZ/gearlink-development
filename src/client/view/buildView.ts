@@ -50,6 +50,7 @@ import {
   QUESTS,
   FLAIRS,
   DONATION_AMOUNTS,
+  WAR_CHEST_ART,
   WAR_CHEST_TIERS,
   RARITY_ORDER,
   RARITY_OUTLINE,
@@ -1081,6 +1082,7 @@ export const buildView = (app: GearLinkApp): View => {
     const total = chest ? chest.total : 0;
     modalTitle = 'WAR CHEST';
     modalBar = {
+      art: WAR_CHEST_ART,
       w: Math.min(100, (total / top.at) * 100) + '%',
       label: fmt(total) + ' / ' + fmt(top.at),
       status:

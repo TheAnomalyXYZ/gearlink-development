@@ -150,6 +150,12 @@ const parsePrize = (raw: string | undefined): SeasonPrize | null => {
   }
 };
 
+/** The wallet alone, read without touching the profile. For the feed view,
+ *  which must not create a profile for someone who has only scrolled past -
+ *  the first real visit is what counts a new player. */
+export const peekCoins = async (userId: string): Promise<number> =>
+  num(await redis.hGet(profileKey(userId), 'coins'), STARTING_COINS);
+
 export const loadProfile = async (
   userId: string,
   username: string

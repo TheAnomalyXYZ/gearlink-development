@@ -33,12 +33,18 @@ import {
   countDuel,
   dismissPrize,
   loadProfile,
+  peekCoins,
   profileKey,
   saveProfile,
 } from '../core/profile.js';
 import { isModeratorSafe } from '../core/mods.js';
 import { equipFlair, syncFlairs } from '../core/flair.js';
-import { donate, liveChestBonusPct, loadWarChest } from '../core/warchest.js';
+import {
+  donate,
+  liveChestBonusPct,
+  loadWarChest,
+  readWarChestWeek,
+} from '../core/warchest.js';
 import {
   recordDuel,
   recordEvent,
@@ -93,6 +99,7 @@ import {
   runQuestEvents,
   applyDuelDelta,
   boostedCoins,
+  duelWeekOf,
   donationIsLegal,
   duelRefreshCost,
   verifyRun,
@@ -124,7 +131,7 @@ api.get('/init', async (c) => {
   // Before the profile read: a first read writes the profile, and the visit
   // has to see whether one existed to know if this is a new player.
   await recordVisit(me.userId, me.username);
-  const [profile, leaderboard, challenger, daily, isModerator] =
+  const [profile, leaderboard, challenger, daily, isModerator, chestWeek] =
     await Promise.all([
       // Boot also catches up flair unlocks: one added to the catalogue since
       // the last visit lands for everyone who already qualifies.
@@ -134,6 +141,7 @@ api.get('/init', async (c) => {
       readChallengeFoe(me.postId, me.userId, me.username).catch(() => null),
       readDailyBattle(me.postId).catch(() => null),
       isModeratorSafe(me.userId),
+      readWarChestWeek(me.postId).catch(() => null),
     ]);
   return c.json<InitResponse>({
     type: 'init',
@@ -143,6 +151,7 @@ api.get('/init', async (c) => {
     challenger,
     daily,
     isModerator,
+    warChestPost: chestWeek !== null,
   });
 });
 
@@ -828,26 +837,39 @@ api.post('/duel/result', async (c) => {
  * logged-out visitors too, and it exposes nothing the post title does not.
  */
 api.get('/challenge', async (c) => {
-  const { postId, username } = context;
+  const { postId, username, userId } = context;
   if (!postId)
     return c.json<ChallengeResponse>({
       type: 'challengeCard',
       card: null,
       poster: null,
+      chest: null,
       viewer: null,
     });
   // The reader fills the open side of the plate, so they are looked up with
   // the card. A logged-out visitor has no handle and gets no face, which the
   // card already draws as the anonymous seat.
-  const [card, poster, avatar] = await Promise.all([
+  const [card, poster, chestWeek, avatar] = await Promise.all([
     readChallengeCard(postId),
     readPoster(postId),
+    readWarChestWeek(postId).catch(() => null),
     username ? snoovatarOf(username) : Promise.resolve(''),
   ]);
+  // A War Chest post draws its own week's chest and the reader's wallet, so
+  // giving can happen right there in the feed.
+  const chest =
+    chestWeek === null
+      ? null
+      : {
+          chest: await loadWarChest(userId, chestWeek),
+          ended: chestWeek < duelWeekOf(Date.now()),
+          coins: userId ? await peekCoins(userId) : null,
+        };
   return c.json<ChallengeResponse>({
     type: 'challengeCard',
     card,
     poster: card ? null : poster,
+    chest,
     viewer: username ? { username, avatar } : null,
   });
 });
@@ -969,6 +991,9 @@ api.post('/warchest/donate', async (c) => {
       { status: 'error', message: 'not a donation the chest takes' },
       400
     );
+  // Giving from the feed can be someone's first touch of the game, so it
+  // counts as a visit before the profile read writes one.
+  await recordVisit(me.userId, me.username);
   const profile = await loadProfile(me.userId, me.username);
   const res = await donate(me.userId, me.username, profile, amount);
   if (!res.ok)

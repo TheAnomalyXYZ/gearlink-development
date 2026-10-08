@@ -11,6 +11,7 @@ import type {
   KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent,
 } from 'react';
+import { WAR_CHEST_ICON } from '../../shared/engine/warchest.js';
 
 const TRACK = '#1D2956';
 const FILL = '#FCE370';
@@ -201,12 +202,12 @@ export const MenuIcon = ({ kind }: { kind: string }) =>
       />
     </svg>
   ) : kind === 'chest' ? (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M4 4h16a2 2 0 0 1 2 2v4H2V6a2 2 0 0 1 2-2Zm-2 8h8v2a2 2 0 0 0 4 0v-2h8v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6Zm10-1a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0v-2a1 1 0 0 1 1-1Z"
-        fill={MENU_BLUE}
-      />
-    </svg>
+    <img
+      src={WAR_CHEST_ICON}
+      alt=""
+      aria-hidden
+      style={{ width: '22px', height: '22px', imageRendering: 'pixelated' }}
+    />
   ) : kind === 'flair' ? (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
       <path

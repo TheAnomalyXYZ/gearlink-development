@@ -316,6 +316,8 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
             return;
           }
           if (res.daily) this.pickLocation(res.daily.locationId)();
+          // Opened from a War Chest post: straight to the chest.
+          else if (res.warChestPost) this.openWarChest();
         }
       );
     } catch (e) {
@@ -847,13 +849,16 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   };
   /* ---------- war chest ---------- */
 
-  openWarChestFromMenu = (): void => {
+  openWarChestFromMenu = (): void => this.openWarChest();
+
+  /** Open the chest panel and fetch the week's chest into it. */
+  private openWarChest(): void {
     this.setState({ modal: 'warchest', homeMenu: false });
     void api
       .warChest()
       .then((r) => this.setState({ warChest: r.chest }))
       .catch(this.fail);
-  };
+  }
 
   /** Give coins to the subreddit's war chest. Both the wallet and the chest
    *  that come back are the server's. */

@@ -3,9 +3,10 @@ import './index.css';
 import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { api } from './api.js';
-import type { ChallengeResponse } from '../shared/api.js';
-import { requestExpandedMode } from '@devvit/web/client';
+import type { ChallengeResponse, WarChestPost } from '../shared/api.js';
+import { requestExpandedMode, showToast } from '@devvit/web/client';
 import { Challenge } from './splash-card.js';
+import { Chest } from './splash-chest.js';
 import { Daily } from './splash-daily.js';
 import { General } from './splash-general.js';
 import { PIXEL, SHELL } from './splash-style.js';
@@ -84,6 +85,61 @@ const Enter = ({
   </div>
 );
 
+const toast = (msg: string) => {
+  try {
+    showToast(msg);
+  } catch {
+    /* a toast is a nicety; the card itself shows the new tally */
+  }
+};
+
+/**
+ * A War Chest post, with giving wired up. The donation goes to the server and
+ * the card adopts the chest and wallet that come back, so the bar moves the
+ * moment the coins land - the reader's own gift is the first thing they see.
+ */
+const GiveableChest = ({
+  initial,
+  signedIn,
+}: {
+  initial: WarChestPost;
+  signedIn: boolean;
+}) => {
+  const [post, setPost] = useState(initial);
+  const [busy, setBusy] = useState<number | null>(null);
+
+  const give = (amount: number) => {
+    if (busy !== null) return;
+    setBusy(amount);
+    void api
+      .donate(amount)
+      .then((r) => {
+        setPost((p) =>
+          // A gift that lands after Monday's reset went to the new week's
+          // chest; this post keeps its own week and simply reads as sealed.
+          r.chest.week === p.chest.week
+            ? { chest: r.chest, ended: false, coins: r.profile.coins }
+            : { ...p, ended: true, coins: r.profile.coins }
+        );
+        toast(r.message);
+      })
+      .catch((e: unknown) =>
+        toast(e instanceof Error ? e.message : 'Could not give right now.')
+      )
+      .finally(() => setBusy(null));
+  };
+
+  return (
+    <Chest
+      post={post}
+      signedIn={signedIn}
+      busy={busy}
+      onGive={give}
+      cta={<Enter label="OPEN GEARLINK" />}
+    />
+  );
+};
+
 /**
  * The inline view, as it appears in the feed.
  *
@@ -92,9 +148,10 @@ const Enter = ({
  * with finished image paths, so nothing here has to know what a rank or a
  * piece of gear looks like.
  *
- * Three answers. A CHALLENGE post gets the duellist who made it. A Daily
+ * Four answers. A CHALLENGE post gets the duellist who made it. A Daily
  * Battle post gets the day's poster - its foe, its region and the top of its
- * own ladder. Every other post is the general GearLink splash. Until
+ * own ladder. A War Chest post gets the subreddit's chest, with giving right
+ * there in the feed. Every other post is the general GearLink splash. Until
  * the answer lands the card is a bare dark shell, so a challenge or daily post
  * never flashes the general splash first; if the lookup fails, the general
  * splash is drawn.
@@ -115,6 +172,7 @@ export const Splash = () => {
             type: 'challengeCard',
             card: null,
             poster: null,
+            chest: null,
             viewer: null,
           });
       });
@@ -132,6 +190,8 @@ export const Splash = () => {
         cta={<Enter label="ACCEPT THE CHALLENGE" sparkle />}
       />
     );
+  if (res.chest)
+    return <GiveableChest initial={res.chest} signedIn={!!res.viewer} />;
   if (res.poster)
     return (
       <Daily
