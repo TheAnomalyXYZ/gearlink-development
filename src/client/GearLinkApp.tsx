@@ -149,6 +149,11 @@ import { Timers } from './state/timers.js';
 import { buildView } from './view/buildView.js';
 import { Screen } from './view/Screen.js';
 import type { FxRect } from './fx/fx.js';
+import {
+  capture as capturePage,
+  play as playPage,
+} from './fx/pageTransition.js';
+import type { PageSnap } from './fx/pageTransition.js';
 import { juice } from './juice.js';
 import { paletteFor } from './view/tilePalette.js';
 
@@ -265,8 +270,24 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     window.addEventListener('orientationchange', this.measureFtue);
   }
 
-  override componentDidUpdate(): void {
+  /** The leaving screen, caught before React swaps it, so it can play out. */
+  override getSnapshotBeforeUpdate(
+    _p: Record<string, never>,
+    prev: AppState
+  ): PageSnap | null {
     const st = this.state;
+    return prev.ready && prev.phase !== st.phase
+      ? capturePage(prev.phase, st.phase)
+      : null;
+  }
+
+  override componentDidUpdate(
+    _p: Record<string, never>,
+    _s: AppState,
+    snap: PageSnap | null
+  ): void {
+    const st = this.state;
+    if (snap) playPage(snap, this.measureFtue);
     if (this.prevPhase !== st.phase) {
       this.prevPhase = st.phase;
       this.syncFtueToPhase();

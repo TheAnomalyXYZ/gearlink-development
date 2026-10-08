@@ -8338,6 +8338,7 @@ export const Screen = ({ v }: { v: View }) => (
         {v.modalOpen ? (
           <>
             <div
+              data-pt-skip
               onClick={v.closeModal}
               style={{
                 position: 'absolute',
@@ -8676,6 +8677,7 @@ export const Screen = ({ v }: { v: View }) => (
         {v.ftueOn ? (
           <>
             <div
+              data-pt-skip
               style={{
                 position: 'absolute',
                 inset: '0',
