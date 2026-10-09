@@ -225,7 +225,7 @@ export const General = ({ cta }: { cta?: ReactNode }) => (
           boxShadow: '0 3px 0 0 rgba(0,0,0,.4)',
         }}
       >
-        MATCH · LINK · SLAY
+        MATCH · LINK · FIGHT
         <span
           className="glk-sheen pointer-events-none absolute inset-y-0 left-0 w-8 -skew-x-12"
           style={{
@@ -297,7 +297,7 @@ export const General = ({ cta }: { cta?: ReactNode }) => (
           textShadow: '0 1px 0 #0B2A5C, 0 0 6px #0B2A5C',
         }}
       >
-        Pick a hero, link your gear, and break every wave they throw at you.
+        Pick a hero, link your gear and take down every wave they throw at you.
       </div>
       {/* The button gets a halo pulsing out from behind it and a little
           nudge every few seconds - it is the one thing here to press. */}

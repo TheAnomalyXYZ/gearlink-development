@@ -20,17 +20,12 @@ export const DUPE_COINS: Record<Rarity, number> = {
 };
 
 /** Real pack art from utils/package.ts, so the shop sells the game's own tiers. */
-const PACK_ART = (n: string) =>
-  '/art/PocketKnights/Item/' + n + 'Pack_V2.png';
+const PACK_ART = (n: string) => '/art/PocketKnights/Item/' + n + 'Pack_V2.png';
 const PACK_GLOW = (n: string) =>
-  '/art/PocketKnights/Packs/CardPack_' +
-  n +
-  '_glow_2x.png';
+  '/art/PocketKnights/Packs/CardPack_' + n + '_glow_2x.png';
 
-export const COIN_ICON =
-  '/art/NeuraKnights/Item/Gold_V2.png';
-export const GEM_ICON =
-  '/art/PocketKnights/Item/Gem_V2.png';
+export const COIN_ICON = '/art/NeuraKnights/Item/Gold_V2.png';
+export const GEM_ICON = '/art/PocketKnights/Item/Gem_V2.png';
 
 export type Currency = 'coins' | 'gems';
 
@@ -64,7 +59,7 @@ export const PACKS: Pack[] = [
       ['Rare', 25],
       ['Epic', 5],
     ],
-    blurb: 'One card. Mostly commons, the odd rare.',
+    blurb: 'One gear card. Mostly commons, the odd rare.',
   },
   {
     id: 'bronze',
@@ -82,7 +77,7 @@ export const PACKS: Pack[] = [
       ['Epic', 13],
       ['Legendary', 2],
     ],
-    blurb: 'One card, guaranteed rare or better.',
+    blurb: 'One gear card, guaranteed rare or better.',
   },
   {
     id: 'silver',
@@ -100,7 +95,7 @@ export const PACKS: Pack[] = [
       ['Epic', 27],
       ['Legendary', 3],
     ],
-    blurb: 'One card, guaranteed epic or better.',
+    blurb: 'One gear card, guaranteed epic or better.',
   },
   {
     id: 'gold',
@@ -118,7 +113,7 @@ export const PACKS: Pack[] = [
       ['Epic', 42],
       ['Legendary', 8],
     ],
-    blurb: 'One card, epic floor and the best legendary odds.',
+    blurb: 'One gear card, epic floor and the best legendary odds.',
   },
 ];
 

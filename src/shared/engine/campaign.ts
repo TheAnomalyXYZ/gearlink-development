@@ -27,6 +27,8 @@ export type Location = {
   king?: boolean;
   /** One line for the map card. */
   blurb: string;
+  /** The end screen's line when this location falls. */
+  victory: string;
   /** The pin sprite's key under `/art/PocketKnights/Map/`. */
   pin: string;
   /** Where the pin sits on the map art, as percentages of it. The artwork is
@@ -48,6 +50,8 @@ export const LOCATIONS: Location[] = [
     minWaves: 3,
     maxWaves: 3,
     blurb: 'Bandits on the road. Short, and it forgives a bad link.',
+    victory:
+      'The Bandit Leader runs for the hills and the road through Greenwood is clear. The Old Bridge waits beyond the trees.',
     pin: '02_Forest',
     at: { bottom: '19%', left: '7.75%' },
     pinW: 152,
@@ -61,6 +65,8 @@ export const LOCATIONS: Location[] = [
     minWaves: 3,
     maxWaves: 4,
     blurb: 'The toll is paid in HP. The troll hits like a wall falling.',
+    victory:
+      'The troll goes over the rail and the bridge is yours, toll-free. Something drips in the caves ahead.',
     pin: '03_Bridge',
     at: { bottom: '35%', right: '8.75%' },
     pinW: 110,
@@ -74,6 +80,8 @@ export const LOCATIONS: Location[] = [
     minWaves: 3,
     maxWaves: 4,
     blurb: 'Big pools, slow swings. Bring something that keeps hitting.',
+    victory:
+      'The Cave Mother splits one last time and stays down. Past the caves, the lamps of Ghost Town flicker.',
     pin: '04_Caves',
     at: { bottom: '42.5%', left: '3%' },
     pinW: 138,
@@ -87,6 +95,8 @@ export const LOCATIONS: Location[] = [
     minWaves: 4,
     maxWaves: 5,
     blurb: 'Five waves of dead men. Block is worth more than damage here.',
+    victory:
+      'The Phantom Warlord fades with the dawn and the town falls quiet. The cold of Frostspire bites from here.',
     pin: '05_Ghost_Town',
     at: { top: '27.75%', right: '2.75%' },
     pinW: 152,
@@ -100,6 +110,8 @@ export const LOCATIONS: Location[] = [
     minWaves: 4,
     maxWaves: 5,
     blurb: 'Armoured and patient. The Queen punishes a wasted turn.',
+    victory:
+      'The Ice Queen shatters and the pass thaws open. Only the Castle and its King remain.',
     pin: '06_Mountain',
     at: { top: '22.5%', left: '4%' },
     pinW: 160,
@@ -114,6 +126,8 @@ export const LOCATIONS: Location[] = [
     maxWaves: 5,
     king: true,
     blurb: 'The King holds the last wave. Put him down and you ascend.',
+    victory:
+      'The King is down. The map opens again from Greenwood, and everything on it hits harder from here.',
     pin: '07_Castle',
     at: { top: '2.5%', right: '1.25%' },
     pinW: 164,

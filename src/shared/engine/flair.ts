@@ -71,7 +71,7 @@ export const FLAIRS: FlairDef[] = [
   {
     id: 'apprentice',
     text: 'Apprentice Smith',
-    blurb: 'Play GearLink.',
+    blurb: 'Play Gearlink.',
     unlock: { kind: 'free' },
     textColor: 'dark',
     backgroundColor: '#B5C0FF',
@@ -87,7 +87,10 @@ export const FLAIRS: FlairDef[] = [
   {
     id: 'patron',
     text: 'War Chest Patron',
-    blurb: 'Give ' + PATRON_DONATED.toLocaleString('en-US') + ' coins to the war chest.',
+    blurb:
+      'Give ' +
+      PATRON_DONATED.toLocaleString('en-US') +
+      ' coins to the war chest.',
     unlock: { kind: 'donated', min: PATRON_DONATED },
     textColor: 'dark',
     backgroundColor: '#AEE45D',

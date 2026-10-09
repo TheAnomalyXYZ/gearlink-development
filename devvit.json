@@ -20,8 +20,8 @@
   "menu": {
     "items": [
       {
-        "label": "Create a GearLink post",
-        "description": "Post a general GearLink post to play from or pin",
+        "label": "Create a Gearlink post",
+        "description": "Post a general Gearlink post to play from or pin",
         "location": "subreddit",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/post-create"

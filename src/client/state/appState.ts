@@ -187,6 +187,8 @@ export type AppState = {
   fxGen: number;
   /** The World Map has a location focused: the HUD and nav tuck away. */
   wmFocused: boolean;
+  /** Bumped by the FIGHT tab on the map: the map focuses the next location. */
+  wmFocusReq: number;
 
   /* Which flow the hero and gear steps are serving. They are the same two
      screens either way; what changes is where the five they build ends up -
@@ -372,6 +374,7 @@ export const INITIAL_STATE: AppState = {
   crispGen: 0,
   fxGen: 0,
   wmFocused: false,
+  wmFocusReq: 0,
   flow: 'run',
   runSaved: null,
   duelSetup: null,

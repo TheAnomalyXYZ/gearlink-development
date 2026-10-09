@@ -31,6 +31,11 @@ export type WorldMapProps = {
   pitch?: number;
   /** Spinning light rays behind the focused location. */
   showRays?: boolean;
+  /** The location the climb is up to. It carries a FIGHT HERE cue on the
+   *  map, so a first-time player knows which pin to tap. */
+  nextId?: string | null;
+  /** Bumped by the host to focus `nextId`, as if its pin had been tapped. */
+  focusRequest?: number;
 };
 
 type Phase = 'map' | 'dip' | 'focus' | 'exit';
@@ -99,7 +104,9 @@ const PIXEL_FONT = "var(--gl-pixel,'Yoster Island'),Volter,monospace";
 /** Sprite heights (the width is the campaign's `pinW`) and the castle's
  *  faster idle. Everything else comes from campaign.ts. */
 const PIN_SIZE: Record<string, { h: number; fms?: number }> = {
-  forest: { h: 134 },
+  // The forest's canopy sheet bobs ~6px where the others barely move, so at
+  // the shared 180ms it read as the map pointing at it. Slowed to match.
+  forest: { h: 134, fms: 320 },
   bridge: { h: 102 },
   caves: { h: 132 },
   ghost: { h: 162 },
@@ -318,6 +325,17 @@ export class WorldMap extends Component<WorldMapProps, WorldMapState> {
       if (this.stageEl) this.ro.observe(this.stageEl);
     }
     measure();
+  }
+
+  override componentDidUpdate(prev: WorldMapProps): void {
+    const { focusRequest, nextId, lockedIds } = this.props;
+    if (
+      focusRequest !== prev.focusRequest &&
+      nextId &&
+      this.state.phase === 'map' &&
+      !lockedIds.includes(nextId)
+    )
+      this.focus(nextId);
   }
 
   override componentWillUnmount(): void {
@@ -876,6 +894,7 @@ export class WorldMap extends Component<WorldMapProps, WorldMapState> {
                     pitch,
                     rays,
                     locked: locks.includes(g.L.id),
+                    cue: phase === 'map' && g.L.id === this.props.nextId,
                     sw,
                     sh,
                   })
@@ -1040,11 +1059,13 @@ export class WorldMap extends Component<WorldMapProps, WorldMapState> {
       pitch: number;
       rays: boolean;
       locked: boolean;
+      cue: boolean;
       sw: number;
       sh: number;
     }
   ) {
-    const { sel, F, D, E, fg, rank, b, P, pitch, rays, locked, sw, sh } = o;
+    const { sel, F, D, E, fg, rank, b, P, pitch, rays, locked, cue, sw, sh } =
+      o;
     const L = g.L;
     const me = L.id === sel;
     const H = this.h(L.id);
@@ -1327,6 +1348,48 @@ export class WorldMap extends Component<WorldMapProps, WorldMapState> {
             </div>
           </div>
         </div>
+        {cue ? (
+          <div
+            style={{
+              position: 'absolute',
+              left: '50%',
+              bottom: '92%',
+              transform: 'translate3d(-50%,0,2px)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              pointerEvents: 'none',
+              animation: 'wmCue 1.4s ease-in-out infinite',
+            }}
+          >
+            <div
+              style={{
+                padding: '4px 8px 3px',
+                border: '2px solid #141D2E',
+                borderRadius: 4,
+                background: '#FCE370',
+                boxShadow: '0 2px 0 rgba(0,0,0,.35)',
+                color: '#141D2E',
+                fontFamily: PIXEL_FONT,
+                fontSize: 11,
+                lineHeight: 1,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              FIGHT HERE
+            </div>
+            <div
+              style={{
+                width: 0,
+                height: 0,
+                marginTop: -1,
+                borderLeft: '6px solid transparent',
+                borderRight: '6px solid transparent',
+                borderTop: '7px solid #141D2E',
+              }}
+            />
+          </div>
+        ) : null}
       </div>
     );
   }

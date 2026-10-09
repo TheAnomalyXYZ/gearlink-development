@@ -566,6 +566,8 @@ export const Screen = ({ v }: { v: View }) => (
                 <WorldMap
                   embedded
                   lockedIds={v.wmLocked}
+                  nextId={v.wmNext}
+                  focusRequest={v.wmFocusReq}
                   onEnter={v.wmEnter}
                   onFocusChange={v.wmFocus}
                 />
@@ -8280,8 +8282,12 @@ export const Screen = ({ v }: { v: View }) => (
                     lineHeight: '1.05',
                     textAlign: 'center',
                     textWrap: 'balance',
+                    gap: '8px',
                   }}
                 >
+                  {v.endActionIcon ? (
+                    <MenuIcon kind={v.endActionIcon} color="#000000" />
+                  ) : null}
                   {v.endActionLabel}
                 </div>
                 <div
@@ -8303,8 +8309,10 @@ export const Screen = ({ v }: { v: View }) => (
                     lineHeight: '1.05',
                     textAlign: 'center',
                     textWrap: 'balance',
+                    gap: '8px',
                   }}
                 >
+                  <MenuIcon kind="home" color="#000000" />
                   HOME
                 </div>
                 <div
@@ -8326,8 +8334,10 @@ export const Screen = ({ v }: { v: View }) => (
                     lineHeight: '1.05',
                     textAlign: 'center',
                     textWrap: 'balance',
+                    gap: '8px',
                   }}
                 >
+                  <MenuIcon kind="board" color="#000000" />
                   BLACKSMITHS
                 </div>
               </div>
@@ -8459,50 +8469,68 @@ export const Screen = ({ v }: { v: View }) => (
                   ) : null}
                   {(v.modalRows || []).map((r: any, rI: number) => (
                     <Fragment key={rI}>
-                      <div
-                        onClick={r.run}
-                        style={{
-                          cursor: r.run ? 'pointer' : 'default',
-                          display: 'flex',
-                          gap: '10px',
-                          alignItems: 'baseline',
-                          justifyContent: 'space-between',
-                          borderBottom: '1px solid #D8DCE6',
-                          paddingBottom: '8px',
-                        }}
-                      >
+                      {/* A heading row breaks one list into sections, e.g. the
+                          war chest's tiers from its donors. */}
+                      {r.heading ? (
                         <div
                           style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '3px',
+                            marginTop: '8px',
+                            padding: '7px 8px 6px',
+                            borderRadius: '2px',
+                            background: '#1D2956',
+                            color: '#FCE370',
+                            fontFamily: PIXEL,
+                            fontSize: '11px',
                           }}
                         >
-                          <div style={{ fontSize: '11px', color: '#1D2956' }}>
-                            {r.title}
+                          {r.heading}
+                        </div>
+                      ) : (
+                        <div
+                          onClick={r.run}
+                          style={{
+                            cursor: r.run ? 'pointer' : 'default',
+                            display: 'flex',
+                            gap: '10px',
+                            alignItems: 'baseline',
+                            justifyContent: 'space-between',
+                            borderBottom: '1px solid #D8DCE6',
+                            paddingBottom: '8px',
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '3px',
+                            }}
+                          >
+                            <div style={{ fontSize: '11px', color: '#1D2956' }}>
+                              {r.title}
+                            </div>
+                            <div
+                              style={{
+                                fontSize: '10px',
+                                color: '#8B7355',
+                                lineHeight: '1.6',
+                              }}
+                            >
+                              {r.detail}
+                            </div>
                           </div>
                           <div
                             style={{
                               fontSize: '10px',
-                              color: '#8B7355',
+                              color: r.metaColor,
+                              whiteSpace: 'pre-line',
+                              textAlign: 'right',
                               lineHeight: '1.6',
                             }}
                           >
-                            {r.detail}
+                            {r.meta}
                           </div>
                         </div>
-                        <div
-                          style={{
-                            fontSize: '10px',
-                            color: r.metaColor,
-                            whiteSpace: 'pre-line',
-                            textAlign: 'right',
-                            lineHeight: '1.6',
-                          }}
-                        >
-                          {r.meta}
-                        </div>
-                      </div>
+                      )}
                     </Fragment>
                   ))}
                   {v.modalChips && v.modalChips.length ? (

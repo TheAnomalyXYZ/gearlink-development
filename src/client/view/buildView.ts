@@ -340,18 +340,24 @@ export const buildView = (app: GearLinkApp): View => {
           ? 'UPGRADING...'
           : affordable
             ? '+' + HP_PER_HEART_CONTAINER + ' MAX HP'
-            : HEART_PIECES_PER_CONTAINER - pieces === 1
-              ? 'NEED 1 MORE PIECE'
-              : 'NEED ' +
-                (HEART_PIECES_PER_CONTAINER - pieces) +
-                ' MORE PIECES',
+            : // Says what the pieces are FOR, not just that more are missing.
+              'GET ' +
+              (HEART_PIECES_PER_CONTAINER - pieces) +
+              ' MORE FOR +' +
+              HP_PER_HEART_CONTAINER +
+              ' HP',
       // A dead handler rather than a live one that the server would refuse.
       upgradeRun: canUp ? app.upgradeHp(k) : null,
       upgradeBg: canUp ? BTN.tertiary.bg : BTN.disabled.bg,
       upgradeShadow: canUp ? BTN.tertiary.shadow : BTN.disabled.shadow,
       upgradeCursor: canUp ? 'pointer' : 'default',
       upgradeOpacity: canUp ? 1 : 0.65,
-      upgradeCost: capped ? '' : HEART_PIECES_PER_CONTAINER + ' PIECES',
+      // Progress toward the next container, so the bar reads as a meter.
+      upgradeCost: capped
+        ? ''
+        : affordable
+          ? 'USES ' + HEART_PIECES_PER_CONTAINER + ' PIECES'
+          : pieces + '/' + HEART_PIECES_PER_CONTAINER + ' PIECES',
     };
   });
 
@@ -1099,7 +1105,10 @@ export const buildView = (app: GearLinkApp): View => {
       const live = total >= t.at;
       return {
         title: '+' + t.bonusPct + '% battle coins',
-        detail: 'At ' + fmt(t.at) + ' coins, for everyone here this week.',
+        detail:
+          'At ' +
+          fmt(t.at) +
+          ' coins, gives bonus to all active players this week.',
         meta: live ? 'LIVE' : fmt(t.at - total) + '\nTO GO',
         metaColor: live ? '#3FAF6E' : '#9DB4D4',
       };
@@ -1122,7 +1131,7 @@ export const buildView = (app: GearLinkApp): View => {
             },
           ];
     modalRows = chest
-      ? [...tierRows, ...donorRows]
+      ? [...tierRows, { heading: 'TOP DONORS THIS WEEK' }, ...donorRows]
       : [
           {
             title: 'Opening the chest...',
@@ -1170,7 +1179,8 @@ export const buildView = (app: GearLinkApp): View => {
         title: f.text,
         detail: f.blurb,
         meta: worn ? 'WEARING' : open ? 'WEAR' : 'LOCKED',
-        metaColor: worn ? '#AEE45D' : open ? '#428FFB' : '#9DB4D4',
+        // A deep green: the old lime was unreadable on the light panel.
+        metaColor: worn ? '#2E8B57' : open ? '#428FFB' : '#9DB4D4',
         run: open && !worn ? app.equipFlair(f.id) : undefined,
       };
     });
@@ -1179,7 +1189,7 @@ export const buildView = (app: GearLinkApp): View => {
       ...(st.profile.flair
         ? [
             {
-              label: 'TAKE OFF',
+              label: 'REMOVE',
               run: app.equipFlair(null),
               bg: BTN.primary.bg,
               shadow: BTN.primary.shadow,
@@ -2695,7 +2705,7 @@ export const buildView = (app: GearLinkApp): View => {
       },
       {
         label: 'FIGHT',
-        run: app.goMap,
+        run: app.goFight,
         img: NAV_ICON.fight,
         icon: '34px',
         active: true,
@@ -2829,6 +2839,10 @@ export const buildView = (app: GearLinkApp): View => {
     wmLocked: LOCATIONS.filter(
       (loc, i) => !(i <= st.profile.progress || loc.id === st.daily?.locationId)
     ).map((loc) => loc.id),
+    wmNext:
+      LOCATIONS[Math.min(st.profile.progress, LOCATIONS.length - 1)]?.id ??
+      null,
+    wmFocusReq: st.wmFocusReq,
     // ENTER on the diorama runs the same pickLocation a pin panel did.
     wmEnter: (id: string) => {
       const i = LOCATIONS.findIndex((loc) => loc.id === id);
@@ -2857,15 +2871,16 @@ export const buildView = (app: GearLinkApp): View => {
     heartIcon: HEART_PIECE_ICON,
     heartPieces: pieces,
     heartPiecesDisplay: st.flow === 'duel' ? 'none' : 'flex',
-    heartPiecesLabel: pieces + ' HEART PIECE' + (pieces === 1 ? '' : 'S'),
+    heartPiecesLabel:
+      'YOU HAVE ' + pieces + ' HEART PIECE' + (pieces === 1 ? '' : 'S'),
     heartPiecesNote:
-      'Location bosses drop them. ' +
+      "Beat a location's boss for the first time to earn one. Every " +
       HEART_PIECES_PER_CONTAINER +
-      ' make a container: +' +
+      ' pieces give the hero you pick +' +
       HP_PER_HEART_CONTAINER +
-      ' max HP for one hero, up to ' +
+      ' max HP for good (up to ' +
       MAX_HEART_CONTAINERS +
-      '.',
+      ' times).',
     isHeroStep: st.phase === 'hero',
     isGearStep: st.phase === 'gear',
     /* The hero and gear screens serve both flows, so their footers name the
@@ -3085,7 +3100,8 @@ export const buildView = (app: GearLinkApp): View => {
       : st.endReason === 'won'
         ? st.ascended
           ? 'The King is down. The map opens again from Greenwood, and everything on it hits harder from here.'
-          : 'The elite fell and the road ahead is open. The next location fields more waves and a bigger guard.'
+          : (LOCATIONS.find((loc) => loc.id === st.locationId)?.victory ??
+            'The elite fell and the road ahead is open. The next location fields more waves and a bigger guard.')
         : st.endReason === 'stuck'
           ? 'No legal link left and no bomb to break the board open. Not stranding your last playable colours is part of the skill.'
           : st.endReason === 'ended'
@@ -3093,6 +3109,7 @@ export const buildView = (app: GearLinkApp): View => {
             : 'HP does not come back between waves. Clear the location in one go or not at all.',
     /* Won or lost, the way on is the map - there is nothing else to go back
        to now that a run is one location rather than an endless run. */
+    endActionIcon: dailyRun ? '' : 'map',
     endActionLabel: dailyRun
       ? 'PLAY AGAIN'
       : st.endReason === 'won'

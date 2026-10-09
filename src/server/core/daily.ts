@@ -40,7 +40,7 @@ const submitDailyPost = async (dayKey: string) => {
       '. Who takes the crown today?',
     postData: { ...data },
     textFallback: {
-      text: "Today's GearLink Daily Battle. Fresh ladder, empty crown - open the post to play.",
+      text: "Today's Gearlink Daily Battle. Fresh ladder, empty crown - open the post to play.",
     },
   });
 };

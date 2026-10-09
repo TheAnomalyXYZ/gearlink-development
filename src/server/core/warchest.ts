@@ -156,7 +156,7 @@ const submitWarChestPost = async (week: number) => {
       '% battle coins for everyone!',
     postData: { ...data },
     textFallback: {
-      text: "This week's GearLink War Chest. Give coins from the post to raise everyone's battle coins until Monday.",
+      text: "This week's Gearlink War Chest. Give coins from the post to raise everyone's battle coins until Monday.",
     },
   });
 };

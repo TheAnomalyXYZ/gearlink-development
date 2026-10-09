@@ -56,7 +56,7 @@ export const AdminPanel = ({ onClose }: { onClose: () => void }) => {
     <div className="fixed inset-0 z-[1000] overflow-y-auto bg-zinc-950 font-sans text-zinc-100">
       <div className="mx-auto w-full max-w-3xl p-4">
         <div className="mb-4 flex items-center justify-between gap-2">
-          <h2 className="text-xl font-bold">GearLink Admin</h2>
+          <h2 className="text-xl font-bold">Gearlink Admin</h2>
           <div className="flex gap-2">
             {tab !== 'players' && (
               <button

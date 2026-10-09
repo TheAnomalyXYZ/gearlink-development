@@ -56,7 +56,7 @@ void test('a challenge post shows the duellist, not the game splash', () => {
   for (const g of card.gear)
     assert.ok(html.includes(g.icon), 'gear art ' + g.name + ' is missing');
   assert.ok(
-    !html.includes('break every wave'),
+    !html.includes('take down every wave'),
     'the plain splash leaked into a challenge post'
   );
 });

@@ -97,3 +97,15 @@
     transform: scale(1.04);
   }
 }
+
+/* The FIGHT HERE cue over the next location: a slow bob, so it reads as a
+   pointer rather than competing with the pins' own idle. */
+@keyframes wmCue {
+  0%,
+  100% {
+    transform: translate3d(-50%, 0, 2px);
+  }
+  50% {
+    transform: translate3d(-50%, -5px, 2px);
+  }
+}

@@ -121,7 +121,7 @@ const who = (): Who | null => {
 
 const unauthorised = (c: HonoContext) =>
   c.json<ErrorResponse>(
-    { status: 'error', message: 'Log in to Reddit to play GearLink.' },
+    { status: 'error', message: 'Log in to Reddit to play Gearlink.' },
     401
   );
 

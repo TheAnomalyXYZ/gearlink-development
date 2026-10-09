@@ -16,9 +16,9 @@ import type { HeroClass } from '../../shared/engine/types.js';
  *  The one a moderator pins as the place to play from. */
 export const createPost = async () => {
   return await reddit.submitCustomPost({
-    title: 'GearLink - link your gear, break the wave',
+    title: 'Gearlink - link your gear, break the wave',
     textFallback: {
-      text: 'GearLink: link your gear, break the wave. Open the post to play.',
+      text: 'Gearlink: link your gear, break the wave. Open the post to play.',
     },
   });
 };
@@ -78,7 +78,7 @@ export const createChallengePost = async (
       text:
         'u/' +
         username +
-        ' has listed a new GearLink duel loadout (' +
+        ' has listed a new Gearlink duel loadout (' +
         cls +
         ', ' +
         league.name +

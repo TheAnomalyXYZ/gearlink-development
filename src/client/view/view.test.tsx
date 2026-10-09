@@ -687,7 +687,7 @@ void test('modals render', () => {
   renders('ladder', { phase: 'home', modal: 'board' });
   const flair = renders('flair', { phase: 'home', modal: 'flair' });
   assert.ok(flair.includes('WEARING'));
-  assert.ok(flair.includes('TAKE OFF'));
+  assert.ok(flair.includes('REMOVE'));
   const loading = renders('war chest loading', {
     phase: 'home',
     modal: 'warchest',

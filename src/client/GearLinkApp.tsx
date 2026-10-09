@@ -729,6 +729,14 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     this.goStep('home')();
   };
 
+  /** The FIGHT tab. Away from the map it goes there; ON the map, where it is
+   *  already the active tab, it focuses the next location so pressing it
+   *  leads straight to ENTER instead of doing nothing. */
+  goFight = (): void => {
+    if (this.state.phase !== 'home') return this.goMap();
+    this.setState((s) => ({ wmFocusReq: s.wmFocusReq + 1 }));
+  };
+
   /* ---------- the map ---------- */
 
   mapWrapRef = (el: HTMLElement | null): void => {
