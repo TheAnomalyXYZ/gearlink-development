@@ -310,8 +310,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
 
   /** The profile and the quest board were requested before React mounted (see
    *  `state/boot.ts`); this only waits on them. */
-  private async boot(): Promise<void> {
-    const { init, quests } = bootData();
+  private async boot({ init, quests } = bootData()): Promise<void> {
     try {
       const res = await init;
       this.setState(
@@ -925,6 +924,19 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   };
   closeAdmin = (): void =>
     this.setState({ adminOpen: false, modal: 'settings' });
+  /** The moderator wiped their own account from the admin panel: drop every
+   *  bit of state and boot again, exactly as a first open would, so the FTUE
+   *  plays from the top. Volumes are a device setting and survive. */
+  resetSelf = (message: string): void => {
+    this.timers.clearAll();
+    this.setState({ ...INITIAL_STATE, volumes: this.state.volumes }, () => {
+      safeToast(showToast, message);
+      void this.boot({
+        init: api.init(),
+        quests: api.quests().catch(() => null),
+      });
+    });
+  };
   setMusicVolume = (n: number): void =>
     this.applyVolumes({ ...this.state.volumes, music: n });
   setSfxVolume = (n: number): void =>
@@ -2494,7 +2506,10 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         <Screen v={buildView(this)} />
         {this.state.adminOpen && (
           <Suspense fallback={null}>
-            <AdminPanel onClose={this.closeAdmin} />
+            <AdminPanel
+              onClose={this.closeAdmin}
+              onResetSelf={this.resetSelf}
+            />
           </Suspense>
         )}
       </>

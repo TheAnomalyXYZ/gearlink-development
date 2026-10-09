@@ -116,6 +116,7 @@ export const adminApi = {
       '/admin/user/' + encodeURIComponent(userId) + '/reset',
       {}
     ),
+  resetMe: () => call<AdminActionResponse>('/admin/me/reset', {}),
 };
 
 export { ApiError };

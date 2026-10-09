@@ -267,18 +267,39 @@ admin.post('/user/:userId/gift', async (c) => {
 /**
  * Wipe a player back to a fresh account: profile, this period's quests, any
  * half-open pack, and their place in the duel pool. They stay in the player
- * index (they are still a player), and per-post ladder scores are kept.
+ * index (they are still a player), and per-post ladder scores are kept. The
+ * profile going takes `seenFtue` and the primers with it, so the next open
+ * plays the first-run coaching from the top.
  */
+const wipePlayer = async (userId: string): Promise<void> => {
+  await redis.del(profileKey(userId), `open:${userId}`);
+  await resetQuests(userId);
+  await removeFromPool(userId);
+};
+
 admin.post('/user/:userId/reset', async (c) => {
   const userId = c.req.param('userId');
   const user = await userJson(userId);
   if (!user) return fail(c, 'No such player.', 404);
-  await redis.del(profileKey(userId), `open:${userId}`);
-  await resetQuests(userId);
-  await removeFromPool(userId);
+  await wipePlayer(userId);
   console.log('admin reset by ' + context.username + ' of ' + userId);
   return c.json<AdminActionResponse>({
     type: 'adminAction',
     message: 'Progress reset for ' + user.user.username + '.',
+  });
+});
+
+/**
+ * The moderator's own account, back to day one - for reviewing the first-run
+ * experience without hunting yourself down in the player list.
+ */
+admin.post('/me/reset', async (c) => {
+  const userId = context.userId;
+  if (!userId) return fail(c, 'Not logged in.', 401);
+  await wipePlayer(userId);
+  console.log('admin self-reset by ' + context.username);
+  return c.json<AdminActionResponse>({
+    type: 'adminAction',
+    message: 'Your account is reset. Starting over from the beginning.',
   });
 });
