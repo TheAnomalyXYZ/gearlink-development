@@ -599,6 +599,18 @@ a:hover {
     transform: translateY(0) scale(1);
   }
 }
+/* Monster idle sheets: slide an 8-frame strip one frame per step (the step
+   count lives on the animation shorthand, see buildView). */
+@keyframes glFrames {
+  to {
+    transform: translate3d(-100%, 0, 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-idle] {
+    animation: none !important;
+  }
+}
 @keyframes glLoom {
   0%,
   100% {

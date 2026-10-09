@@ -77,6 +77,7 @@ import {
   isSuper,
   junkDamage,
   magnitudeFor,
+  IDLE_FRAMES,
   monsterUrlFor,
   orbTypeOf,
   packById,
@@ -612,6 +613,13 @@ export const buildView = (app: GearLinkApp): View => {
       turns: bs.turnsUsed,
       bgUrl: st.monPhase === 'dying' && st.dying ? st.dying.bg : disp.bg,
       monsterUrl: st.monPhase === 'dying' && st.dying ? st.dying.url : disp.url,
+      /* Living monsters play their 8-frame idle sheet; the dying one falls
+         back to its still so the death tween reads cleanly. */
+      monsterSheet: st.monPhase === 'dying' ? '' : disp.sheet,
+      monsterIdleAnim:
+        st.monPhase === 'dying' || !disp.sheet
+          ? 'none'
+          : 'glFrames ' + disp.idleSec + 's steps(' + IDLE_FRAMES + ') infinite',
       monsterName:
         st.monPhase === 'dying' && st.dying ? st.dying.name : disp.name,
       monsterOpacity: st.monPhase === 'empty' ? 0 : 1,

@@ -18,6 +18,7 @@ import {
   WAVE_ENEMIES,
   backgroundUrlFor,
   getGearImageUrl,
+  idleSheetFor,
   monsterUrlFor,
 } from './index.js';
 
@@ -39,6 +40,7 @@ const collect = (): string[] => {
   for (const rider of Object.values(RIDERS)) paths.add(rider.icon);
   for (const [name, region] of WAVE_ENEMIES) {
     paths.add(monsterUrlFor(name));
+    paths.add(idleSheetFor(name));
     paths.add(backgroundUrlFor(region));
   }
   paths.add(monsterUrlFor('__unknown__'));

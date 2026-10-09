@@ -85,12 +85,44 @@ export const monsterUrlFor = (name: string): string =>
 export const backgroundUrlFor = (region: string): string =>
   '/art/PocketKnights/Background/' + (BG_FOR[region] ?? 'Forest') + '.png';
 
+/** Frames per idle sheet: each sheet is this many still-sized frames laid out
+ *  left to right, built on the sprite's own pixel grid (Bestiary design). */
+export const IDLE_FRAMES = 8;
+
+/** Seconds per idle loop. Fliers beat fast, heavies breathe slow; anyone not
+ *  listed uses the default. */
+const IDLE_SEC: Record<string, number> = {
+  'Cave Bat': 0.56,
+  'Frost Dragonling': 0.9,
+  Slime: 1.1,
+  'Cave Mother Slime': 1.5,
+  'Wandering Spirit': 1.6,
+  Poltergeist: 1.4,
+  'Phantom Warlord': 1.8,
+  'Bridge Troll': 2.2,
+  'Ice Golem': 2.2,
+  'The King': 2.2,
+};
+const IDLE_SEC_DEFAULT = 1.8;
+
+/** The 8-frame idle sheet for a roster monster, or '' when it has none (the
+ *  Training Dummy stands still). */
+export const idleSheetFor = (name: string): string => {
+  const img = MONSTER_IMG[name];
+  return img ? '/art/NeuraKnights/Monsters/Idle/' + img + '.png' : '';
+};
+
+export const idleSecFor = (name: string): number =>
+  IDLE_SEC[name] ?? IDLE_SEC_DEFAULT;
+
 /** Art and name for one planned wave. The region comes from the LOCATION, not
  *  the monster, so a bandit fought in the Castle stands in the Castle. */
 export const enemyDisplayFor = (name: string, region: string) => ({
   name,
   region,
   url: monsterUrlFor(name),
+  sheet: idleSheetFor(name),
+  idleSec: idleSecFor(name),
   bg: backgroundUrlFor(region),
 });
 

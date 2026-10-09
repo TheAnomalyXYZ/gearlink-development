@@ -2296,7 +2296,9 @@ export const Screen = ({ v }: { v: View }) => (
                       width: 'clamp(96px,22vh,190px)',
                       height: 'clamp(96px,22vh,190px)',
                       opacity: v.monsterOpacity,
-                      backgroundImage: `url(${v.monsterUrl})`,
+                      backgroundImage: v.monsterSheet
+                        ? 'none'
+                        : `url(${v.monsterUrl})`,
                       backgroundSize: 'contain',
                       backgroundRepeat: 'no-repeat',
                       backgroundPosition: 'center bottom',
@@ -2304,6 +2306,37 @@ export const Screen = ({ v }: { v: View }) => (
                       animation: v.monsterAnim,
                     }}
                   >
+                    {/* Idle sheet: one strip of 8 square frames slid a frame
+                        at a time inside a square window; the juice tweens
+                        above still move the whole monster. */}
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: '50%',
+                        bottom: '0',
+                        height: '100%',
+                        aspectRatio: '1 / 1',
+                        maxWidth: '100%',
+                        transform: 'translateX(-50%)',
+                        overflow: 'hidden',
+                        display: v.monsterSheet ? 'block' : 'none',
+                      }}
+                    >
+                      <div
+                        data-idle=""
+                        style={{
+                          position: 'absolute',
+                          left: '0',
+                          top: '0',
+                          width: '800%',
+                          height: '100%',
+                          background: `url(${v.monsterSheet}) 0 0/100% 100% no-repeat`,
+                          imageRendering: 'pixelated',
+                          animation: v.monsterIdleAnim,
+                          willChange: 'transform',
+                        }}
+                      ></div>
+                    </div>
                     <div
                       style={{
                         position: 'absolute',
