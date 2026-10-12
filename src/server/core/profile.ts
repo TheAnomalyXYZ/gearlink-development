@@ -19,6 +19,7 @@ import type { SeasonPrize } from '../../shared/engine/season.js';
 import { removeFromPool } from './duelpool.js';
 import { MAP_LENGTH, MAX_ASCENSION } from '../../shared/engine/campaign.js';
 import { normaliseHearts } from '../../shared/engine/hearts.js';
+import { LEVEL_CONFIG } from '../../shared/engine/level.js';
 import type { Hearts } from '../../shared/engine/hearts.js';
 import type { HeroClass } from '../../shared/engine/types.js';
 
@@ -244,6 +245,8 @@ export const loadProfile = async (
       .map((f) => f.slice(FLAIR_FIELD.length)),
     flair: h['flair'] || null,
     donated: Math.max(0, Math.floor(num(h['donated'], 0))),
+    level: clamp(Math.floor(num(h['level'], 1)), 1, LEVEL_CONFIG.cap),
+    xp: Math.max(0, Math.floor(num(h['xp'], 0))),
   };
 };
 
@@ -288,6 +291,8 @@ export type ProfilePatch = Partial<
     | 'duelPicked'
     | 'duelListed'
     | 'flair'
+    | 'level'
+    | 'xp'
   >
 >;
 
@@ -331,6 +336,12 @@ export const saveProfile = async (
       fields['duelListedWeek'] = String(duelWeekOf(Date.now()));
   }
   if (patch.flair !== undefined) fields['flair'] = patch.flair ?? '';
+  if (patch.level !== undefined)
+    fields['level'] = String(
+      clamp(Math.floor(patch.level), 1, LEVEL_CONFIG.cap)
+    );
+  if (patch.xp !== undefined)
+    fields['xp'] = String(Math.max(0, Math.floor(patch.xp)));
   if (!Object.keys(fields).length) return;
   await redis.hSet(profileKey(userId), fields);
 };

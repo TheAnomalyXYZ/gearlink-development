@@ -4,6 +4,7 @@ import type { PulledCard } from './engine/economy.js';
 import type { DuelFoe } from './engine/duel.js';
 import type { SeasonPrize } from './engine/season.js';
 import type { QuestPeriod, QuestReward } from './engine/quests.js';
+import type { XpResult } from './engine/level.js';
 
 /** Everything the client needs to boot: who the player is, what they own, and
  *  where this post's ladder currently stands. */
@@ -50,6 +51,10 @@ export type Profile = {
   flair: string | null;
   /** Coins this player has given to the subreddit's war chest, over all weeks. */
   donated: number;
+  /** Player level, fed by XP from every location attempt. */
+  level: number;
+  /** XP into the current level. */
+  xp: number;
 };
 
 export type BestRun = {
@@ -128,6 +133,11 @@ export type SubmitRunResponse = {
   /** Heart pieces the boss dropped. Only a location's FIRST clear this
    *  ascension pays, so a cleared location cannot be farmed. */
   heartPiecesEarned: number;
+  /** XP lines, the bar before and after, and the books each level-up granted
+   *  (already in the profile's packs). The victory screen animates from it. */
+  xp: XpResult;
+  /** This run's best link beat the profile's previous best. */
+  isBestLink: boolean;
   profile: Profile;
   leaderboard: LeaderboardEntry[];
 };

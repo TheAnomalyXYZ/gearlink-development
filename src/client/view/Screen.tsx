@@ -16,6 +16,7 @@
 import { Fragment } from 'react';
 import type { ReactNode } from 'react';
 import type { View } from './buildView.js';
+import type { PostView } from './postLayout.js';
 import { MenuIcon, SpeakerIcon, VolumeSlider } from './SettingsControls.js';
 import { WorldMap } from './WorldMap.js';
 import { GENERAL_GEAR } from '../splash-style.js';
@@ -35,6 +36,1201 @@ const withHash = (text: string | number): ReactNode =>
         {part}
       </Fragment>
     ));
+
+/** The main battle board: tiles, the link line and the damage pops. The full
+ *  game's battle and the inline post's battle draw the same one. */
+const MainBoard = ({ v }: { v: View }) => (
+  <div
+    data-juice-board="main"
+    ref={v.setFtueBoard}
+    onPointerDown={v.onDown}
+    onPointerMove={v.onMove}
+    onPointerUp={v.onUp}
+    onPointerCancel={v.onCancel}
+    style={{
+      position: 'relative',
+      width: `${v.boardW}px`,
+      height: `${v.boardH}px`,
+      display: 'grid',
+      gridTemplateColumns: 'repeat(6,minmax(0,1fr))',
+      gridTemplateRows: 'repeat(5,minmax(0,1fr))',
+      gap: '4px',
+      touchAction: 'none',
+      userSelect: 'none',
+      animation: v.boardAnim,
+    }}
+  >
+    {(v.cells || []).map((c: any, cI: number) => (
+      <Fragment key={cI}>
+        <div
+          data-cell={c.i}
+          style={{
+            position: 'relative',
+            minHeight: '0',
+            transform: c.scale,
+            transition: 'transform 160ms cubic-bezier(.34,1.8,.64,1)',
+            zIndex: c.z,
+            opacity: c.cellOpacity,
+            animation: c.anim,
+          }}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              inset: '0',
+              borderRadius: '8px',
+              border: `2px solid ${c.bd}`,
+              background: c.face,
+            }}
+          ></div>
+          <div
+            style={{
+              position: 'absolute',
+              inset: '0',
+              borderRadius: '8px',
+              pointerEvents: 'none',
+              animation: c.glowAnim,
+            }}
+          ></div>
+          <div
+            style={{
+              position: 'absolute',
+              inset: '-3px',
+              borderRadius: '10px',
+              pointerEvents: 'none',
+              boxShadow:
+                '0 0 0 2px #FFF2B0, 0 0 14px 4px rgba(255,242,176,.75)',
+              opacity: c.hintOpacity,
+              animation: c.hintAnim,
+            }}
+          ></div>
+          <div
+            style={{
+              position: 'absolute',
+              inset: '-6px',
+              borderRadius: '9999px',
+              border: '3px solid rgba(255,240,200,.95)',
+              boxShadow: '0 0 18px 6px rgba(255,150,60,.85)',
+              pointerEvents: 'none',
+              opacity: c.ringOpacity,
+              animation: c.ring,
+            }}
+          ></div>
+          <div
+            style={{
+              position: 'absolute',
+              inset: '2px',
+              pointerEvents: 'none',
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                inset: '13%',
+                background: `url(${c.icon}) center/contain no-repeat`,
+                filter: 'drop-shadow(0 2px 0 rgba(0,0,0,.45))',
+              }}
+            ></div>
+          </div>
+          <div
+            style={{
+              position: 'absolute',
+              top: '1px',
+              left: '3px',
+              fontSize: '9px',
+              color: '#FFFFFF',
+              pointerEvents: 'none',
+            }}
+          >
+            {c.order}
+          </div>
+        </div>
+      </Fragment>
+    ))}
+    <svg
+      viewBox={'0 0 100 100'}
+      preserveAspectRatio={'none'}
+      style={{
+        position: 'absolute',
+        inset: '0',
+        width: '100%',
+        height: '100%',
+        pointerEvents: 'none',
+        zIndex: '6',
+        opacity: v.lineOpacity,
+      }}
+    >
+      <polyline
+        points={v.chainPoints}
+        fill={'none'}
+        stroke={'#0B0D1A'}
+        strokeWidth={v.chainUnderW}
+        strokeLinecap={'square'}
+        strokeLinejoin={'miter'}
+        vectorEffect={'non-scaling-stroke'}
+      />
+      <polyline
+        points={v.chainPoints}
+        fill={'none'}
+        stroke={v.chainColor}
+        strokeWidth={v.chainW}
+        strokeLinecap={'square'}
+        strokeLinejoin={'miter'}
+        strokeDasharray={v.chainDash}
+        vectorEffect={'non-scaling-stroke'}
+        style={{
+          animation: 'glDashFlow 520ms linear infinite',
+          filter: v.chainGlow,
+        }}
+      />
+    </svg>
+    {(v.pops || []).map((p: any, pI: number) => (
+      <Fragment key={pI}>
+        <div
+          style={{
+            position: 'absolute',
+            left: '0',
+            right: '0',
+            top: p.top,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+            fontFamily: 'VolterTitle,Volter,monospace',
+            fontSize: p.size,
+            color: p.color,
+            textShadow: '0 2px 0 #141D2E',
+            WebkitTextStroke: '4px #141D2E',
+            paintOrder: 'stroke fill',
+            animation: p.anim,
+          }}
+        >
+          {p.text}
+        </div>
+      </Fragment>
+    ))}
+  </div>
+);
+
+const PX = 'VolterTitle,Volter,monospace';
+const POST_PANEL = {
+  border: '1px solid #213854',
+  borderRadius: '8px 2px 8px 2px',
+  background: 'rgba(8,12,24,.72)',
+};
+const HUD_PILL = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '5px',
+  padding: '3px 8px 4px 4px',
+  border: '2px solid #000000',
+  borderRadius: '6px 2px 6px 2px',
+  background: 'rgba(8,12,24,.88)',
+  whiteSpace: 'nowrap',
+} as const;
+
+/** The enemy's idle sheet (or still sprite) in a square window. */
+const PostSprite = ({ v, size }: { v: View; size: string }) => (
+  <div
+    style={{
+      position: 'absolute',
+      inset: '0',
+      overflow: 'hidden',
+      width: size,
+      height: size,
+      background: v.monsterSheet
+        ? 'none'
+        : `url(${v.monsterUrl}) center bottom/contain no-repeat`,
+      imageRendering: 'pixelated',
+    }}
+  >
+    <div
+      data-idle=""
+      style={{
+        display: v.monsterSheet ? 'block' : 'none',
+        position: 'absolute',
+        left: '0',
+        top: '0',
+        width: '800%',
+        height: '100%',
+        background: `url(${v.monsterSheet}) 0 0/100% 100% no-repeat`,
+        imageRendering: 'pixelated',
+        animation: v.monsterIdleAnim,
+        willChange: 'transform',
+      }}
+    ></div>
+  </div>
+);
+
+/** The battle laid out for a wide inline post (see postLayout.ts). */
+const PostBattle = ({ v, p }: { v: View; p: PostView }) => (
+  <div
+    ref={v.postRootRef}
+    data-juice="column"
+    onClick={p.clear}
+    style={{
+      position: 'relative',
+      flex: '1',
+      minHeight: '0',
+      height: '100%',
+      overflow: 'hidden',
+      fontFamily: 'Volter,ui-monospace,monospace',
+      backgroundColor: p.floor,
+      WebkitTapHighlightColor: 'transparent',
+      userSelect: 'none',
+    }}
+  >
+    <div
+      style={{
+        position: 'absolute',
+        inset: '0',
+        backgroundImage: `url(${p.bgWide})`,
+        backgroundSize: p.bgSize,
+        backgroundPosition: p.bgPos,
+        backgroundRepeat: 'no-repeat',
+        imageRendering: 'pixelated',
+        pointerEvents: 'none',
+      }}
+    ></div>
+    <div
+      style={{
+        position: 'absolute',
+        left: '0',
+        right: '0',
+        top: p.floorTop,
+        bottom: '0',
+        display: p.floorDisplay,
+        flexDirection: 'column',
+        pointerEvents: 'none',
+      }}
+    >
+      <div
+        style={{ height: '5px', flexShrink: '0', background: p.floor1 }}
+      ></div>
+      <div
+        style={{ height: '5px', flexShrink: '0', background: p.floor2 }}
+      ></div>
+      <div
+        style={{ height: '5px', flexShrink: '0', background: p.floor3 }}
+      ></div>
+      <div style={{ flex: '1', background: p.floor }}></div>
+    </div>
+    <div
+      style={{
+        position: 'absolute',
+        left: '0',
+        right: '0',
+        top: p.veilTop,
+        bottom: '0',
+        display: 'flex',
+        flexDirection: 'column',
+        pointerEvents: 'none',
+      }}
+    >
+      <div
+        style={{
+          height: '4px',
+          flexShrink: '0',
+          background: 'rgba(8,12,24,.3)',
+        }}
+      ></div>
+      <div style={{ flex: '1', background: 'rgba(8,12,24,.55)' }}></div>
+    </div>
+
+    {/* top strip: where you are, and the way out to the full game */}
+    <div
+      style={{
+        position: 'absolute',
+        left: '0',
+        right: '0',
+        top: '0',
+        height: '28px',
+        zIndex: '6',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        padding: '0 5px 0 10px',
+        background: 'rgba(8,12,24,.72)',
+        borderBottom: '1px solid rgba(255,242,176,.22)',
+      }}
+    >
+      <div
+        style={{
+          flex: '1',
+          minWidth: '0',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          fontSize: '11px',
+          color: '#9DB4D4',
+          letterSpacing: '.05em',
+        }}
+      >
+        <span style={{ fontFamily: PX, fontSize: '12px', color: '#FCE270' }}>
+          {v.waveLabel}
+        </span>{' '}
+        <span style={{ color: '#FFFFFF' }}>{v.monsterName}</span> ·{' '}
+        {v.locationName} · SCORE{' '}
+        <span style={{ color: '#FFFFFF' }}>{v.score}</span> · TURN{' '}
+        <span style={{ color: '#FFFFFF' }}>{v.turns}</span>
+      </div>
+      <div
+        onClick={p.expand}
+        style={{
+          height: '22px',
+          flexShrink: '0',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '5px',
+          padding: '0 8px',
+          border: '2px solid #000000',
+          borderRadius: '4px 1px 4px 1px',
+          background: '#B5C0FF',
+          boxShadow: 'inset 0 -2px 0 #7E84E6',
+          cursor: 'pointer',
+          fontFamily: PX,
+          fontSize: '10px',
+          lineHeight: '1',
+          color: '#000000',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        ⤢ OPEN IN EXPANDED MODE
+      </div>
+      <div
+        onClick={v.openPause}
+        title="Pause"
+        style={{
+          width: '22px',
+          height: '22px',
+          flexShrink: '0',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '3px',
+          border: '2px solid #000000',
+          borderRadius: '4px 1px 4px 1px',
+          background: '#FCE270',
+          boxShadow: 'inset 0 -2px 0 #FF961D',
+          cursor: 'pointer',
+        }}
+      >
+        <div
+          style={{ width: '3px', height: '9px', background: '#000000' }}
+        ></div>
+        <div
+          style={{ width: '3px', height: '9px', background: '#000000' }}
+        ></div>
+      </div>
+    </div>
+
+    {/* the scene strip: the enemy on its ground line, its intent beside it */}
+    <div
+      style={{
+        position: 'absolute',
+        left: '0',
+        right: '0',
+        top: p.sceneTop,
+        height: p.sceneH,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        pointerEvents: 'none',
+      }}
+    >
+      <div
+        style={{
+          position: 'relative',
+          flexShrink: '0',
+          width: p.spriteW,
+          height: p.spriteW,
+        }}
+      >
+        <div
+          data-juice="monster"
+          style={{
+            position: 'absolute',
+            inset: '0',
+            opacity: v.monsterOpacity,
+            animation: v.monsterAnim,
+          }}
+        >
+          <PostSprite v={v} size="100%" />
+          <div
+            style={{
+              position: 'absolute',
+              inset: '0',
+              display: v.slashDisplay,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                width: '120%',
+                height: '7px',
+                borderRadius: '9999px',
+                background:
+                  'linear-gradient(90deg,rgba(255,255,255,0),#FFFFFF 45%,#FFF2B0 60%,rgba(255,242,176,0))',
+                boxShadow: '0 0 12px 4px rgba(255,255,255,.75)',
+                animation: v.slashAnimA,
+              }}
+            ></div>
+          </div>
+        </div>
+        <div
+          style={{
+            position: 'absolute',
+            left: 'calc(100% + 10px)',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            gap: '7px',
+          }}
+        >
+          <div
+            style={{
+              ...HUD_PILL,
+              paddingLeft: p.intentPadL,
+              transformOrigin: '0 50%',
+              animation: v.intentAnim,
+            }}
+          >
+            <div
+              style={{
+                display: p.intentIconDisplay,
+                width: '20px',
+                height: '20px',
+                background: `url(${v.intentIcon}) center/contain no-repeat`,
+                imageRendering: 'pixelated',
+              }}
+            ></div>
+            <span
+              style={{ fontFamily: PX, fontSize: '12px', color: p.intentColor }}
+            >
+              {p.intentText}
+            </span>
+          </div>
+          <div style={{ ...HUD_PILL, display: p.blockDisplay }}>
+            <div
+              style={{
+                width: '20px',
+                height: '20px',
+                background:
+                  'url(/art/PocketKnights/Battle/Effects/Shield.png) center/contain no-repeat',
+                imageRendering: 'pixelated',
+              }}
+            ></div>
+            <span
+              style={{ fontFamily: PX, fontSize: '12px', color: '#7FF0EA' }}
+            >
+              {p.blockText}
+            </span>
+          </div>
+          <div
+            style={{
+              display: p.dmgDisplay,
+              paddingLeft: '2px',
+              fontSize: '10px',
+              lineHeight: '12px',
+              color: '#FFFFFF',
+              whiteSpace: 'nowrap',
+              textShadow:
+                '1px 0 0 #000000,-1px 0 0 #000000,0 1px 0 #000000,0 -1px 0 #000000',
+            }}
+          >
+            {p.dmgText}
+          </div>
+        </div>
+      </div>
+      <div
+        style={{
+          width: p.frameWpx,
+          height: '14px',
+          flexShrink: '0',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          paddingTop: '3px',
+        }}
+      >
+        <div
+          style={{
+            position: 'relative',
+            flex: '1',
+            height: '8px',
+            border: '2px solid #000000',
+            borderRadius: '2px',
+            background: '#2A1416',
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              inset: '0',
+              background: '#FFB0A8',
+              transformOrigin: '0 50%',
+              transform: `scaleX(${v.enemyFrac})`,
+              transition: 'transform 400ms ease-out 250ms',
+            }}
+          ></div>
+          <div
+            style={{
+              position: 'absolute',
+              inset: '0',
+              background: '#D14141',
+              transformOrigin: '0 50%',
+              transform: `scaleX(${v.enemyFrac})`,
+              transition: 'transform 120ms ease-out',
+            }}
+          ></div>
+        </div>
+        <div
+          style={{
+            flexShrink: '0',
+            fontSize: '10px',
+            lineHeight: '1',
+            color: '#E6EEFA',
+            textShadow: '0 1px 0 #05080F',
+            whiteSpace: 'nowrap',
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          {v.enemyHpShown} / {v.enemyMaxHp}
+        </div>
+      </div>
+    </div>
+
+    {/* the board, in its frame */}
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        position: 'absolute',
+        left: '50%',
+        top: p.boardTop,
+        width: p.frameWpx,
+        height: p.frameHpx,
+        transform: 'translateX(-50%)',
+        border: '1px solid rgba(255,242,176,.55)',
+        borderRadius: '10px',
+        background: 'rgba(20,29,46,.8)',
+        boxShadow: '0 6px 18px rgba(0,0,0,.35)',
+      }}
+    >
+      <div style={{ position: 'absolute', left: '8px', top: '8px' }}>
+        <MainBoard v={v} />
+      </div>
+      {p.narrow ? (
+        <div
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '-13px',
+            transform: 'translateX(-50%)',
+            display: p.comboDisplay,
+            alignItems: 'center',
+            gap: '6px',
+            padding: '2px 10px 3px',
+            border: '2px solid #000000',
+            borderRadius: '6px 2px 6px 2px',
+            background: 'rgba(8,12,24,.92)',
+            whiteSpace: 'nowrap',
+            fontFamily: PX,
+            fontSize: '12px',
+            color: '#FFF2B0',
+            animation: p.comboAnim,
+          }}
+        >
+          {p.comboText}
+        </div>
+      ) : null}
+    </div>
+
+    {p.wide ? (
+      <>
+        <div
+          style={{
+            ...POST_PANEL,
+            position: 'absolute',
+            left: p.gutL,
+            top: p.gutTop,
+            width: p.gutW,
+            transform: 'translateY(-50%)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            padding: '10px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div
+              style={{
+                width: '36px',
+                height: '36px',
+                flexShrink: '0',
+                border: '2px solid #000000',
+                borderRadius: '4px',
+                backgroundImage: `url(${v.heroImg})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center top',
+                imageRendering: 'pixelated',
+                animation: v.playerAnim,
+              }}
+            ></div>
+            <div
+              style={{
+                minWidth: '0',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '2px',
+              }}
+            >
+              <div
+                style={{ fontFamily: PX, fontSize: '13px', color: '#FFFFFF' }}
+              >
+                {p.heroName}
+              </div>
+              <div style={{ fontSize: '10px', color: '#9CF08F' }}>{p.perk}</div>
+            </div>
+          </div>
+          <div
+            data-juice="hero-hp"
+            style={{
+              position: 'relative',
+              height: '10px',
+              border: '2px solid #000000',
+              borderRadius: '2px',
+              background: '#0E2216',
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                height: '100%',
+                width: `${v.playerPct}%`,
+                background: 'linear-gradient(#7BE07A 0 45%,#3FA448 45%)',
+                transition: 'width .3s',
+              }}
+            ></div>
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '6px',
+            }}
+          >
+            <span
+              style={{
+                fontSize: '11px',
+                color: '#E6EEFA',
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              {v.playerHp} / {v.playerMaxHp} HP
+            </span>
+            <PostStatuses v={v} size={24} />
+          </div>
+        </div>
+        <div
+          style={{
+            ...POST_PANEL,
+            position: 'absolute',
+            left: p.gutR,
+            top: p.gutTop,
+            width: p.gutW,
+            transform: 'translateY(-50%)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '10px',
+            textAlign: 'center',
+          }}
+        >
+          <div
+            style={{
+              display: p.comboDisplay,
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '2px',
+            }}
+          >
+            <div
+              style={{
+                fontFamily: PX,
+                fontSize: '34px',
+                lineHeight: '1',
+                color: p.comboColor,
+                WebkitTextStroke: '5px #000000',
+                paintOrder: 'stroke fill',
+                animation: p.comboAnim,
+              }}
+            >
+              {p.comboN}
+            </div>
+            <div
+              style={{
+                fontSize: '10px',
+                letterSpacing: '.12em',
+                color: '#9DB4D4',
+              }}
+            >
+              LINKED
+            </div>
+            <div style={{ fontFamily: PX, fontSize: '13px', color: '#FFF2B0' }}>
+              {p.comboText}
+            </div>
+          </div>
+          <div
+            style={{
+              display: p.hintDisplay,
+              fontSize: '11px',
+              lineHeight: '1.5',
+              color: '#CBD9EC',
+              textWrap: 'pretty',
+            }}
+          >
+            {p.hint}
+          </div>
+        </div>
+      </>
+    ) : null}
+
+    {p.narrow ? (
+      <div
+        style={{
+          position: 'absolute',
+          left: '50%',
+          top: p.rowTop,
+          width: p.frameWpx,
+          height: '28px',
+          transform: 'translateX(-50%)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '0 8px',
+          border: '1px solid #213854',
+          borderRadius: '6px 2px 6px 2px',
+          background: 'rgba(8,12,24,.75)',
+        }}
+      >
+        <div
+          style={{
+            width: '20px',
+            height: '20px',
+            flexShrink: '0',
+            border: '1px solid #000000',
+            borderRadius: '3px',
+            backgroundImage: `url(${v.heroImg})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center top',
+            imageRendering: 'pixelated',
+          }}
+        ></div>
+        <div
+          data-juice="hero-hp"
+          style={{
+            position: 'relative',
+            flex: '1',
+            height: '8px',
+            border: '2px solid #000000',
+            borderRadius: '2px',
+            background: '#0E2216',
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              height: '100%',
+              width: `${v.playerPct}%`,
+              background: '#3FA448',
+              transition: 'width .3s',
+            }}
+          ></div>
+        </div>
+        <span
+          style={{ fontSize: '10px', color: '#E6EEFA', whiteSpace: 'nowrap' }}
+        >
+          {v.playerHp}/{v.playerMaxHp}
+        </span>
+        <PostStatuses v={v} size={18} />
+      </div>
+    ) : null}
+
+    {p.launch ? (
+      <div
+        style={{
+          position: 'absolute',
+          inset: '28px 0 0 0',
+          zIndex: '7',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          background:
+            'linear-gradient(180deg,rgba(8,12,24,.15),rgba(8,12,24,.7))',
+        }}
+      >
+        <div
+          style={{
+            position: 'relative',
+            width: p.launchSprite,
+            height: p.launchSprite,
+            overflow: 'hidden',
+          }}
+        >
+          <PostSprite v={v} size="100%" />
+        </div>
+        <div
+          style={{
+            fontFamily: PX,
+            fontSize: '14px',
+            color: '#FFF2B0',
+            WebkitTextStroke: '4px #000000',
+            paintOrder: 'stroke fill',
+          }}
+        >
+          {v.waveLabel} · {v.locationName}
+        </div>
+        <div
+          style={{
+            width: '160px',
+            height: '8px',
+            border: '2px solid #000000',
+            borderRadius: '2px',
+            background: '#0E2216',
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              height: '100%',
+              width: `${v.playerPct}%`,
+              background: '#3FA448',
+            }}
+          ></div>
+        </div>
+        <div
+          onClick={p.expand}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '46px',
+            padding: '0 34px',
+            border: '3px solid #000000',
+            borderRadius: '8px 2px 8px 2px',
+            background: '#FCE270',
+            boxShadow:
+              '0 -4px 0 0 #FF961D inset, 0 4px 0 0 #FFF inset, 0 2px 0 0 rgba(0,0,0,.25)',
+            fontFamily: PX,
+            fontSize: '20px',
+            color: '#000000',
+            cursor: 'pointer',
+          }}
+        >
+          FIGHT
+        </div>
+      </div>
+    ) : null}
+  </div>
+);
+
+/** The hero's status icons with their stroked counts. */
+const PostStatuses = ({ v, size }: { v: View; size: number }) => (
+  <div
+    data-juice="hero-status"
+    style={{
+      display: 'flex',
+      gap: size > 20 ? '4px' : '3px',
+      flexWrap: 'wrap',
+      justifyContent: 'flex-end',
+    }}
+  >
+    {(v.heroStatuses || []).map((s: any, sI: number) => (
+      <div
+        key={sI}
+        style={{
+          position: 'relative',
+          width: size + 'px',
+          height: size + 'px',
+          background: `url(${s.icon}) center/contain no-repeat`,
+          imageRendering: 'pixelated',
+        }}
+      >
+        <span
+          style={{
+            position: 'absolute',
+            right: '-3px',
+            bottom: '-3px',
+            fontFamily: PX,
+            fontSize: size > 20 ? '10px' : '9px',
+            color: '#FFFFFF',
+            WebkitTextStroke: '3px #000000',
+            paintOrder: 'stroke fill',
+          }}
+        >
+          {s.value}
+        </span>
+      </div>
+    ))}
+  </div>
+);
+
+type HeroSceneView = {
+  planeL: string;
+  planeT: string;
+  planeW: string;
+  planeH: string;
+  bgSize: string;
+  origin: string;
+  map: string;
+  loc: string;
+  locAr: string;
+  stars: string;
+};
+
+/** The night sky, the world map tilted back like a table, and the chosen
+ *  location's sticker standing on it - behind the hero pick and the loadout. */
+const HeroBackdrop = ({ s }: { s: HeroSceneView }) => {
+  const mirror = (side: 'left' | 'right') => (
+    <div
+      style={{
+        position: 'absolute',
+        top: '0',
+        [side]: '-100%',
+        width: '100%',
+        height: '100%',
+        background: `url(${s.map}) 0 0/${s.bgSize} no-repeat`,
+        imageRendering: 'pixelated',
+        transform: 'scaleX(-1)',
+        boxShadow: 'inset 0 0 0 9999px rgba(11,16,32,.4)',
+      }}
+    ></div>
+  );
+  return (
+    <>
+      <div
+        style={{
+          position: 'absolute',
+          left: '0',
+          top: '0',
+          width: '2px',
+          height: '2px',
+          boxShadow: s.stars,
+          animation: 'glHTwinkle 3.4s steps(3,end) infinite',
+          pointerEvents: 'none',
+        }}
+      ></div>
+      <div
+        style={{
+          position: 'absolute',
+          inset: '0',
+          perspective: '900px',
+          perspectiveOrigin: '50% 30%',
+          pointerEvents: 'none',
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            left: s.planeL,
+            top: s.planeT,
+            width: s.planeW,
+            height: s.planeH,
+            background: `url(${s.map}) 0 0/${s.bgSize} no-repeat`,
+            imageRendering: 'pixelated',
+            transformOrigin: s.origin,
+            transform: 'rotateX(58deg)',
+            animation: 'glPlaneIn 700ms cubic-bezier(.3,1.25,.45,1) both',
+          }}
+        >
+          {mirror('left')}
+          {mirror('right')}
+        </div>
+      </div>
+      <div
+        style={{
+          position: 'absolute',
+          left: '50%',
+          top: '36cqh',
+          height: 'min(22cqh,30cqw)',
+          aspectRatio: s.locAr,
+          transform: 'translate(-50%,-100%)',
+          pointerEvents: 'none',
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            inset: '0',
+            background: `url(${s.loc}) center bottom/100% 100% no-repeat`,
+            imageRendering: 'pixelated',
+            transformOrigin: '50% 100%',
+            animation: 'glLocBob 3.1s ease-in-out infinite',
+          }}
+        ></div>
+      </div>
+      <div
+        style={{
+          position: 'absolute',
+          left: '0',
+          right: '0',
+          top: '34cqh',
+          bottom: '0',
+          background:
+            'linear-gradient(180deg,rgba(8,12,24,0),rgba(8,12,24,.45) 30%,rgba(8,12,24,.78))',
+          pointerEvents: 'none',
+        }}
+      ></div>
+    </>
+  );
+};
+
+type HeroStandView = {
+  ar: string;
+  standT?: string;
+  standO?: number;
+  raysO?: number;
+  sway: string;
+  float: string;
+  stL: string;
+  stT: string;
+  stW: string;
+  stH: string;
+  sticker: string;
+  stickO?: number;
+  body: string;
+  shineD?: string;
+};
+
+/** A hero standing as a die-cut sticker: rays behind, a contact shadow under,
+ *  a gentle sway, and a sheen sweeping across the sprite. */
+const HeroStand = ({
+  h,
+  height,
+  rays,
+}: {
+  h: HeroStandView;
+  height: string;
+  rays: string;
+}) => (
+  <div
+    style={{
+      position: 'relative',
+      height,
+      aspectRatio: h.ar,
+      transform: h.standT,
+      transformOrigin: '50% 100%',
+      transition:
+        'transform 380ms cubic-bezier(.3,1.7,.5,1),opacity 200ms ease',
+      opacity: h.standO ?? 1,
+    }}
+  >
+    <div
+      style={{
+        position: 'absolute',
+        left: '50%',
+        top: '48%',
+        width: '240%',
+        aspectRatio: '1/1',
+        transform: 'translate(-50%,-50%)',
+        opacity: h.raysO ?? 1,
+        transition: 'opacity 300ms ease',
+        pointerEvents: 'none',
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          inset: '0',
+          background: `repeating-conic-gradient(from 0deg,${rays} 0deg 7deg,rgba(255,242,176,0) 7deg 22.5deg)`,
+          WebkitMaskImage:
+            'radial-gradient(closest-side,#000 20%,rgba(0,0,0,0) 100%)',
+          maskImage:
+            'radial-gradient(closest-side,#000 20%,rgba(0,0,0,0) 100%)',
+          animation: 'glRaysSpin 16s linear infinite',
+        }}
+      ></div>
+    </div>
+    <div
+      style={{
+        position: 'absolute',
+        left: '10%',
+        right: '10%',
+        bottom: '-4%',
+        height: '9%',
+        borderRadius: '50%',
+        background:
+          'radial-gradient(closest-side,rgba(4,6,14,.65),rgba(4,6,14,0))',
+      }}
+    ></div>
+    <div
+      style={{
+        position: 'absolute',
+        inset: '0',
+        transformOrigin: '50% 100%',
+        animation: h.sway,
+      }}
+    >
+      <div style={{ position: 'absolute', inset: '0', animation: h.float }}>
+        <div
+          style={{
+            position: 'absolute',
+            left: h.stL,
+            top: h.stT,
+            width: h.stW,
+            height: h.stH,
+            background: `url(${h.sticker}) 0 0/100% 100% no-repeat`,
+            imageRendering: 'pixelated',
+            opacity: h.stickO ?? 1,
+            transition: 'opacity 160ms ease',
+          }}
+        ></div>
+        <div
+          style={{
+            position: 'absolute',
+            inset: '0',
+            background: `url(${h.body}) 0 0/100% 100% no-repeat`,
+            imageRendering: 'pixelated',
+          }}
+        ></div>
+        <div
+          style={{
+            position: 'absolute',
+            inset: '0',
+            overflow: 'hidden',
+            display: h.shineD ?? 'block',
+            WebkitMask: `url(${h.body}) 0 0/100% 100% no-repeat`,
+            mask: `url(${h.body}) 0 0/100% 100% no-repeat`,
+            pointerEvents: 'none',
+          }}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              top: '0',
+              bottom: '0',
+              left: '0',
+              width: '60%',
+              background:
+                'linear-gradient(110deg,rgba(255,255,255,0) 35%,rgba(255,255,255,.55) 50%,rgba(255,255,255,0) 65%)',
+              animation: 'glHShine 2.8s ease-in-out infinite',
+            }}
+          ></div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 /** One side of the pre-fight screen: who, what class, and the five. */
 const DuelSideCard = ({
@@ -573,6 +1769,34 @@ export const Screen = ({ v }: { v: View }) => (
                 />
               </div>
 
+              {v.postMapExpand ? (
+                <div
+                  onClick={v.postExpandMap}
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    bottom: '112px',
+                    zIndex: '13',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    height: '30px',
+                    padding: '0 10px',
+                    border: '2px solid #000000',
+                    borderRadius: '6px 2px 6px 2px',
+                    background: '#B5C0FF',
+                    boxShadow: 'inset 0 -3px 0 #7E84E6,inset 0 2px 0 #FFFFFF',
+                    fontFamily: 'VolterTitle,Volter,monospace',
+                    fontSize: '12px',
+                    color: '#000000',
+                    whiteSpace: 'nowrap',
+                    cursor: 'pointer',
+                  }}
+                >
+                  ⤢ OPEN IN EXPANDED MODE
+                </div>
+              ) : null}
+
               {/* Top HUD, floating over the map rather than pushing it down. */}
               <div
                 style={{
@@ -593,11 +1817,16 @@ export const Screen = ({ v }: { v: View }) => (
                     'linear-gradient(180deg,rgba(20,29,46,.92),rgba(20,29,46,0))',
                 }}
               >
+                {/* The status column takes whatever the right-hand cluster
+                    leaves and never less than its own content, so the menu
+                    button can't squeeze or crop the climb label. */}
                 <div
                   style={{
+                    flex: '1 0 auto',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '5px',
+                    alignItems: 'flex-start',
+                    gap: '6px',
                     pointerEvents: 'auto',
                   }}
                 >
@@ -605,32 +1834,134 @@ export const Screen = ({ v }: { v: View }) => (
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '6px',
-                      padding: '3px 7px',
+                      gap: '5px',
+                      height: '18px',
+                      padding: '0 6px',
                       border: '1px solid #3A4C74',
                       borderRadius: '4px',
                       background: 'rgba(20,29,46,.85)',
-                      fontFamily: 'VolterTitle,Volter,monospace',
-                      fontSize: '10px',
-                      color: v.ascensionColor,
+                      whiteSpace: 'nowrap',
                     }}
                   >
-                    {v.ascensionLabel}
+                    <span
+                      style={{
+                        fontFamily: 'VolterTitle,Volter,monospace',
+                        fontSize: '10px',
+                        color: v.ascensionColor,
+                      }}
+                    >
+                      {v.ascensionLabel}
+                    </span>
+                    <span
+                      title={v.mapProgressTitle}
+                      style={{
+                        fontSize: '8px',
+                        letterSpacing: '.06em',
+                        color: '#6F86A8',
+                      }}
+                    >
+                      {v.mapProgress}
+                    </span>
                   </div>
                   <div
                     style={{
-                      fontSize: '8px',
-                      letterSpacing: '.12em',
-                      color: '#9DB4D4',
-                      textShadow: '0 2px 0 #141D2E',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
                     }}
                   >
-                    {v.mapProgress}
+                    <div
+                      title={v.lvTitle}
+                      style={{
+                        width: '30px',
+                        height: '30px',
+                        flexShrink: '0',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: '2px solid #000000',
+                        borderRadius: '5px 5px 9px 9px',
+                        background: '#3459C2',
+                        boxShadow:
+                          'inset 0 -3px 0 #142663,inset 0 2px 0 #6F93F2',
+                        fontFamily: 'VolterTitle,Volter,monospace',
+                        fontSize: '14px',
+                        color: '#FFFFFF',
+                      }}
+                    >
+                      {v.lvNum}
+                    </div>
+                    <div
+                      style={{
+                        position: 'relative',
+                        width: '84px',
+                        height: '10px',
+                        border: '2px solid #000000',
+                        borderRadius: '2px',
+                        background: '#0B1020',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <div
+                        style={{
+                          position: 'absolute',
+                          inset: '0',
+                          background:
+                            'linear-gradient(#8FE3FF 0 45%,#4FB7E8 45%)',
+                          transformOrigin: '0 50%',
+                          transform: `scaleX(${v.lvFrac})`,
+                          transition: 'transform 500ms ease-out',
+                        }}
+                      ></div>
+                    </div>
+                    <div
+                      title="Next level's book"
+                      style={{
+                        width: '20px',
+                        height: '24px',
+                        flexShrink: '0',
+                        background: `url(${v.lvNextImg}) center/contain no-repeat`,
+                        imageRendering: 'pixelated',
+                      }}
+                    ></div>
+                    <div
+                      onClick={v.openStack}
+                      style={{
+                        display: v.lvBooksDisplay,
+                        alignItems: 'center',
+                        gap: '3px',
+                        height: '26px',
+                        padding: '0 6px 0 3px',
+                        border: '1px solid #3A4C74',
+                        borderRadius: '4px',
+                        background: 'rgba(20,29,46,.9)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '16px',
+                          height: '20px',
+                          background: `url(${v.lvStackImg}) center/contain no-repeat`,
+                          imageRendering: 'pixelated',
+                        }}
+                      ></div>
+                      <span
+                        style={{
+                          fontFamily: 'VolterTitle,Volter,monospace',
+                          fontSize: '12px',
+                          color: '#FFF2B0',
+                        }}
+                      >
+                        ×{v.lvBooks}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
                 <div
                   style={{
+                    flexShrink: '0',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
@@ -922,240 +2253,306 @@ export const Screen = ({ v }: { v: View }) => (
         {v.isHeroStep ? (
           <>
             <div
+              data-screen-label="Pick your hero"
               style={{
+                position: 'relative',
                 flex: '1',
                 minHeight: '0',
+                height: '100%',
+                overflow: 'hidden',
+                containerType: 'size',
                 display: 'flex',
                 flexDirection: 'column',
-                background: '#283C74',
-                padding: '16px',
-                gap: '14px',
-                overflowY: 'auto',
+                background:
+                  'linear-gradient(180deg,#060A17 0%,#0E1736 20%,#1F1C4A 30%,#35295E 36%,#1A1F3A 60%,#141D2E 100%)',
+                fontFamily: 'Volter,ui-monospace,monospace',
+                userSelect: 'none',
               }}
             >
-              <div
-                style={{
-                  fontFamily: 'VolterTitle,Volter,monospace',
-                  fontSize: '18px',
-                  color: '#FFF2B0',
-                  letterSpacing: '.02em',
-                }}
-              >
-                {v.heroStepTitle}
-              </div>
+              <HeroBackdrop s={v.heroScene} />
 
               <div
                 style={{
-                  display: v.heartPiecesDisplay,
+                  position: 'relative',
+                  zIndex: '5',
+                  display: 'flex',
                   alignItems: 'center',
-                  gap: '9px',
-                  border: '1px solid #3A4C74',
-                  borderRadius: '6px',
-                  background: 'rgba(20,29,46,.55)',
-                  padding: '8px 10px',
+                  justifyContent: 'space-between',
+                  gap: '8px',
+                  padding: '10px 12px 0',
                 }}
               >
                 <div
                   style={{
-                    width: '22px',
-                    height: '22px',
-                    flexShrink: '0',
-                    backgroundImage: `url(${v.heartIcon})`,
-                    backgroundSize: 'contain',
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'center',
-                    imageRendering: 'pixelated',
+                    fontFamily: 'VolterTitle,Volter,monospace',
+                    fontSize: '20px',
+                    lineHeight: '1',
+                    color: '#FFF2B0',
+                    WebkitTextStroke: '5px #000000',
+                    paintOrder: 'stroke fill',
+                    textShadow: '0 3px 0 #0B1020',
+                    whiteSpace: 'nowrap',
+                    animation: 'glPlateIn 300ms cubic-bezier(.3,1.6,.5,1) both',
                   }}
-                ></div>
+                >
+                  {v.heroStepTitle}
+                </div>
                 <div
+                  title={v.heartPiecesNote}
                   style={{
-                    flex: '1',
-                    minWidth: '0',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '2px',
+                    display: v.heartPiecesDisplay,
+                    alignItems: 'center',
+                    gap: '6px',
+                    height: '28px',
+                    padding: '0 9px 0 6px',
+                    border: '1px solid #3A4C74',
+                    borderRadius: '4px',
+                    background: 'rgba(8,12,24,.85)',
                   }}
                 >
                   <div
                     style={{
+                      width: '18px',
+                      height: '18px',
+                      background: `url(${v.heartIcon}) center/contain no-repeat`,
+                      imageRendering: 'pixelated',
+                    }}
+                  ></div>
+                  <span
+                    style={{
                       fontFamily: 'VolterTitle,Volter,monospace',
-                      fontSize: '11px',
-                      color: '#FFF2B0',
+                      fontSize: '13px',
+                      color: '#FF8A94',
+                      whiteSpace: 'nowrap',
                     }}
                   >
                     {v.heartPiecesLabel}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: '9px',
-                      color: '#9DB4D4',
-                      lineHeight: '1.6',
-                    }}
-                  >
-                    {v.heartPiecesNote}
-                  </div>
+                  </span>
                 </div>
               </div>
 
+              <div style={{ flex: '1', minHeight: '0' }}></div>
+
               <div
                 ref={v.setFtueHero}
-                style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}
+                style={{
+                  position: 'relative',
+                  zIndex: '3',
+                  display: 'flex',
+                  alignItems: 'flex-end',
+                  justifyContent: 'center',
+                  gap: '2cqw',
+                  padding: '0 10px',
+                }}
               >
                 {(v.heroCards || []).map((h: any, hI: number) => (
-                  <Fragment key={hI}>
+                  <div
+                    key={hI}
+                    onClick={h.pick}
+                    style={{
+                      position: 'relative',
+                      flex: '0 1 auto',
+                      minWidth: '0',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      cursor: 'pointer',
+                      zIndex: h.z,
+                    }}
+                  >
                     <div
-                      onClick={h.pick}
                       style={{
-                        cursor: 'pointer',
-                        border: `2px solid ${h.bd}`,
-                        background: h.bg,
-                        borderRadius: '8px 0 8px 0',
-                        padding: '11px',
+                        position: 'relative',
                         display: 'flex',
+                        flexDirection: 'column',
                         alignItems: 'center',
-                        gap: '12px',
+                        animation: `glDeal 560ms cubic-bezier(.3,1.5,.5,1) ${h.dealDelay} both`,
                       }}
                     >
+                      <HeroStand
+                        h={h}
+                        height="min(30cqh,40cqw)"
+                        rays="rgba(255,242,176,.4)"
+                      />
                       <div
                         style={{
-                          width: '56px',
-                          height: '56px',
-                          flexShrink: '0',
-                          border: '2px solid #304A69',
-                          borderRadius: '3px',
-                          backgroundColor: '#141D2E',
-                          backgroundImage: `url(${h.img})`,
-                          backgroundSize: 'cover',
-                          backgroundPosition: 'center top',
-                          backgroundRepeat: 'no-repeat',
-                          imageRendering: 'pixelated',
-                        }}
-                      ></div>
-                      <div
-                        style={{
-                          flex: '1',
-                          minWidth: '0',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '4px',
+                          marginTop: '9px',
+                          padding: '3px 10px 4px',
+                          border: `2px solid ${h.tagBd}`,
+                          borderRadius: '6px 2px 6px 2px',
+                          background: h.tagBg,
+                          fontFamily: 'VolterTitle,Volter,monospace',
+                          fontSize: '14px',
+                          lineHeight: '1',
+                          color: h.tagColor,
+                          whiteSpace: 'nowrap',
+                          transition: 'background 160ms,color 160ms',
                         }}
                       >
-                        <div
-                          style={{
-                            fontFamily: 'VolterTitle,Volter,monospace',
-                            fontSize: '14px',
-                            color: '#FDFDFD',
-                          }}
-                        >
-                          {h.name}
-                        </div>
-                        <div
-                          style={{
-                            fontSize: '10px',
-                            color: '#FFFFFF',
-                            opacity: '.8',
-                            lineHeight: '1.5',
-                          }}
-                        >
-                          {h.perkLine}
-                        </div>
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '7px',
-                            fontSize: '9px',
-                            letterSpacing: '.08em',
-                          }}
-                        >
-                          <span style={{ color: '#FF9EA1' }}>{h.hpLabel}</span>
-                          <span style={{ color: '#9DB4D4' }}>
-                            HEARTS {h.heartsLabel}
-                          </span>
-                        </div>
-                      </div>
-                      <div
-                        style={{
-                          width: '18px',
-                          height: '18px',
-                          borderRadius: '3px',
-                          background: h.tickBg,
-                          color: '#141212',
-                          fontSize: '11px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        {h.tick}
+                        {h.name}
                       </div>
                     </div>
-                    <div
-                      onClick={h.upgradeRun || undefined}
-                      style={{
-                        display: h.upgradeDisplay,
-                        cursor: h.upgradeCursor,
-                        opacity: h.upgradeOpacity,
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '8px',
-                        height: '34px',
-                        marginTop: '-2px',
-                        padding: '0 10px',
-                        border: '3px solid #000000',
-                        borderRadius: '0 0 8px 2px',
-                        background: h.upgradeBg,
-                        boxShadow: h.upgradeShadow,
-                        color: '#000000',
-                        fontFamily: 'VolterTitle,Volter,monospace',
-                        fontSize: '11px',
-                      }}
-                    >
-                      <span>{h.upgradeLabel}</span>
-                      <span style={{ fontSize: '9px', opacity: '.75' }}>
-                        {h.upgradeCost}
-                      </span>
-                    </div>
-                  </Fragment>
+                  </div>
                 ))}
               </div>
 
-              <div
-                ref={v.setFtueHeroCta}
-                style={{
-                  marginTop: 'auto',
-                  paddingTop: '8px',
-                  display: 'flex',
-                  gap: '9px',
-                }}
-              >
-                {(v.heroStepActions || []).map((a: any, aI: number) => (
-                  <Fragment key={aI}>
+              {(v.heroCards || []).map((h: any, hI: number) => (
+                <div
+                  key={hI}
+                  style={{
+                    position: 'relative',
+                    zIndex: '4',
+                    display: h.plateDisplay,
+                    alignItems: 'center',
+                    gap: '12px',
+                    margin: '10px 12px 0',
+                    padding: '8px 12px',
+                    border: '2px solid #FFF2B0',
+                    borderRadius: '8px 2px 8px 2px',
+                    background: 'rgba(8,12,24,.85)',
+                    boxShadow: '0 4px 0 rgba(0,0,0,.35)',
+                    animation: 'glPlateIn 260ms cubic-bezier(.3,1.6,.5,1)',
+                  }}
+                >
+                  <div
+                    style={{
+                      flex: '1',
+                      minWidth: '0',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '5px',
+                    }}
+                  >
                     <div
-                      onClick={a.run}
                       style={{
-                        cursor: 'pointer',
-                        flex: a.flex,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        minHeight: a.h,
-                        border: '3px solid #000000',
-                        borderRadius: '8px 2px 8px 2px',
-                        background: a.bg,
-                        boxShadow: a.shadow,
-                        color: '#000000',
-                        fontFamily: 'VolterTitle,Volter,monospace',
-                        fontSize: `calc(${a.size} * 1.5)`,
-                        lineHeight: '1.05',
-                        textAlign: 'center',
-                        textWrap: 'balance',
+                        fontSize: '13px',
+                        lineHeight: '1.35',
+                        color: '#FFFFFF',
+                        textWrap: 'pretty',
                       }}
                     >
-                      {a.label}
+                      {h.perkLine}
                     </div>
-                  </Fragment>
-                ))}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontFamily: 'VolterTitle,Volter,monospace',
+                          fontSize: '13px',
+                          color: '#FF8A94',
+                        }}
+                      >
+                        {h.hpLabel}
+                      </span>
+                      <div style={{ display: 'flex', gap: '3px' }}>
+                        {(h.pips || []).map((q: any, qI: number) => (
+                          <div
+                            key={qI}
+                            style={{
+                              width: '8px',
+                              height: '8px',
+                              background: q.bg,
+                              boxShadow: `0 0 0 1px ${q.bd}`,
+                            }}
+                          ></div>
+                        ))}
+                      </div>
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          color: '#9DB4D4',
+                          letterSpacing: '.06em',
+                        }}
+                      >
+                        HEARTS {h.heartsLabel}
+                      </span>
+                    </div>
+                  </div>
+                  <div
+                    onClick={h.upgradeRun || undefined}
+                    style={{
+                      display: h.upgradeDisplay,
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '2px',
+                      flexShrink: '0',
+                      padding: '5px 12px 6px',
+                      border: '3px solid #000000',
+                      borderRadius: '8px 2px 8px 2px',
+                      background: h.upgradeBg,
+                      boxShadow: h.upgradeShadow,
+                      cursor: h.upgradeCursor,
+                      opacity: h.upgradeOpacity,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontFamily: 'VolterTitle,Volter,monospace',
+                        fontSize: '13px',
+                        color: '#000000',
+                      }}
+                    >
+                      {h.upgradeLabel}
+                    </span>
+                    <span style={{ fontSize: '10px', color: '#1D2956' }}>
+                      {h.upgradeCost}
+                    </span>
+                  </div>
+                </div>
+              ))}
+
+              <div
+                style={{
+                  position: 'relative',
+                  zIndex: '4',
+                  padding: '10px 12px 12px',
+                }}
+              >
+                <div
+                  ref={v.setFtueHeroCta}
+                  style={{
+                    marginTop: 'auto',
+                    paddingTop: '8px',
+                    display: 'flex',
+                    gap: '9px',
+                  }}
+                >
+                  {(v.heroStepActions || []).map((a: any, aI: number) => (
+                    <Fragment key={aI}>
+                      <div
+                        onClick={a.run}
+                        style={{
+                          cursor: 'pointer',
+                          flex: a.flex,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minHeight: a.h,
+                          border: '3px solid #000000',
+                          borderRadius: '8px 2px 8px 2px',
+                          background: a.bg,
+                          boxShadow: a.shadow,
+                          color: '#000000',
+                          fontFamily: 'VolterTitle,Volter,monospace',
+                          fontSize: `calc(${a.size} * 1.5)`,
+                          lineHeight: '1.05',
+                          textAlign: 'center',
+                          textWrap: 'balance',
+                        }}
+                      >
+                        {a.label}
+                      </div>
+                    </Fragment>
+                  ))}
+                </div>
               </div>
             </div>
           </>
@@ -1164,20 +2561,30 @@ export const Screen = ({ v }: { v: View }) => (
         {v.isGearStep ? (
           <>
             <div
+              data-screen-label="Loadout"
               style={{
                 position: 'relative',
                 flex: '1',
                 minHeight: '0',
                 display: 'flex',
                 flexDirection: 'column',
-                background: '#283C74',
-                padding: '16px',
-                gap: '9px',
+                padding: '12px',
+                gap: '8px',
                 overflow: 'hidden',
+                containerType: 'size',
+                background:
+                  'linear-gradient(180deg,#060A17 0%,#0E1736 20%,#1F1C4A 30%,#35295E 36%,#1A1F3A 60%,#141D2E 100%)',
               }}
             >
+              <HeroBackdrop s={v.heroScene} />
               <div
-                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                style={{
+                  position: 'relative',
+                  zIndex: '2',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
               >
                 {(v.gearStepActions || []).map((a: any, aI: number) => (
                   <Fragment key={aI}>
@@ -1214,68 +2621,584 @@ export const Screen = ({ v }: { v: View }) => (
 
               <div
                 style={{
+                  position: 'relative',
+                  zIndex: '2',
                   display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                  background: '#1D2956',
-                  borderRadius: '8px 0 8px 0',
-                  padding: '7px 10px',
+                  alignItems: 'flex-end',
+                  gap: '10px',
                 }}
               >
                 <div
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                  style={{
+                    position: 'relative',
+                    flexShrink: '0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '6px',
+                    width: 'min(28cqw,150px)',
+                  }}
                 >
                   <div
                     style={{
-                      width: '26px',
-                      height: '26px',
-                      flexShrink: '0',
-                      border: '2px solid #304A69',
-                      borderRadius: '3px',
-                      backgroundColor: '#141D2E',
-                      backgroundImage: `url(${v.heroImg})`,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center top',
-                      backgroundRepeat: 'no-repeat',
-                      imageRendering: 'pixelated',
+                      animation: 'glDeal 560ms cubic-bezier(.3,1.5,.5,1) both',
                     }}
-                  ></div>
+                  >
+                    <HeroStand
+                      h={v.gearHero}
+                      height="min(26cqh,38cqw)"
+                      rays="rgba(255,242,176,.35)"
+                    />
+                  </div>
                   <div
                     style={{
-                      flex: '1',
-                      minWidth: '0',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      background: '#141D2E',
-                      borderRadius: '3px',
-                      height: '22px',
-                      paddingLeft: '6px',
-                      overflow: 'hidden',
+                      padding: '3px 10px 4px',
+                      border: '2px solid #000000',
+                      borderRadius: '6px 2px 6px 2px',
+                      background: '#FCE270',
+                      fontFamily: 'VolterTitle,Volter,monospace',
+                      fontSize: '14px',
+                      lineHeight: '1',
+                      color: '#000000',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {v.heroName}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: '10px',
+                      lineHeight: '1.35',
+                      color: '#CBD9EC',
+                      textAlign: 'center',
+                      textShadow: '0 1px 0 #05080F',
+                      textWrap: 'pretty',
+                    }}
+                  >
+                    {v.heroPerkLine}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    position: 'relative',
+                    flex: '1',
+                    minWidth: '0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '7px',
+                    background: 'rgba(8,12,24,.8)',
+                    border: '1px solid #3A4C74',
+                    borderRadius: '8px 2px 8px 2px',
+                    padding: '10px',
+                    animation:
+                      'glPlateIn 300ms cubic-bezier(.3,1.6,.5,1) 120ms both',
+                  }}
+                >
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '0',
+                      left: '0',
+                      right: '0',
+                      zIndex: '15',
+                      display: v.peekDisplay,
+                      flexDirection: 'column',
+                      gap: '5px',
+                      background: 'rgba(20,29,46,.97)',
+                      border: '1px solid #3A4C74',
+                      borderRadius: '8px 0 8px 0',
+                      padding: '9px 10px',
+                      boxShadow: '0 6px 14px rgba(0,0,0,.45)',
                     }}
                   >
                     <div
                       style={{
-                        fontFamily: 'VolterTitle,Volter,monospace',
-                        fontSize: '12px',
-                        color: '#FDFDFD',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '7px',
                       }}
                     >
-                      {v.heroName}
+                      <div
+                        style={{
+                          width: '24px',
+                          height: '24px',
+                          flexShrink: '0',
+                          borderRadius: '4px',
+                          backgroundColor: '#141D2E',
+                          backgroundImage: `url(${v.peekIcon})`,
+                          backgroundSize: '80%',
+                          backgroundRepeat: 'no-repeat',
+                          backgroundPosition: 'center',
+                          imageRendering: 'pixelated',
+                        }}
+                      ></div>
+                      <div
+                        style={{
+                          flex: '1',
+                          minWidth: '0',
+                          display: 'flex',
+                          alignItems: 'baseline',
+                          gap: '5px',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: '11px',
+                            color: '#FFFFFF',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {v.peekName}
+                        </div>
+                        <div
+                          style={{
+                            flexShrink: '0',
+                            fontSize: '8px',
+                            color: v.peekRarityColor,
+                            letterSpacing: '.1em',
+                          }}
+                        >
+                          {v.peekRarity}
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          flexShrink: '0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: '12px',
+                            height: '12px',
+                            backgroundImage: `url(${v.peekTypeIcon})`,
+                            backgroundSize: 'contain',
+                            backgroundRepeat: 'no-repeat',
+                            backgroundPosition: 'center',
+                            imageRendering: 'pixelated',
+                          }}
+                        ></div>
+                        <span
+                          style={{
+                            fontFamily: 'VolterTitle,Volter,monospace',
+                            fontSize: '12px',
+                            color: v.peekTypeColor,
+                          }}
+                        >
+                          {v.peekPower}
+                        </span>
+                      </div>
+                      <div
+                        onClick={v.closePeek}
+                        style={{
+                          flexShrink: '0',
+                          width: '18px',
+                          height: '18px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          borderRadius: '3px',
+                          background: '#2B3A5C',
+                          color: '#CBD9EC',
+                          fontSize: '11px',
+                          lineHeight: '1',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        ×
+                      </div>
                     </div>
                     <div
                       style={{
-                        marginLeft: 'auto',
-                        height: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        background: '#FFF2B0',
-                        padding: '0 6px',
+                        fontSize: '9px',
+                        color: '#CBD9EC',
+                        lineHeight: '1.5',
+                        textWrap: 'pretty',
                       }}
                     >
-                      <span style={{ fontSize: '9px', color: '#141212' }}>
-                        {v.heroPerkLine}
-                      </span>
+                      {v.peekWhat}
+                    </div>
+                    <div
+                      style={{
+                        display: v.peekRiderDisplay,
+                        alignItems: 'flex-start',
+                        gap: '5px',
+                        borderTop: '1px solid #2B3A5C',
+                        paddingTop: '5px',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '12px',
+                          height: '12px',
+                          flexShrink: '0',
+                          marginTop: '1px',
+                          backgroundImage: `url(${v.peekRiderIcon})`,
+                          backgroundSize: 'contain',
+                          backgroundRepeat: 'no-repeat',
+                          backgroundPosition: 'center',
+                          imageRendering: 'pixelated',
+                        }}
+                      ></div>
+                      <div
+                        style={{
+                          flex: '1',
+                          minWidth: '0',
+                          fontSize: '9px',
+                          color: '#CBD9EC',
+                          lineHeight: '1.5',
+                          textWrap: 'pretty',
+                        }}
+                      >
+                        <span style={{ color: v.peekRiderColor }}>
+                          {v.peekRiderTitle}
+                        </span>{' '}
+                        {v.peekRiderText}
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        fontSize: '8px',
+                        color: '#8A9BBF',
+                        letterSpacing: '.08em',
+                      }}
+                    >
+                      NOT EQUIPPED - TAP THE GEAR TO EQUIP
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'baseline',
+                      justifyContent: 'space-between',
+                      gap: '8px',
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: '9px',
+                        color: '#FFFFFF',
+                        opacity: '.75',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {v.equipRule}
+                    </div>
+                    <div
+                      style={{
+                        flexShrink: '0',
+                        fontSize: '9px',
+                        color: '#FFFFFF',
+                        opacity: '.75',
+                      }}
+                    >
+                      Max 2 per type
+                    </div>
+                  </div>
+                  <div
+                    ref={v.setFtueSlots}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    {(v.slots || []).map((s: any, sI: number) => (
+                      <Fragment key={sI}>
+                        <div
+                          onClick={s.inspect}
+                          style={{
+                            position: 'relative',
+                            flex: '1',
+                            maxWidth: '52px',
+                            aspectRatio: '1/1',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            overflow: 'hidden',
+                            borderRadius: '3px',
+                            border: `2px solid ${s.bd}`,
+                            background: s.bg,
+                            cursor: s.cursor,
+                            boxShadow: s.ring,
+                            transform: s.slotT,
+                            transition:
+                              'transform 320ms cubic-bezier(.3,1.7,.5,1)',
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: '80%',
+                              height: '80%',
+                              backgroundImage: `url(${s.icon})`,
+                              backgroundSize: 'contain',
+                              backgroundRepeat: 'no-repeat',
+                              backgroundPosition: 'center',
+                              imageRendering: 'pixelated',
+                              opacity: s.iconOpacity,
+                            }}
+                          ></div>
+                          <div
+                            style={{
+                              position: 'absolute',
+                              inset: '8%',
+                              border: '2px dashed #283C74',
+                              borderRadius: '6px',
+                              opacity: s.emptyOpacity,
+                            }}
+                          ></div>
+                          <div
+                            onClick={s.clear}
+                            style={{
+                              position: 'absolute',
+                              top: '-8px',
+                              left: '-8px',
+                              zIndex: '3',
+                              width: '30px',
+                              height: '30px',
+                              display: s.infoDisplay,
+                              alignItems: 'flex-start',
+                              justifyContent: 'flex-start',
+                              padding: '7px',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: '15px',
+                                height: '15px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: '0 0 4px 0',
+                                background: '#B5C0FF',
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontSize: '10px',
+                                  lineHeight: '1',
+                                  color: '#141212',
+                                }}
+                              >
+                                ×
+                              </span>
+                            </div>
+                          </div>
+                          <div
+                            style={{
+                              position: 'absolute',
+                              bottom: '-2px',
+                              right: '-2px',
+                              width: '16px',
+                              height: '16px',
+                              background: '#485E9C',
+                              borderRadius: '3px 0 0 0',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              opacity: s.iconOpacity,
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: '9px',
+                                height: '9px',
+                                backgroundImage: `url(${s.typeIcon})`,
+                                backgroundSize: 'contain',
+                                backgroundRepeat: 'no-repeat',
+                                backgroundPosition: 'center',
+                                imageRendering: 'pixelated',
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                      </Fragment>
+                    ))}
+                  </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px',
+                      borderTop: '1px solid #2B3A5C',
+                      paddingTop: '7px',
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                      }}
+                    >
+                      <div
+                        onClick={v.slotPrev}
+                        style={{
+                          flexShrink: '0',
+                          width: '18px',
+                          height: '18px',
+                          display: v.slotPagerDisplay,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          borderRadius: '3px',
+                          background: '#2B3A5C',
+                          color: '#CBD9EC',
+                          fontSize: '10px',
+                          lineHeight: '1',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        ‹
+                      </div>
+                      <div
+                        style={{
+                          width: '16px',
+                          height: '16px',
+                          flexShrink: '0',
+                          display: v.slotInfoIconDisplay,
+                          backgroundImage: `url(${v.slotInfoIcon})`,
+                          backgroundSize: 'contain',
+                          backgroundRepeat: 'no-repeat',
+                          backgroundPosition: 'center',
+                          imageRendering: 'pixelated',
+                        }}
+                      ></div>
+                      <div
+                        style={{
+                          flex: '1',
+                          minWidth: '0',
+                          display: 'flex',
+                          alignItems: 'baseline',
+                          gap: '5px',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: '10px',
+                            color: '#FFFFFF',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {v.slotInfoName}
+                        </div>
+                        <div
+                          style={{
+                            flexShrink: '0',
+                            fontSize: '8px',
+                            color: v.slotInfoRarityColor,
+                            letterSpacing: '.1em',
+                          }}
+                        >
+                          {v.slotInfoRarity}
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          flexShrink: '0',
+                          display: v.slotInfoIconDisplay,
+                          alignItems: 'center',
+                          gap: '3px',
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: '11px',
+                            height: '11px',
+                            backgroundImage: `url(${v.slotInfoTypeIcon})`,
+                            backgroundSize: 'contain',
+                            backgroundRepeat: 'no-repeat',
+                            backgroundPosition: 'center',
+                            imageRendering: 'pixelated',
+                          }}
+                        ></div>
+                        <span
+                          style={{
+                            fontFamily: 'VolterTitle,Volter,monospace',
+                            fontSize: '11px',
+                            color: v.slotInfoTypeColor,
+                          }}
+                        >
+                          {v.slotInfoPower}
+                        </span>
+                      </div>
+                      <div
+                        onClick={v.slotNext}
+                        style={{
+                          flexShrink: '0',
+                          width: '18px',
+                          height: '18px',
+                          display: v.slotPagerDisplay,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          borderRadius: '3px',
+                          background: '#2B3A5C',
+                          color: '#CBD9EC',
+                          fontSize: '10px',
+                          lineHeight: '1',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        ›
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        fontSize: '9px',
+                        color: '#CBD9EC',
+                        lineHeight: '1.5',
+                        textWrap: 'pretty',
+                      }}
+                    >
+                      {v.slotInfoWhat}
+                    </div>
+                    <div
+                      style={{
+                        display: v.slotInfoRiderDisplay,
+                        alignItems: 'flex-start',
+                        gap: '5px',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '12px',
+                          height: '12px',
+                          flexShrink: '0',
+                          marginTop: '1px',
+                          backgroundImage: `url(${v.slotInfoRiderIcon})`,
+                          backgroundSize: 'contain',
+                          backgroundRepeat: 'no-repeat',
+                          backgroundPosition: 'center',
+                          imageRendering: 'pixelated',
+                        }}
+                      ></div>
+                      <div
+                        style={{
+                          flex: '1',
+                          minWidth: '0',
+                          fontSize: '9px',
+                          color: '#CBD9EC',
+                          lineHeight: '1.5',
+                          textWrap: 'pretty',
+                        }}
+                      >
+                        <span style={{ color: v.slotInfoRiderColor }}>
+                          {v.slotInfoRiderTitle}
+                        </span>{' '}
+                        {v.slotInfoRiderText}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1284,529 +3207,18 @@ export const Screen = ({ v }: { v: View }) => (
               <div
                 style={{
                   position: 'relative',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '7px',
-                  background: '#1D2956',
-                  borderRadius: '8px 0 8px 0',
-                  padding: '10px',
-                }}
-              >
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '0',
-                    left: '0',
-                    right: '0',
-                    zIndex: '15',
-                    display: v.peekDisplay,
-                    flexDirection: 'column',
-                    gap: '5px',
-                    background: 'rgba(20,29,46,.97)',
-                    border: '1px solid #3A4C74',
-                    borderRadius: '8px 0 8px 0',
-                    padding: '9px 10px',
-                    boxShadow: '0 6px 14px rgba(0,0,0,.45)',
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '7px',
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: '24px',
-                        height: '24px',
-                        flexShrink: '0',
-                        borderRadius: '4px',
-                        backgroundColor: '#141D2E',
-                        backgroundImage: `url(${v.peekIcon})`,
-                        backgroundSize: '80%',
-                        backgroundRepeat: 'no-repeat',
-                        backgroundPosition: 'center',
-                        imageRendering: 'pixelated',
-                      }}
-                    ></div>
-                    <div
-                      style={{
-                        flex: '1',
-                        minWidth: '0',
-                        display: 'flex',
-                        alignItems: 'baseline',
-                        gap: '5px',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontSize: '11px',
-                          color: '#FFFFFF',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {v.peekName}
-                      </div>
-                      <div
-                        style={{
-                          flexShrink: '0',
-                          fontSize: '8px',
-                          color: v.peekRarityColor,
-                          letterSpacing: '.1em',
-                        }}
-                      >
-                        {v.peekRarity}
-                      </div>
-                    </div>
-                    <div
-                      style={{
-                        flexShrink: '0',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: '12px',
-                          height: '12px',
-                          backgroundImage: `url(${v.peekTypeIcon})`,
-                          backgroundSize: 'contain',
-                          backgroundRepeat: 'no-repeat',
-                          backgroundPosition: 'center',
-                          imageRendering: 'pixelated',
-                        }}
-                      ></div>
-                      <span
-                        style={{
-                          fontFamily: 'VolterTitle,Volter,monospace',
-                          fontSize: '12px',
-                          color: v.peekTypeColor,
-                        }}
-                      >
-                        {v.peekPower}
-                      </span>
-                    </div>
-                    <div
-                      onClick={v.closePeek}
-                      style={{
-                        flexShrink: '0',
-                        width: '18px',
-                        height: '18px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: '3px',
-                        background: '#2B3A5C',
-                        color: '#CBD9EC',
-                        fontSize: '11px',
-                        lineHeight: '1',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      ×
-                    </div>
-                  </div>
-                  <div
-                    style={{
-                      fontSize: '9px',
-                      color: '#CBD9EC',
-                      lineHeight: '1.5',
-                      textWrap: 'pretty',
-                    }}
-                  >
-                    {v.peekWhat}
-                  </div>
-                  <div
-                    style={{
-                      display: v.peekRiderDisplay,
-                      alignItems: 'flex-start',
-                      gap: '5px',
-                      borderTop: '1px solid #2B3A5C',
-                      paddingTop: '5px',
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: '12px',
-                        height: '12px',
-                        flexShrink: '0',
-                        marginTop: '1px',
-                        backgroundImage: `url(${v.peekRiderIcon})`,
-                        backgroundSize: 'contain',
-                        backgroundRepeat: 'no-repeat',
-                        backgroundPosition: 'center',
-                        imageRendering: 'pixelated',
-                      }}
-                    ></div>
-                    <div
-                      style={{
-                        flex: '1',
-                        minWidth: '0',
-                        fontSize: '9px',
-                        color: '#CBD9EC',
-                        lineHeight: '1.5',
-                        textWrap: 'pretty',
-                      }}
-                    >
-                      <span style={{ color: v.peekRiderColor }}>
-                        {v.peekRiderTitle}
-                      </span>{' '}
-                      {v.peekRiderText}
-                    </div>
-                  </div>
-                  <div
-                    style={{
-                      fontSize: '8px',
-                      color: '#8A9BBF',
-                      letterSpacing: '.08em',
-                    }}
-                  >
-                    NOT EQUIPPED - TAP THE GEAR TO EQUIP
-                  </div>
-                </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'baseline',
-                    justifyContent: 'space-between',
-                    gap: '8px',
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: '9px',
-                      color: '#FFFFFF',
-                      opacity: '.75',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {v.equipRule}
-                  </div>
-                  <div
-                    style={{
-                      flexShrink: '0',
-                      fontSize: '9px',
-                      color: '#FFFFFF',
-                      opacity: '.75',
-                    }}
-                  >
-                    Max 2 per type
-                  </div>
-                </div>
-                <div
-                  ref={v.setFtueSlots}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                  }}
-                >
-                  {(v.slots || []).map((s: any, sI: number) => (
-                    <Fragment key={sI}>
-                      <div
-                        onClick={s.inspect}
-                        style={{
-                          position: 'relative',
-                          flex: '1',
-                          maxWidth: '52px',
-                          aspectRatio: '1/1',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          overflow: 'hidden',
-                          borderRadius: '3px',
-                          border: `2px solid ${s.bd}`,
-                          background: s.bg,
-                          cursor: s.cursor,
-                          boxShadow: s.ring,
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: '80%',
-                            height: '80%',
-                            backgroundImage: `url(${s.icon})`,
-                            backgroundSize: 'contain',
-                            backgroundRepeat: 'no-repeat',
-                            backgroundPosition: 'center',
-                            imageRendering: 'pixelated',
-                            opacity: s.iconOpacity,
-                          }}
-                        ></div>
-                        <div
-                          style={{
-                            position: 'absolute',
-                            inset: '8%',
-                            border: '2px dashed #283C74',
-                            borderRadius: '6px',
-                            opacity: s.emptyOpacity,
-                          }}
-                        ></div>
-                        <div
-                          onClick={s.clear}
-                          style={{
-                            position: 'absolute',
-                            top: '-8px',
-                            left: '-8px',
-                            zIndex: '3',
-                            width: '30px',
-                            height: '30px',
-                            display: s.infoDisplay,
-                            alignItems: 'flex-start',
-                            justifyContent: 'flex-start',
-                            padding: '7px',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          <div
-                            style={{
-                              width: '15px',
-                              height: '15px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              borderRadius: '0 0 4px 0',
-                              background: '#B5C0FF',
-                            }}
-                          >
-                            <span
-                              style={{
-                                fontSize: '10px',
-                                lineHeight: '1',
-                                color: '#141212',
-                              }}
-                            >
-                              ×
-                            </span>
-                          </div>
-                        </div>
-                        <div
-                          style={{
-                            position: 'absolute',
-                            bottom: '-2px',
-                            right: '-2px',
-                            width: '16px',
-                            height: '16px',
-                            background: '#485E9C',
-                            borderRadius: '3px 0 0 0',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            opacity: s.iconOpacity,
-                          }}
-                        >
-                          <div
-                            style={{
-                              width: '9px',
-                              height: '9px',
-                              backgroundImage: `url(${s.typeIcon})`,
-                              backgroundSize: 'contain',
-                              backgroundRepeat: 'no-repeat',
-                              backgroundPosition: 'center',
-                              imageRendering: 'pixelated',
-                            }}
-                          ></div>
-                        </div>
-                      </div>
-                    </Fragment>
-                  ))}
-                </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '4px',
-                    borderTop: '1px solid #2B3A5C',
-                    paddingTop: '7px',
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                    }}
-                  >
-                    <div
-                      onClick={v.slotPrev}
-                      style={{
-                        flexShrink: '0',
-                        width: '18px',
-                        height: '18px',
-                        display: v.slotPagerDisplay,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: '3px',
-                        background: '#2B3A5C',
-                        color: '#CBD9EC',
-                        fontSize: '10px',
-                        lineHeight: '1',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      ‹
-                    </div>
-                    <div
-                      style={{
-                        width: '16px',
-                        height: '16px',
-                        flexShrink: '0',
-                        display: v.slotInfoIconDisplay,
-                        backgroundImage: `url(${v.slotInfoIcon})`,
-                        backgroundSize: 'contain',
-                        backgroundRepeat: 'no-repeat',
-                        backgroundPosition: 'center',
-                        imageRendering: 'pixelated',
-                      }}
-                    ></div>
-                    <div
-                      style={{
-                        flex: '1',
-                        minWidth: '0',
-                        display: 'flex',
-                        alignItems: 'baseline',
-                        gap: '5px',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontSize: '10px',
-                          color: '#FFFFFF',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {v.slotInfoName}
-                      </div>
-                      <div
-                        style={{
-                          flexShrink: '0',
-                          fontSize: '8px',
-                          color: v.slotInfoRarityColor,
-                          letterSpacing: '.1em',
-                        }}
-                      >
-                        {v.slotInfoRarity}
-                      </div>
-                    </div>
-                    <div
-                      style={{
-                        flexShrink: '0',
-                        display: v.slotInfoIconDisplay,
-                        alignItems: 'center',
-                        gap: '3px',
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: '11px',
-                          height: '11px',
-                          backgroundImage: `url(${v.slotInfoTypeIcon})`,
-                          backgroundSize: 'contain',
-                          backgroundRepeat: 'no-repeat',
-                          backgroundPosition: 'center',
-                          imageRendering: 'pixelated',
-                        }}
-                      ></div>
-                      <span
-                        style={{
-                          fontFamily: 'VolterTitle,Volter,monospace',
-                          fontSize: '11px',
-                          color: v.slotInfoTypeColor,
-                        }}
-                      >
-                        {v.slotInfoPower}
-                      </span>
-                    </div>
-                    <div
-                      onClick={v.slotNext}
-                      style={{
-                        flexShrink: '0',
-                        width: '18px',
-                        height: '18px',
-                        display: v.slotPagerDisplay,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: '3px',
-                        background: '#2B3A5C',
-                        color: '#CBD9EC',
-                        fontSize: '10px',
-                        lineHeight: '1',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      ›
-                    </div>
-                  </div>
-                  <div
-                    style={{
-                      fontSize: '9px',
-                      color: '#CBD9EC',
-                      lineHeight: '1.5',
-                      textWrap: 'pretty',
-                    }}
-                  >
-                    {v.slotInfoWhat}
-                  </div>
-                  <div
-                    style={{
-                      display: v.slotInfoRiderDisplay,
-                      alignItems: 'flex-start',
-                      gap: '5px',
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: '12px',
-                        height: '12px',
-                        flexShrink: '0',
-                        marginTop: '1px',
-                        backgroundImage: `url(${v.slotInfoRiderIcon})`,
-                        backgroundSize: 'contain',
-                        backgroundRepeat: 'no-repeat',
-                        backgroundPosition: 'center',
-                        imageRendering: 'pixelated',
-                      }}
-                    ></div>
-                    <div
-                      style={{
-                        flex: '1',
-                        minWidth: '0',
-                        fontSize: '9px',
-                        color: '#CBD9EC',
-                        lineHeight: '1.5',
-                        textWrap: 'pretty',
-                      }}
-                    >
-                      <span style={{ color: v.slotInfoRiderColor }}>
-                        {v.slotInfoRiderTitle}
-                      </span>{' '}
-                      {v.slotInfoRiderText}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div
-                style={{
+                  zIndex: '2',
                   flex: '1',
                   minHeight: '0',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '8px',
-                  background: '#1D2956',
-                  borderRadius: '8px 0 8px 0',
+                  background: 'rgba(8,12,24,.8)',
+                  border: '1px solid #3A4C74',
+                  borderRadius: '8px 2px 8px 2px',
                   padding: '0 0 10px',
+                  animation:
+                    'glPlateIn 300ms cubic-bezier(.3,1.6,.5,1) 200ms both',
                 }}
               >
                 <div
@@ -1868,6 +3280,7 @@ export const Screen = ({ v }: { v: View }) => (
                           padding: '2px',
                           cursor: g.cursor,
                           opacity: g.opacity,
+                          animation: `glCardDeal 380ms cubic-bezier(.3,1.6,.5,1) ${g.dealDelay} backwards`,
                         }}
                       >
                         <div
@@ -2051,6 +3464,8 @@ export const Screen = ({ v }: { v: View }) => (
               <div
                 ref={v.setFtueGearCta}
                 style={{
+                  position: 'relative',
+                  zIndex: '2',
                   flexShrink: '0',
                   display: 'flex',
                   flexDirection: 'column',
@@ -2086,7 +3501,9 @@ export const Screen = ({ v }: { v: View }) => (
           </>
         ) : null}
 
-        {v.isBattle ? (
+        {v.isPostBattle && v.post ? <PostBattle v={v} p={v.post} /> : null}
+
+        {v.isBattleStd ? (
           <>
             <div
               data-juice="column"
@@ -2944,177 +4361,7 @@ export const Screen = ({ v }: { v: View }) => (
                     transition: 'opacity .2s',
                   }}
                 >
-                  <div
-                    data-juice-board="main"
-                    ref={v.setFtueBoard}
-                    onPointerDown={v.onDown}
-                    onPointerMove={v.onMove}
-                    onPointerUp={v.onUp}
-                    onPointerCancel={v.onCancel}
-                    style={{
-                      position: 'relative',
-                      width: `${v.boardW}px`,
-                      height: `${v.boardH}px`,
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(6,minmax(0,1fr))',
-                      gridTemplateRows: 'repeat(5,minmax(0,1fr))',
-                      gap: '4px',
-                      touchAction: 'none',
-                      userSelect: 'none',
-                      animation: v.boardAnim,
-                    }}
-                  >
-                    {(v.cells || []).map((c: any, cI: number) => (
-                      <Fragment key={cI}>
-                        <div
-                          data-cell={c.i}
-                          style={{
-                            position: 'relative',
-                            minHeight: '0',
-                            transform: c.scale,
-                            transition:
-                              'transform 160ms cubic-bezier(.34,1.8,.64,1)',
-                            zIndex: c.z,
-                            opacity: c.cellOpacity,
-                            animation: c.anim,
-                          }}
-                        >
-                          <div
-                            style={{
-                              position: 'absolute',
-                              inset: '0',
-                              borderRadius: '8px',
-                              border: `2px solid ${c.bd}`,
-                              background: c.face,
-                            }}
-                          ></div>
-                          <div
-                            style={{
-                              position: 'absolute',
-                              inset: '0',
-                              borderRadius: '8px',
-                              pointerEvents: 'none',
-                              animation: c.glowAnim,
-                            }}
-                          ></div>
-                          <div
-                            style={{
-                              position: 'absolute',
-                              inset: '-3px',
-                              borderRadius: '10px',
-                              pointerEvents: 'none',
-                              boxShadow:
-                                '0 0 0 2px #FFF2B0, 0 0 14px 4px rgba(255,242,176,.75)',
-                              opacity: c.hintOpacity,
-                              animation: c.hintAnim,
-                            }}
-                          ></div>
-                          <div
-                            style={{
-                              position: 'absolute',
-                              inset: '-6px',
-                              borderRadius: '9999px',
-                              border: '3px solid rgba(255,240,200,.95)',
-                              boxShadow: '0 0 18px 6px rgba(255,150,60,.85)',
-                              pointerEvents: 'none',
-                              opacity: c.ringOpacity,
-                              animation: c.ring,
-                            }}
-                          ></div>
-                          <div
-                            style={{
-                              position: 'absolute',
-                              inset: '2px',
-                              pointerEvents: 'none',
-                            }}
-                          >
-                            <div
-                              style={{
-                                position: 'absolute',
-                                inset: '13%',
-                                background: `url(${c.icon}) center/contain no-repeat`,
-                                filter: 'drop-shadow(0 2px 0 rgba(0,0,0,.45))',
-                              }}
-                            ></div>
-                          </div>
-                          <div
-                            style={{
-                              position: 'absolute',
-                              top: '1px',
-                              left: '3px',
-                              fontSize: '9px',
-                              color: '#FFFFFF',
-                              pointerEvents: 'none',
-                            }}
-                          >
-                            {c.order}
-                          </div>
-                        </div>
-                      </Fragment>
-                    ))}
-                    <svg
-                      viewBox={'0 0 100 100'}
-                      preserveAspectRatio={'none'}
-                      style={{
-                        position: 'absolute',
-                        inset: '0',
-                        width: '100%',
-                        height: '100%',
-                        pointerEvents: 'none',
-                        zIndex: '6',
-                        opacity: v.lineOpacity,
-                      }}
-                    >
-                      <polyline
-                        points={v.chainPoints}
-                        fill={'none'}
-                        stroke={'#0B0D1A'}
-                        strokeWidth={v.chainUnderW}
-                        strokeLinecap={'square'}
-                        strokeLinejoin={'miter'}
-                        vectorEffect={'non-scaling-stroke'}
-                      />
-                      <polyline
-                        points={v.chainPoints}
-                        fill={'none'}
-                        stroke={v.chainColor}
-                        strokeWidth={v.chainW}
-                        strokeLinecap={'square'}
-                        strokeLinejoin={'miter'}
-                        strokeDasharray={v.chainDash}
-                        vectorEffect={'non-scaling-stroke'}
-                        style={{
-                          animation: 'glDashFlow 520ms linear infinite',
-                          filter: v.chainGlow,
-                        }}
-                      />
-                    </svg>
-                    {(v.pops || []).map((p: any, pI: number) => (
-                      <Fragment key={pI}>
-                        <div
-                          style={{
-                            position: 'absolute',
-                            left: '0',
-                            right: '0',
-                            top: p.top,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            pointerEvents: 'none',
-                            fontFamily: 'VolterTitle,Volter,monospace',
-                            fontSize: p.size,
-                            color: p.color,
-                            textShadow: '0 2px 0 #141D2E',
-                            WebkitTextStroke: '4px #141D2E',
-                            paintOrder: 'stroke fill',
-                            animation: p.anim,
-                          }}
-                        >
-                          {p.text}
-                        </div>
-                      </Fragment>
-                    ))}
-                  </div>
+                  <MainBoard v={v} />
                 </div>
                 <div
                   style={{

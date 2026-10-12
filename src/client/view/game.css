@@ -1812,3 +1812,138 @@ a:hover {
     display: none;
   }
 }
+
+/* Victory sequence: the OPEN BOOK button breathes until pressed. */
+@keyframes glOpenPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+/* Hero pick and loadout: heroes stand as cutouts on the tilted world map. */
+@keyframes glDeal {
+  0% {
+    transform: translate3d(0, 140%, 0) rotate(10deg) scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: translate3d(0, -6%, 0) rotate(-3deg) scale(1.05);
+    opacity: 1;
+  }
+  80% {
+    transform: translate3d(0, 2%, 0) rotate(1deg) scale(0.98);
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes glCardDeal {
+  0% {
+    transform: translate3d(0, 40px, 0) rotate(8deg) scale(0.7);
+    opacity: 0;
+  }
+  70% {
+    transform: translate3d(0, -3px, 0) rotate(-2deg) scale(1.04);
+    opacity: 1;
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes glHSway {
+  0%,
+  100% {
+    transform: rotate(-2.5deg);
+  }
+  50% {
+    transform: rotate(2.5deg);
+  }
+}
+@keyframes glHFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+@keyframes glHShine {
+  0% {
+    transform: translateX(-120%);
+  }
+  60%,
+  100% {
+    transform: translateX(260%);
+  }
+}
+@keyframes glPlaneIn {
+  0% {
+    transform: rotateX(24deg) translate3d(0, 6%, 0);
+    opacity: 0;
+  }
+  100% {
+    transform: rotateX(58deg);
+    opacity: 1;
+  }
+}
+@keyframes glPlateIn {
+  0% {
+    transform: translateY(10px) scale(0.94);
+    opacity: 0;
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes glLocBob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-1.5deg);
+  }
+  50% {
+    transform: translateY(-3px) rotate(1.5deg);
+  }
+}
+@keyframes glHTwinkle {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-screen-label='Pick your hero'] *,
+  [data-screen-label='Loadout'] * {
+    animation: none !important;
+  }
+}
+
+/* The inline post (postGame.tsx): the post is landscape, so the game drops
+   its phone bezel and runs edge to edge across it. */
+html[data-post] .gl-page {
+  padding: 0 !important;
+  height: 100vh !important;
+}
+html[data-post] .gl-frame {
+  max-width: none !important;
+  max-height: none !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+}
+html[data-post] .gl-shell {
+  border: 0 !important;
+  border-radius: 0 !important;
+}

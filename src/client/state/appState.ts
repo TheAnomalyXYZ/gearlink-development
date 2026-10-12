@@ -63,7 +63,9 @@ export type OpenState = {
   cards: OpenCard[];
   shown: number;
   torn: boolean;
-  from: 'shop' | 'inventory';
+  /** Where COLLECT goes back to: the shop, the bag, or the victory screen
+   *  whose level-up granted the book. */
+  from: 'shop' | 'inventory' | 'victory';
   /** Where the bought pack sat in the shop, so the stage can fly it in. */
   fromRect?: FxRect | null;
   /** A dev preview open: nothing was rolled, so COLLECT has nothing to send. */
@@ -131,6 +133,9 @@ export type AppState = {
 
   boardW: number;
   boardH: number;
+  /** The inline post's measured container, which the post layout sizes from. */
+  postW: number;
+  postH: number;
   chain: number[];
   busy: boolean;
   clearing: number[];
@@ -265,6 +270,8 @@ export const EMPTY_PROFILE: Profile = {
   flairs: [],
   flair: null,
   donated: 0,
+  level: 1,
+  xp: 0,
 };
 
 /** The design ships mutators as authoring knobs; this build runs the base rules. */
@@ -352,6 +359,8 @@ export const INITIAL_STATE: AppState = {
   heartUpgrading: false,
   boardW: 0,
   boardH: 0,
+  postW: 0,
+  postH: 0,
   lastSwing: null,
   hoverStatus: null,
   ftueStep: null,

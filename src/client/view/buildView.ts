@@ -81,11 +81,16 @@ import {
   monsterUrlFor,
   orbTypeOf,
   packById,
+  bookFor,
+  xpToNext,
   riderOf,
   rowOf,
   rewardLabel,
 } from '../../shared/engine/index.js';
 import { DEFAULT_SNOO, GEARLINK_ICON, NAV_ICON } from './assets.js';
+import { syncVictory } from '../fx/victory.js';
+import { postVm } from './postLayout.js';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 import {
   BOMB_PAL,
   BOMB_TILE,
@@ -121,6 +126,111 @@ const loadoutIcons = (lo: (Gear | null | undefined)[]): string[] =>
         tileIcon(getGearImageUrl(g.id) || EFFECT_ICON[g.effect] || '', false)[0]
     )
     .concat([BOMB_TILE[0], tileIcon(JUNK_ICON, false)[0]]);
+/* ---------- hero pick and loadout: heroes stand as 2D cutouts on the
+   tilted world map ---------- */
+/** Sprite width, height and the sticker's border, in source px. */
+const HS_B: Record<string, readonly [number, number, number]> = {
+  Hero: [126, 186, 2],
+  Archer: [124, 168, 2],
+  Mage: [124, 186, 2],
+};
+const heroStand = (k: string, hi: number, on: boolean, containers: number) => {
+  const [w, h, bb] = HS_B[k] ?? [126, 186, 2];
+  return {
+    body: '/art/NeuraKnights/Characters/' + k + '.png',
+    sticker: '/fx/hero-sticker/' + k + '.png',
+    ar: w + '/' + h,
+    stL: (-bb / w) * 100 + '%',
+    stT: (-bb / h) * 100 + '%',
+    stW: ((w + 2 * bb) / w) * 100 + '%',
+    stH: ((h + 2 * bb) / h) * 100 + '%',
+    standT: on
+      ? 'translate3d(0,-6%,0) scale(1.12)'
+      : 'translate3d(0,4%,0) scale(.86)',
+    standO: on ? 1 : 0.8,
+    z: on ? 3 : 1,
+    dealDelay: hi * 90 + 'ms',
+    sway:
+      'glHSway ' +
+      (on ? 2.6 : 3.4) +
+      's ease-in-out ' +
+      -hi * 0.9 +
+      's infinite',
+    float:
+      'glHFloat ' +
+      (on ? 2.1 : 2.8) +
+      's ease-in-out ' +
+      -hi * 0.7 +
+      's infinite',
+    raysO: on ? 1 : 0,
+    stickO: on ? 1 : 0,
+    shineD: on ? 'block' : 'none',
+    tagColor: on ? '#000000' : '#CBD9EC',
+    tagBg: on ? '#FCE270' : 'rgba(8,12,24,.8)',
+    tagBd: on ? '#000000' : '#3A4C74',
+    plateDisplay: on ? 'flex' : 'none',
+    pips: Array.from({ length: MAX_HEART_CONTAINERS }, (_, i) => ({
+      bg: i < containers ? '#FF5C6C' : '#2A1E33',
+      bd: i < containers ? '#FFB0B8' : '#3A2A44',
+    })),
+  };
+};
+/** Pixel stars over the hero scenes' night sky. */
+const STARFIELD =
+  '0.0cqw 8.4cqh 0 0px #CBD9EC,59.8cqw 18.1cqh 0 1px #FFF2B0,3.8cqw 24.5cqh 0 1px #CBD9EC,49.3cqw 1.1cqh 0 1px #CBD9EC,1.3cqw 0.1cqh 0 1px #FFF2B0,25.2cqw 0.5cqh 0 0px #CBD9EC,53.9cqw 15.0cqh 0 0px #CBD9EC,24.8cqw 1.1cqh 0 0px #FFF2B0,78.7cqw 1.8cqh 0 1px #CBD9EC,89.8cqw 4.7cqh 0 0px #FFF2B0,74.1cqw 31.4cqh 0 1px #FFF2B0,95.5cqw 3.5cqh 0 0px #CBD9EC,81.8cqw 5.8cqh 0 0px #CBD9EC,71.3cqw 25.5cqh 0 1px #CBD9EC,46.0cqw 19.6cqh 0 0px #FFF2B0,71.4cqw 12.5cqh 0 0px #CBD9EC,96.0cqw 11.4cqh 0 0px #FFF2B0,84.3cqw 3.5cqh 0 0px #FFF2B0,83.1cqw 21.7cqh 0 0px #CBD9EC,82.3cqw 2.0cqh 0 0px #CBD9EC,48.3cqw 7.8cqh 0 1px #FFF2B0,60.5cqw 28.5cqh 0 1px #FFF2B0,99.8cqw 18.5cqh 0 0px #CBD9EC,5.3cqw 13.5cqh 0 0px #CBD9EC,23.6cqw 12.9cqh 0 0px #FFF2B0,61.2cqw 8.7cqh 0 0px #CBD9EC,46.1cqw 20.6cqh 0 0px #FFF2B0,60.3cqw 11.9cqh 0 0px #FFF2B0,66.4cqw 18.7cqh 0 0px #CBD9EC,47.9cqw 17.3cqh 0 1px #CBD9EC,27.3cqw 25.4cqh 0 1px #FFF2B0,8.1cqw 1.6cqh 0 0px #CBD9EC,54.3cqw 31.6cqh 0 0px #CBD9EC,45.1cqw 0.3cqh 0 1px #FFF2B0,49.9cqw 10.0cqh 0 0px #CBD9EC,77.0cqw 27.4cqh 0 0px #CBD9EC,95.0cqw 3.7cqh 0 0px #CBD9EC,75.6cqw 10.8cqh 0 0px #CBD9EC,37.8cqw 15.8cqh 0 0px #CBD9EC,38.0cqw 31.7cqh 0 0px #CBD9EC';
+/** Each location's map sticker and where it sits on the 384x852 map art. */
+const HS_PIN: Record<string, readonly [string, number, number, string]> = {
+  forest: ['02_Forest', 0.2754, 0.81, '152/128'],
+  bridge: ['03_Bridge', 0.769, 0.65, '110/102'],
+  caves: ['04_Caves', 0.2097, 0.575, '138/132'],
+  ghost: ['05_Ghost_Town', 0.7746, 0.4676, '152/162'],
+  mountain: ['06_Mountain', 0.2483, 0.3987, '160/148'],
+  castle: ['07_Castle', 0.774, 0.2597, '164/200'],
+};
+/** The map tilted back like a table, centred on the chosen location. */
+const heroScene = (locationId: string) => {
+  const [pin, ax, ay, ar] = HS_PIN[locationId] ?? [
+    '02_Forest',
+    0.2754,
+    0.81,
+    '152/128',
+  ];
+  const PW = 170,
+    PH = (PW * 852) / 384,
+    above = PH * ay;
+  return {
+    planeL: 'calc(50cqw - ' + (PW * ax).toFixed(2) + 'cqw)',
+    planeT: 'calc(36cqh - ' + above.toFixed(2) + 'cqw)',
+    planeW: PW + 'cqw',
+    planeH: (above + 60).toFixed(2) + 'cqw',
+    bgSize: PW + 'cqw ' + PH.toFixed(2) + 'cqw',
+    origin: (ax * 100).toFixed(2) + '% ' + above.toFixed(2) + 'cqw',
+    map: '/art/PocketKnights/Map/Base.png',
+    loc: '/art/PocketKnights/Map/' + pin + '_Active.png',
+    locAr: ar,
+    stars: STARFIELD,
+  };
+};
+/** The level strip on the map: badge, bar, the next level's book, and the
+ *  stack of unopened books (tapping it opens them in turn). */
+const levelStrip = (p: {
+  level: number;
+  xp: number;
+  packs: Record<string, number>;
+}) => {
+  const need = xpToNext(p.level);
+  const held = PACKS.filter((k) => (p.packs[k.id] ?? 0) > 0);
+  const books = held.reduce((n, k) => n + (p.packs[k.id] ?? 0), 0);
+  return {
+    lvNum: String(p.level),
+    lvTitle: 'Level ' + p.level + ' - ' + p.xp + ' / ' + need + ' XP',
+    lvFrac: Math.min(1, p.xp / Math.max(1, need)).toFixed(3),
+    lvNextImg: packById(bookFor(p.level + 1))?.img ?? '',
+    lvBooks: String(books),
+    lvBooksDisplay: books > 0 ? 'flex' : 'none',
+    lvStackImg: held[0]?.img ?? '',
+  };
+};
 /** What the FX layer needs from the asset tables. */
 const fxHelpers = () => ({
   packById,
@@ -314,7 +424,7 @@ export const buildView = (app: GearLinkApp): View => {
      side by side. The duel flow borrows these cards but fights at a fixed
      duel HP, so the upgrade row stays hidden there. */
   const pieces = st.profile.heartPieces;
-  const heroCards = Object.keys(HERO_PERKS).map((k: any) => {
+  const heroCards = Object.keys(HERO_PERKS).map((k: any, hi: number) => {
     const p = PERKS[k]!;
     const on = st.heroClass === k;
     const containers = heartsFor(st.profile.hearts, k);
@@ -359,6 +469,7 @@ export const buildView = (app: GearLinkApp): View => {
         : affordable
           ? 'USES ' + HEART_PIECES_PER_CONTAINER + ' PIECES'
           : pieces + '/' + HEART_PIECES_PER_CONTAINER + ' PIECES',
+      ...heroStand(k, hi, on, containers),
     };
   });
 
@@ -376,6 +487,8 @@ export const buildView = (app: GearLinkApp): View => {
     fg: st.tab === eff ? '#000000' : 'rgba(255,255,255,.6)',
   }));
 
+  const FAN_Y = [4, 1, 0, 1, 4];
+  const FAN_R = [-6, -3, 0, 3, 6];
   const slots = [0, 1, 2, 3, 4].map((i) => {
     const id = st.picked[i];
     const g = id ? GEAR.find((x) => x.id === id) : null;
@@ -395,6 +508,10 @@ export const buildView = (app: GearLinkApp): View => {
       cursor: g ? 'pointer' : 'default',
       infoDisplay: g ? 'flex' : 'none',
       ring: g && st.lastGear === g.id ? '0 0 0 2px #FCE370' : 'none',
+      // The five slots fan like a hand; filling one snaps it up into place.
+      slotT: g
+        ? 'translateY(' + FAN_Y[i] + 'px) rotate(' + FAN_R[i] + 'deg) scale(1)'
+        : 'translateY(' + ((FAN_Y[i] ?? 0) + 3) + 'px) rotate(0deg) scale(.9)',
       inspect: g ? app.selectGear(g.id) : null,
       clear: g ? app.clearSlot(g.id) : null,
     };
@@ -429,7 +546,7 @@ export const buildView = (app: GearLinkApp): View => {
         SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot) ||
         RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity)
     )
-    .map((g) => {
+    .map((g, gi) => {
       const rd = riderOf(g.id);
       const ownedN = st.profile.gear[g.id] || 0;
       const on = st.picked.indexOf(g.id) >= 0;
@@ -451,6 +568,8 @@ export const buildView = (app: GearLinkApp): View => {
         (locked && !on) || (!on && (st.picked.length >= 5 || sameEffect >= 2));
       return {
         name: g.name,
+        // The shelf deals in card by card when the tab opens.
+        dealDelay: gi * 28 + 'ms',
         power: g.power,
         icon: getGearImageUrl(g.id) || EFFECT_ICON[g.effect],
         color: EFFECT_COLOR[g.effect],
@@ -619,7 +738,11 @@ export const buildView = (app: GearLinkApp): View => {
       monsterIdleAnim:
         st.monPhase === 'dying' || !disp.sheet
           ? 'none'
-          : 'glFrames ' + disp.idleSec + 's steps(' + IDLE_FRAMES + ') infinite',
+          : 'glFrames ' +
+            disp.idleSec +
+            's steps(' +
+            IDLE_FRAMES +
+            ') infinite',
       monsterName:
         st.monPhase === 'dying' && st.dying ? st.dying.name : disp.name,
       monsterOpacity: st.monPhase === 'empty' ? 0 : 1,
@@ -698,6 +821,9 @@ export const buildView = (app: GearLinkApp): View => {
         intent === 'charge'
           ? ''
           : String(app.swingStrength(enemy, bs.waveHits)),
+      /** The swing that lands this turn, before block - the post's "YOU WILL
+       *  TAKE" line subtracts block from it. */
+      intentSwing: app.swingStrength(enemy, bs.waveHits),
       intentColor:
         intent === 'heavy'
           ? '#FFC24B'
@@ -2255,6 +2381,7 @@ export const buildView = (app: GearLinkApp): View => {
         app.setState((s) => ({ fxGen: (s.fxGen || 0) + 1 }))
       );
       syncPackStage(app, fxHelpers());
+      syncVictory(app, { ...fxHelpers(), heartIcon: HEART_PIECE_ICON });
       const c = fx.rolled('coins', st.profile.coins);
       const g = fx.rolled('gems', st.profile.gems);
       return {
@@ -2749,6 +2876,7 @@ export const buildView = (app: GearLinkApp): View => {
       })
     ),
     toggleHomeMenu: app.toggleHomeMenu,
+    openStack: app.openStack,
     homeMenuDisplay: st.homeMenu ? 'flex' : 'none',
     homeMenuOpen: st.homeMenu,
     homeMenuItems: [
@@ -2786,8 +2914,14 @@ export const buildView = (app: GearLinkApp): View => {
         ? 'ASCENSION ' + st.profile.ascension
         : 'FIRST CLIMB',
     ascensionColor: st.profile.ascension > 0 ? '#FFC24B' : '#9DB4D4',
-    mapProgress:
-      Math.min(st.profile.progress, MAP_LENGTH) + '/' + MAP_LENGTH + ' TAKEN',
+    // A dim suffix on the climb chip: the map itself shows what is taken.
+    mapProgress: Math.min(st.profile.progress, MAP_LENGTH) + '/' + MAP_LENGTH,
+    mapProgressTitle:
+      Math.min(st.profile.progress, MAP_LENGTH) +
+      ' of ' +
+      MAP_LENGTH +
+      ' locations taken',
+    ...levelStrip(st.profile),
     mapPins: LOCATIONS.map((loc, i) => {
       const cleared = i < st.profile.progress;
       // The Daily Battle post's own location is open past the frontier too.
@@ -2857,7 +2991,9 @@ export const buildView = (app: GearLinkApp): View => {
       const open =
         i >= 0 && (i <= st.profile.progress || id === st.daily?.locationId);
       app.setState({ wmFocused: false });
-      if (open) app.pickLocation(id)();
+      // The post's first ENTER is its intro battle, as the default Hero.
+      if (app.postMode && !app.postIntroDone) app.startPost();
+      else if (open) app.pickLocation(id)();
     },
     wmFocus: (on: boolean) => {
       if (st.wmFocused !== on) app.setState({ wmFocused: on });
@@ -3063,8 +3199,14 @@ export const buildView = (app: GearLinkApp): View => {
       };
     })(),
     isBattle: st.phase === 'battle',
+    ...postVm(app, st, battle),
+    // The post's map: past its intro, the full game is a button away.
+    postMapExpand: app.postMode && app.postIntroDone,
+    postExpandMap: (e: ReactMouseEvent) => app.openFullGame(e.nativeEvent),
     isEnd: st.phase === 'end',
     heroCards,
+    heroScene: heroScene(st.locationId),
+    gearHero: heroStand(st.heroClass, 0, true, 0),
     gearCards,
     tabs,
     slots,

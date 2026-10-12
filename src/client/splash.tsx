@@ -1,6 +1,6 @@
 import './index.css';
 
-import { StrictMode, useEffect, useState } from 'react';
+import { StrictMode, Suspense, lazy, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { api } from './api.js';
 import type { ChallengeResponse, WarChestPost } from '../shared/api.js';
@@ -10,6 +10,12 @@ import { Chest } from './splash-chest.js';
 import { Daily } from './splash-daily.js';
 import { General } from './splash-general.js';
 import { PIXEL, SHELL } from './splash-style.js';
+
+/** The general post is a playable battle for a signed-in reader. The game is
+ *  its own chunk, fetched only here, so the other post types stay light. */
+const PostGame = lazy(() =>
+  import('./postGame.js').then((m) => ({ default: m.PostGame }))
+);
 
 /** The four-point star the Neura Knights claim button twinkles with. */
 const Star = ({ size, cls }: { size: number; cls: string }) => (
@@ -143,18 +149,19 @@ const GiveableChest = ({
 /**
  * The inline view, as it appears in the feed.
  *
- * Deliberately tiny: no engine, no profile fetch, no card table. It asks the
- * server one question - what should this post draw? - and the server answers
- * with finished image paths, so nothing here has to know what a rank or a
- * piece of gear looks like.
+ * Deliberately tiny up front: no engine, no profile fetch, no card table. It
+ * asks the server one question - what should this post draw? - and the server
+ * answers with finished image paths, so nothing here has to know what a rank
+ * or a piece of gear looks like.
  *
  * Four answers. A CHALLENGE post gets the duellist who made it. A Daily
  * Battle post gets the day's poster - its foe, its region and the top of its
  * own ladder. A War Chest post gets the subreddit's chest, with giving right
- * there in the feed. Every other post is the general GearLink splash. Until
- * the answer lands the card is a bare dark shell, so a challenge or daily post
- * never flashes the general splash first; if the lookup fails, the general
- * splash is drawn.
+ * there in the feed. Every other post is a playable battle: the game chunk is
+ * fetched only then, with the general splash shown while it loads and to a
+ * logged-out reader. Until the answer lands the card is a bare dark shell, so
+ * a challenge or daily post never flashes the general splash first; if the
+ * lookup fails, the general splash is drawn.
  */
 export const Splash = () => {
   const [res, setRes] = useState<ChallengeResponse | null>(null);
@@ -200,7 +207,14 @@ export const Splash = () => {
         endedCta={<Enter label="PLAY" />}
       />
     );
-  return <General cta={<Enter label="PLAY NOW" sparkle />} />;
+  const general = <General cta={<Enter label="PLAY NOW" sparkle />} />;
+  // A logged-out reader has no profile to play with: they get the splash.
+  if (!res.viewer) return general;
+  return (
+    <Suspense fallback={general}>
+      <PostGame />
+    </Suspense>
+  );
 };
 
 /* Mounting is guarded so the module can also be imported for a render test,

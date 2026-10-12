@@ -22,9 +22,15 @@
  */
 import { Component, Suspense, lazy } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import { context, navigateTo, showToast } from '@devvit/web/client';
+import {
+  context,
+  navigateTo,
+  requestExpandedMode,
+  showToast,
+} from '@devvit/web/client';
 import { OrderResultStatus, purchase } from '@devvit/payments/client';
 import {
+  LOCATIONS,
   DUEL_FTUE_STEPS,
   DUEL_LOSS_TROPHIES,
   DUEL_THINK_MIN,
@@ -155,6 +161,16 @@ import {
 } from './fx/pageTransition.js';
 import type { PageSnap } from './fx/pageTransition.js';
 import { juice } from './juice.js';
+import * as victory from './fx/victory.js';
+import {
+  clearLiveRun,
+  isPostMode,
+  loadLiveRun,
+  saveLiveRun,
+  setGoTo,
+  takeGoTo,
+} from './postMode.js';
+import type { VictoryResult } from './fx/victory.js';
 import { paletteFor } from './view/tilePalette.js';
 
 /** Moderators only, and rarely - kept out of the main bundle. */
@@ -168,6 +184,37 @@ export type { AppState } from './state/appState.js';
  *  so the board the player sees and the board the server replays share one
  *  source. */
 type RunSpec = Omit<SubmitRunRequest, 'moves'>;
+
+const isHeroClass = (x: unknown): x is HeroClass =>
+  x === 'Hero' || x === 'Archer' || x === 'Mage';
+const isMoves = (x: unknown): x is number[][] =>
+  Array.isArray(x) &&
+  x.every((m) => Array.isArray(m) && m.every((i) => typeof i === 'number'));
+/** A battle the post saved for the full game to pick up, checked field by
+ *  field because it comes back out of storage. */
+const isLiveRun = (v: unknown): v is { spec: RunSpec; moves: number[][] } => {
+  if (!v || typeof v !== 'object' || !('spec' in v) || !('moves' in v))
+    return false;
+  const s: unknown = v.spec;
+  return (
+    isMoves(v.moves) &&
+    !!s &&
+    typeof s === 'object' &&
+    'seed' in s &&
+    typeof s.seed === 'number' &&
+    'heroClass' in s &&
+    isHeroClass(s.heroClass) &&
+    'picked' in s &&
+    Array.isArray(s.picked) &&
+    s.picked.every((p: unknown) => typeof p === 'string') &&
+    'locationId' in s &&
+    typeof s.locationId === 'string' &&
+    'ascension' in s &&
+    typeof s.ascension === 'number' &&
+    'hearts' in s &&
+    typeof s.hearts === 'number'
+  );
+};
 
 type TimerKey =
   // campaign beats
@@ -211,6 +258,20 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
    *  the board - and `moves` is the transcript the server will replay. */
   private run: Run | null = null;
   private runSpec: RunSpec | null = null;
+  /** The server's answer for the run that just ended, for the victory screen. */
+  runDone: Promise<VictoryResult | null> | null = null;
+  private runDoneResolve: ((r: VictoryResult | null) => void) | null = null;
+  /** Set by the victory screen while its books open; called once they are in. */
+  afterBooks: (() => void) | null = null;
+  private bookQueue: string[] = [];
+  /** The inline post is the first battle (see postMode.ts). */
+  readonly postMode = isPostMode();
+  /** The post layout is waiting a frame to adopt a new board size. */
+  postSizing = false;
+  /** The post's own intro (straight into a battle) has been played or skipped. */
+  postIntroDone = false;
+  private postAuto: ReturnType<typeof setTimeout> | null = null;
+  private postRo: ResizeObserver | null = null;
   private moves: number[][] = [];
 
   private duelRngs: Record<string, () => number> = {};
@@ -342,6 +403,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
           }
           // Opened from a War Chest post: straight to the chest.
           else if (res.warChestPost) this.openWarChest();
+          else this.routeAfterBoot();
         }
       );
     } catch (e) {
@@ -529,7 +591,8 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
 
   measureBoard = (): void => {
     const el = this.wrap;
-    if (!el) return;
+    // The post sizes its board from the post container (postLayout.ts).
+    if (!el || this.postMode) return;
     if (this.state.phase === 'duel') {
       this.measureDuelBoards();
       return;
@@ -1081,6 +1144,10 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   private adoptRun(spec: RunSpec): RunState {
     this.runSpec = spec;
     this.run = new Run({ ...spec, mutators: MUTATORS });
+    // Saved once the caller has reset or replayed its moves.
+    queueMicrotask(() => {
+      if (this.runSpec === spec) this.keepLiveRun();
+    });
     return this.run.start();
   }
 
@@ -1098,6 +1165,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
 
   quitRun = (): void => {
     if (!this.state.bs) return;
+    clearLiveRun();
     this.setState({
       phase: 'end',
       endReason: 'ended',
@@ -1117,6 +1185,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     const spec = this.runSpec;
     if (!this.run || !spec || !this.moves.length) {
       this.setState({ coinsEarned: 0, chestBonusPct: 0, runBanked: 'none' });
+      this.settleRunDone(null);
       return;
     }
     const moves = this.moves;
@@ -1136,8 +1205,10 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         runRank: res.rank,
         runBest: res.isBest,
       });
+      this.settleRunDone(res);
       this.refreshQuests();
     } catch (e) {
+      this.settleRunDone(null);
       // The run is over on screen either way; say plainly that it did not bank.
       this.setState({
         coinsEarned: 0,
@@ -1147,6 +1218,181 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       this.fail(e);
     }
   }
+
+  /* ---------- the inline post ---------- */
+
+  /** After boot, with no challenge, daily or chest to open: the post drops a
+   *  new player into their first battle; the full game picks up whatever the
+   *  post handed it (a battle to resume, or a location to enter). */
+  private routeAfterBoot(): void {
+    if (this.postMode) {
+      if (this.state.profile.progress > 0) this.postIntroDone = true;
+      else
+        this.postAuto = setTimeout(() => {
+          if (this.state.phase === 'home' && !this.postIntroDone)
+            this.startPost();
+        }, 15000);
+      return;
+    }
+    const go = takeGoTo();
+    if (go === 'resume') this.resumeLiveRun();
+    else if (go && LOCATIONS.some((l) => l.id === go)) this.pickLocation(go)();
+  }
+
+  /** The battle in progress, kept so expanding the post carries it into the
+   *  full game. */
+  private keepLiveRun(): void {
+    const spec = this.runSpec;
+    if (!spec) return;
+    saveLiveRun({
+      spec,
+      moves: this.moves,
+      picked: this.state.picked,
+      heroClass: this.state.heroClass,
+      locationId: this.state.locationId,
+    });
+  }
+
+  /** Rebuild a saved battle by replaying its moves through the engine. */
+  private resumeLiveRun(): boolean {
+    const v = loadLiveRun();
+    if (!isLiveRun(v)) return false;
+    const spec = v.spec;
+    this.setState(
+      {
+        picked: spec.picked,
+        heroClass: spec.heroClass,
+        locationId: spec.locationId,
+        flow: 'run',
+        homeMenu: false,
+        modal: null,
+      },
+      () => {
+        let bs = this.adoptRun(spec);
+        const ok: number[][] = [];
+        for (const m of v.moves) {
+          const out = this.run?.step(bs, m);
+          if (!out) break;
+          bs = out.bs;
+          ok.push(m);
+        }
+        this.moves = ok;
+        this.setState({ ...BATTLE_RESET, phase: 'battle', bs, ftueStep: null });
+      }
+    );
+    return true;
+  }
+
+  /** Where the post drops the player: the furthest location reached. */
+  private postStartId(): string {
+    const p = Math.max(0, this.state.profile.progress);
+    return (LOCATIONS[Math.min(p, LOCATIONS.length - 1)] ?? LOCATIONS[0]!).id;
+  }
+
+  /** The post's battle: straight into the furthest location as the default
+   *  Hero with the gear owned. */
+  startPost = (): void => {
+    if (this.postAuto) clearTimeout(this.postAuto);
+    this.postIntroDone = true;
+    this.setState(
+      (s) => ({
+        heroClass: 'Hero',
+        locationId: this.postStartId(),
+        flow: 'run',
+        picked: ownedLoadout('Hero', s.profile.gear),
+        homeMenu: false,
+        modal: null,
+      }),
+      () => {
+        this.startRun();
+        this.setState({ ftueStep: null });
+      }
+    );
+  };
+
+  /** Leave the post for the full game (Reddit's expanded view), telling it
+   *  what to open: the battle in progress, or nothing for the map. */
+  openFullGame = (e: MouseEvent, go = ''): void => {
+    if (go === 'resume') this.keepLiveRun();
+    setGoTo(go);
+    try {
+      requestExpandedMode(e, 'game');
+    } catch (err) {
+      this.fail(err);
+    }
+  };
+
+  /** The post measures its own container; the layout is sized from it. */
+  setPostRoot = (el: HTMLDivElement | null): void => {
+    this.postRo?.disconnect();
+    this.postRo = null;
+    if (!el) return;
+    const m = (): void => {
+      const r = el.getBoundingClientRect();
+      const h = Math.floor(
+        Math.min(r.height, window.innerHeight - Math.max(0, r.top))
+      );
+      if (
+        Math.abs(this.state.postW - r.width) > 1 ||
+        Math.abs(this.state.postH - h) > 1
+      )
+        this.setState({ postW: Math.round(r.width), postH: h });
+    };
+    this.postRo = new ResizeObserver(m);
+    this.postRo.observe(el);
+    m();
+  };
+
+  /** Tapping the post's backdrop drops a half-drawn link. */
+  clearChain = (): void => {
+    if (this.state.chain.length && !this.state.busy)
+      this.setState({ chain: [], preview: null });
+  };
+
+  private settleRunDone(r: VictoryResult | null): void {
+    const done = this.runDoneResolve;
+    this.runDoneResolve = null;
+    done?.(r);
+  }
+
+  /** The victory sequence hands the screen to the end state once its panel
+   *  covers the board. */
+  enterEnd = (): void => {
+    if (this.state.phase === 'end') return;
+    this.setState({
+      phase: 'end',
+      busy: false,
+      drop: null,
+      kick: false,
+      monPhase: null,
+      dying: null,
+      swing: null,
+      pHpShown: null,
+    });
+    this.runEndRoll();
+  };
+
+  /** TRY AGAIN: the same hero, five and location, on a fresh seed. */
+  retryRun = (): void => this.startRun();
+
+  /** Books granted on level-up open one after another. */
+  openBooks = (
+    ids: string[],
+    from: 'victory' | 'inventory' = 'inventory'
+  ): void => {
+    const [first, ...rest] = ids;
+    if (!first) return;
+    this.bookQueue = rest;
+    this.openPackFrom(first, from);
+  };
+
+  /** The book stack beside the level strip: every unopened book, in turn. */
+  openStack = (): void => {
+    const ids: string[] = [];
+    for (const [id, n] of Object.entries(this.state.profile.packs))
+      for (let i = 0; i < n; i++) ids.push(id);
+    this.openBooks(ids);
+  };
 
   /* ---------- input ---------- */
 
@@ -1286,6 +1532,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     // Recorded only once the engine has accepted it, so the transcript and the
     // board can never drift apart.
     this.moves.push(move.slice());
+    this.keepLiveRun();
 
     // The drag step is completed by DOING it: record what the taught link
     // actually dealt, then move to the step that points at the HP bar.
@@ -1492,21 +1739,22 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     const stuck = !out.over && !out.battleWon && !hasAnyMove(out.bs.board);
     if (out.battleWon || out.over || stuck) {
       audio.play(out.battleWon ? 'victory' : 'defeat');
+      const reason = out.battleWon ? 'won' : out.over ? 'dead' : 'stuck';
+      clearLiveRun();
+      // The board stays up, frozen, for the kill and the title stamp; the
+      // victory sequence moves to the end state once its panel covers it.
+      this.runDone = new Promise((r) => (this.runDoneResolve = r));
       this.setState({
-        phase: 'end',
-        endReason: out.battleWon ? 'won' : out.over ? 'dead' : 'stuck',
-        busy: false,
+        endReason: reason,
+        busy: true,
         hitWho: null,
         pops: [],
-        drop: null,
         kick: false,
-        monPhase: null,
-        dying: null,
         swing: null,
-        pHpShown: null,
       });
-      this.runEndRoll();
       void this.submitRun();
+      if (!victory.start(this, { reason, locationName: this.locationName() }))
+        this.enterEnd();
       return;
     }
     if (out.waveCleared) {
@@ -2217,7 +2465,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
    *  so a half-watched open cannot half-apply. */
   private openPackFrom(
     id: string,
-    from: 'shop' | 'inventory',
+    from: OpenState['from'],
     fromRect: FxRect | null = null
   ): void {
     void api
@@ -2267,14 +2515,13 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     const op = this.state.openPack;
     if (!op) return;
     const back = op.from === 'shop';
+    const toVictory = op.from === 'victory';
     const h = isCollectFx(hooks) ? hooks : null;
+    const phase = back ? 'shop' : toVictory ? 'end' : 'inventory';
     if (op.mock) {
-      this.setState({
-        phase: back ? 'shop' : 'inventory',
-        invTab: 'gear',
-        openPack: null,
-      });
+      this.setState({ phase, invTab: 'gear', openPack: null });
       h?.after?.();
+      if (toVictory) setTimeout(() => this.afterBooks?.(), 30);
       return;
     }
     const summary = packSummary(op);
@@ -2282,14 +2529,13 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       .collectPack({ token: op.token })
       .then((r) => {
         h?.before(r);
-        this.setState({
-          phase: back ? 'shop' : 'inventory',
-          invTab: 'gear',
-          openPack: null,
-        });
+        const next = this.bookQueue.shift();
+        this.setState({ phase, invTab: 'gear', openPack: null });
         this.adopt(r.profile, back ? summary : undefined);
         this.refreshQuests();
         h?.after?.(r);
+        if (next) setTimeout(() => this.openPackFrom(next, op.from), 60);
+        else if (toVictory) setTimeout(() => this.afterBooks?.(), 30);
       })
       .catch(this.fail);
   };

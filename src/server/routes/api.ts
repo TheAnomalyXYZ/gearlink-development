@@ -103,6 +103,8 @@ import {
   donationIsLegal,
   duelRefreshCost,
   verifyRun,
+  applyXp,
+  xpLines,
 } from '../../shared/engine/index.js';
 import type { PulledCard } from '../../shared/engine/economy.js';
 
@@ -277,12 +279,30 @@ api.post('/run', async (c) => {
       ? Math.max(profile.progress, locIdx + 1)
       : profile.progress;
 
+  /* Player level: XP from every attempt, won or lost. Each level-up grants one
+     book straight into the packs, saved before the client animates any of it. */
+  const lv = applyXp(
+    { level: profile.level, xp: profile.xp },
+    xpLines({
+      won,
+      wavesCleared: state.wavesCleared,
+      firstClear,
+      bestLink: state.maxChain,
+    })
+  );
+  const packs = { ...profile.packs };
+  for (const u of lv.result.levelUps) packs[u.book] = (packs[u.book] ?? 0) + 1;
+  const isBestLink = state.maxChain > (profile.best?.chain ?? 0);
+
   await saveProfile(me.userId, {
     coins: profile.coins + coinsEarned,
     best,
     ascension,
     progress,
     heartPieces: profile.heartPieces + heartPiecesEarned,
+    level: lv.save.level,
+    xp: lv.save.xp,
+    ...(lv.result.levelUps.length ? { packs } : {}),
   });
   await recordRun({
     heroClass: body.heroClass,
@@ -331,6 +351,8 @@ api.post('/run', async (c) => {
     waveCount,
     ascended,
     heartPiecesEarned,
+    xp: lv.result,
+    isBestLink,
     profile: after,
     leaderboard,
   });

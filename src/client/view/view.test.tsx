@@ -53,6 +53,8 @@ const profile: Profile = {
   flairs: ['apprentice'],
   flair: 'apprentice',
   donated: 300,
+  level: 3,
+  xp: 40,
 };
 
 /** One of each row state: claimable, in progress, claimed. */
