@@ -1,0 +1,18 @@
+/* Game pieces: the game's own dark stage fills the card. */
+html,
+body {
+  background: #0b1020 !important;
+}
+body {
+  padding: 12px !important;
+}
+:global(.ds-grid) {
+  gap: 12px !important;
+}
+:global(.ds-cell) {
+  border: 1px solid #1d2956 !important;
+  background: #101528 !important;
+}
+:global(.ds-cell) > h4 {
+  color: #9db4d4 !important;
+}

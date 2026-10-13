@@ -31,7 +31,7 @@ const SNOO = '/avatars/snoo-default.png';
 
 /** The rank sprite with its level numeral over the corner, the way the Neura
  *  Knights battle rank icon draws it. Knight carries no numeral. */
-const RankIcon = ({ card }: { card: ChallengeCard }) => (
+export const RankIcon = ({ card }: { card: ChallengeCard }) => (
   <div className="relative h-[34px] w-[34px] shrink-0">
     <img
       src={card.leagueIcon}
@@ -68,7 +68,7 @@ const RankIcon = ({ card }: { card: ChallengeCard }) => (
  * default snoo and never the game's class art: the card introduces a REDDITOR
  * who plays GearLink, and a class sprite here reads as a bot, not a person.
  */
-const Duellist = ({ card }: { card: ChallengeCard }) => {
+export const Duellist = ({ card }: { card: ChallengeCard }) => {
   const [broken, setBroken] = useState(false);
   const src = broken || !card.avatar ? SNOO : card.avatar;
   return (
@@ -109,7 +109,7 @@ const Duellist = ({ card }: { card: ChallengeCard }) => {
  * snoovatar when Reddit gives one, Reddit's default snoo when it does not,
  * dimmed while the seat is still unclaimed.
  */
-const Reader = ({
+export const Reader = ({
   viewer,
 }: {
   viewer?: ChallengeViewer | null | undefined;

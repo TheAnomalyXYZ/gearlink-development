@@ -1,0 +1,18 @@
+/* Admin pieces: the dashboard's zinc-950 page. */
+html,
+body {
+  background: #09090b !important;
+}
+body {
+  padding: 12px !important;
+}
+:global(.ds-grid) {
+  gap: 12px !important;
+}
+:global(.ds-cell) {
+  border: 1px solid #27272a !important;
+  background: #09090b !important;
+}
+:global(.ds-cell) > h4 {
+  color: #a1a1aa !important;
+}

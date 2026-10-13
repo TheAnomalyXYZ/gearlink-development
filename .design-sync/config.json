@@ -1,0 +1,128 @@
+{
+  "projectId": "885026a3-f16f-425a-a154-72f2e426a476",
+  "shape": "package",
+  "pkg": "gearlink-ds",
+  "globalName": "Gearlink",
+  "buildCmd": "node .design-sync/build/build.mjs",
+  "entry": "./.design-sync/dist/index.js",
+  "cssEntry": "style.css",
+  "overrides": {
+    "Challenge": {
+      "cardMode": "column",
+      "viewport": "760x700",
+      "primaryStory": "Desktop"
+    },
+    "Chest": {
+      "cardMode": "column",
+      "viewport": "760x700",
+      "primaryStory": "Desktop"
+    },
+    "Daily": {
+      "cardMode": "column",
+      "viewport": "760x700",
+      "primaryStory": "Desktop"
+    },
+    "General": {
+      "cardMode": "column",
+      "viewport": "760x700",
+      "primaryStory": "Desktop"
+    },
+    "WorldMap": {
+      "cardMode": "column",
+      "viewport": "760x900",
+      "primaryStory": "Desktop"
+    },
+    "Booting": {
+      "cardMode": "column",
+      "viewport": "760x900",
+      "primaryStory": "Desktop"
+    },
+    "Fatal": {
+      "cardMode": "column",
+      "viewport": "760x900",
+      "primaryStory": "Desktop"
+    },
+    "LineChart": {
+      "cardMode": "column",
+      "viewport": "640x420"
+    },
+    "BarChart": {
+      "cardMode": "column",
+      "viewport": "640x420"
+    },
+    "SegmentBar": {
+      "cardMode": "column",
+      "viewport": "640x300"
+    },
+    "ChartCard": {
+      "cardMode": "column",
+      "viewport": "640x420"
+    },
+    "Countdown": {
+      "cardMode": "column"
+    },
+    "CountdownUnit": {
+      "cardMode": "column"
+    },
+    "DailyBanner": {
+      "cardMode": "column"
+    },
+    "PodiumSeat": {
+      "cardMode": "column"
+    },
+    "Table": {
+      "cardMode": "column"
+    },
+    "KpiCard": {
+      "cardMode": "column"
+    },
+    "MiniStat": {
+      "cardMode": "column"
+    },
+    "SectionTitle": {
+      "cardMode": "column"
+    },
+    "RangeSelector": {
+      "cardMode": "column"
+    },
+    "Toggle": {
+      "cardMode": "column"
+    }
+  },
+  "docsMap": {
+    "Sparkle": "../groups/atoms.md",
+    "CountdownColon": "../groups/atoms.md",
+    "RibbonTail": "../groups/atoms.md",
+    "SpeakerIcon": "../groups/atoms.md",
+    "MenuIcon": "../groups/atoms.md",
+    "SectionTitle": "../groups/atoms.md",
+    "RankIcon": "../groups/molecules.md",
+    "MiniStat": "../groups/molecules.md",
+    "CountdownUnit": "../groups/molecules.md",
+    "Countdown": "../groups/molecules.md",
+    "Enter": "../groups/molecules.md",
+    "GiveButton": "../groups/molecules.md",
+    "VolumeSlider": "../groups/molecules.md",
+    "KpiCard": "../groups/molecules.md",
+    "RangeSelector": "../groups/molecules.md",
+    "Toggle": "../groups/molecules.md",
+    "SegmentBar": "../groups/molecules.md",
+    "Duellist": "../groups/organisms.md",
+    "Reader": "../groups/organisms.md",
+    "HeroStander": "../groups/organisms.md",
+    "PodiumSeat": "../groups/organisms.md",
+    "DailyBanner": "../groups/organisms.md",
+    "LineChart": "../groups/organisms.md",
+    "BarChart": "../groups/organisms.md",
+    "ChartCard": "../groups/organisms.md",
+    "Table": "../groups/organisms.md",
+    "Challenge": "../groups/templates.md",
+    "Chest": "../groups/templates.md",
+    "Daily": "../groups/templates.md",
+    "General": "../groups/templates.md",
+    "WorldMap": "../groups/templates.md",
+    "Booting": "../groups/templates.md",
+    "Fatal": "../groups/templates.md"
+  },
+  "readmeHeader": ".design-sync/conventions.md"
+}

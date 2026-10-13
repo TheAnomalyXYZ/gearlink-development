@@ -1,0 +1,20 @@
+/* Template cards: a dark Reddit-style feed behind every story, no white page. */
+html,
+body {
+  background: #0b1416 !important;
+}
+body {
+  padding: 16px !important;
+}
+:global(.ds-grid) {
+  gap: 20px !important;
+}
+:global(.ds-cell) {
+  border: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+}
+:global(.ds-cell) > h4 {
+  color: #8ba2ad !important;
+  margin: 0 0 10px !important;
+}

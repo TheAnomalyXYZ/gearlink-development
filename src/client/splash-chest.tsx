@@ -37,7 +37,7 @@ const STROKE: CSSProperties = {
 };
 
 /* The chest's own motion. Decoration only, so it stops under reduced motion. */
-const CHEST_MOTION = `
+export const CHEST_MOTION = `
 @keyframes wc-glow{0%,100%{opacity:.55;transform:translate(-50%,-50%) scale(.92)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}}
 @keyframes wc-fill{0%{transform:scaleX(0)}100%{transform:scaleX(1)}}
 @keyframes wc-stamp{0%{opacity:0;transform:rotate(-12deg) scale(2.6)}60%{opacity:1;transform:rotate(-12deg) scale(.9)}100%{opacity:1;transform:rotate(-12deg) scale(1)}}
@@ -58,7 +58,7 @@ const timeLeft = (ms: number): string => {
 };
 
 /** One give button. Gold when it can be pressed, grey when it cannot. */
-const Give = ({
+export const GiveButton = ({
   amount,
   live,
   busy,
@@ -326,7 +326,7 @@ export const Chest = ({
         <div className="relative mt-2 flex w-full max-w-md flex-col items-center gap-1.5">
           <div className="flex w-full gap-2">
             {DONATION_AMOUNTS.map((a) => (
-              <Give
+              <GiveButton
                 key={a}
                 amount={a}
                 live={busy === null && (coins ?? 0) >= a}

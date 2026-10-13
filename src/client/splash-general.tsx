@@ -79,7 +79,7 @@ const STROKE: CSSProperties = {
  * background, so it is drawn as one - stood on its own shadow, never boxed.
  * The middle one stands in front and a head taller.
  */
-const Stander = ({
+export const HeroStander = ({
   hero,
   i,
 }: {
@@ -283,7 +283,7 @@ export const General = ({ cta }: { cta?: ReactNode }) => (
       <div className="absolute inset-0 z-10 flex items-center justify-center">
         <div className="flex w-full items-end justify-center">
           {GENERAL_HEROES.map((h, i) => (
-            <Stander key={h.name} hero={h} i={i} />
+            <HeroStander key={h.name} hero={h} i={i} />
           ))}
         </div>
       </div>

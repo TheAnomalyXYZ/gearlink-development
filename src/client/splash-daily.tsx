@@ -51,7 +51,7 @@ const STROKE: CSSProperties = {
 
 /* The poster's own motion, on top of the shared feed motion. Decoration only,
    so it all stops under reduced motion like the rest. */
-const DAILY_MOTION = `
+export const DAILY_MOTION = `
 @keyframes dly-grow{0%{transform:scaleY(0)}100%{transform:scaleY(1)}}
 @keyframes dly-seat{0%{opacity:0;transform:translateY(-18px) scale(.8)}70%{opacity:1;transform:translateY(2px) scale(1.05)}100%{opacity:1;transform:none}}
 @keyframes dly-tick{0%{opacity:0;transform:translateY(-55%)}100%{opacity:1;transform:none}}
@@ -89,7 +89,7 @@ const useNow = (until: number, start?: number) => {
 
 /** One block of the countdown. The digits are keyed by value so each change
  *  drops in fresh. */
-const Unit = ({
+export const CountdownUnit = ({
   value,
   unit,
   urgent,
@@ -136,7 +136,7 @@ const Unit = ({
   </div>
 );
 
-const Colon = () => (
+export const CountdownColon = () => (
   <span
     className="glk-blink self-start"
     style={{
@@ -152,7 +152,7 @@ const Colon = () => (
 
 /** Time left on this post's battle, as a scoreboard clock. The last hour
  *  turns it red and sets it pulsing. */
-const Countdown = ({ left }: { left: number }) => {
+export const Countdown = ({ left }: { left: number }) => {
   const urgent = left < 3600;
   return (
     <div
@@ -185,22 +185,32 @@ const Countdown = ({ left }: { left: number }) => {
         </span>
       </div>
       <div className="flex items-start gap-0.5">
-        <Unit value={pad(Math.floor(left / 3600))} unit="HRS" urgent={urgent} />
-        <Colon />
-        <Unit
+        <CountdownUnit
+          value={pad(Math.floor(left / 3600))}
+          unit="HRS"
+          urgent={urgent}
+        />
+        <CountdownColon />
+        <CountdownUnit
           value={pad(Math.floor((left % 3600) / 60))}
           unit="MIN"
           urgent={urgent}
         />
-        <Colon />
-        <Unit value={pad(left % 60)} unit="SEC" urgent={urgent} />
+        <CountdownColon />
+        <CountdownUnit value={pad(left % 60)} unit="SEC" urgent={urgent} />
       </div>
     </div>
   );
 };
 
 /** One swallowtail end of the banner ribbon. */
-const Tail = ({ side, fill }: { side: 'l' | 'r'; fill: string }) => (
+export const RibbonTail = ({
+  side,
+  fill,
+}: {
+  side: 'l' | 'r';
+  fill: string;
+}) => (
   <div
     className="relative top-1.5 shrink-0"
     style={{
@@ -219,12 +229,18 @@ const Tail = ({ side, fill }: { side: 'l' | 'r'; fill: string }) => (
 
 /** The ribbon across the top: title, then the day it belongs to. A closed day
  *  goes steel grey and takes an ENDED stamp. */
-const Banner = ({ poster, ended }: { poster: DailyPoster; ended: boolean }) => {
+export const DailyBanner = ({
+  poster,
+  ended,
+}: {
+  poster: DailyPoster;
+  ended: boolean;
+}) => {
   const [fill, lip] = ended ? ['#D4DCE8', '#6F7C94'] : ['#FCE270', '#FF961D'];
   return (
     <div className="relative z-10 flex shrink-0 flex-col items-center">
       <div className="dly-unfurl relative flex items-start">
-        <Tail side="l" fill={lip} />
+        <RibbonTail side="l" fill={lip} />
         <div
           className="relative z-10 flex items-center gap-2 overflow-hidden px-4 py-1"
           style={{
@@ -258,7 +274,7 @@ const Banner = ({ poster, ended }: { poster: DailyPoster; ended: boolean }) => {
             />
           )}
         </div>
-        <Tail side="r" fill={lip} />
+        <RibbonTail side="r" fill={lip} />
         {ended ? (
           <div
             className="dly-stamp absolute -top-1.5 -right-7 z-20 px-1.5"
@@ -301,7 +317,7 @@ const Banner = ({ poster, ended }: { poster: DailyPoster; ended: boolean }) => {
 
 /** One seat on the podium: the redditor standing on top of their pedestal.
  *  First sits tallest, in the middle, under the crown and the light. */
-const Seat = ({
+export const PodiumSeat = ({
   place,
   row,
   ended,
@@ -568,7 +584,7 @@ export const Daily = ({
           ))
         : null}
 
-      <Banner poster={poster} ended={ended} />
+      <DailyBanner poster={poster} ended={ended} />
 
       {/* The stage: the foe in its own space up top, the podium below it.
           A short card drops the foe so the podium keeps its room. */}
@@ -625,9 +641,9 @@ export const Daily = ({
 
         <div className="relative z-10 mx-auto flex w-full max-w-95 shrink-0 flex-col pt-5">
           <div className="flex items-end gap-1.5 px-1">
-            <Seat place={1} row={poster.top[1]} ended={ended} />
-            <Seat place={0} row={champ} ended={ended} />
-            <Seat place={2} row={poster.top[2]} ended={ended} />
+            <PodiumSeat place={1} row={poster.top[1]} ended={ended} />
+            <PodiumSeat place={0} row={champ} ended={ended} />
+            <PodiumSeat place={2} row={poster.top[2]} ended={ended} />
           </div>
           {/* The floor the pedestals stand on. */}
           <div
