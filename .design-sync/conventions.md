@@ -15,7 +15,7 @@ Gearlink is a pixel-art Reddit game (Devvit). Everything is dark, chunky and han
 - **Atoms**: `Sparkle`, `CountdownColon`, `RibbonTail`, `SpeakerIcon`, `MenuIcon`, `SectionTitle`.
 - **Molecules**: `Enter` (the primary button), `GiveButton` (coin amount button), `RankIcon`, `CountdownUnit`, `Countdown`, `VolumeSlider`; admin `KpiCard`, `MiniStat`, `RangeSelector`, `Toggle`, `SegmentBar`.
 - **Organisms**: `Duellist`, `Reader` (full-body snoos; give them a sized box), `HeroStander` (put three in a flex row, `i` 0-2), `PodiumSeat` (order places 1, 0, 2 in a flex row with `alignItems: flex-end`), `DailyBanner`; admin `LineChart`, `BarChart`, `ChartCard`, `Table`.
-- **Templates**: the feed cards `Challenge`, `Chest`, `Daily`, `General`; `WorldMap`; `Booting`, `Fatal`.
+- **Templates**: the feed cards `Challenge`, `Chest`, `Daily`, `General`; `WorldMap`; `Booting`, `Fatal`; and the game screens `HomeScreen`, `HeroPickScreen`, `LoadoutScreen`, `BattleScreen`, `RunEndScreen` (`won`), `ShopScreen` (`tab`: packs/coins/gems), `PackOpenScreen`, `QuestsScreen` (`tab`: daily/weekly), `BagScreen` (`tab`: packs/gear), `DuelLobbyScreen`, `DuelConfirmScreen`, `DuelScreen` (`won`). They are the real game screen over sample state, full viewport, buttons inert. `GameScreen phase="..."` reaches any phase; every screen takes `state={{ ... }}` to override app state, e.g. `state={{ modal: 'settings' }}`, `'how'`, `'board'`, `'pause'`, or `homeMenu: true`.
 
 Before drawing a button, clock, rank badge or podium yourself, use the existing piece. `Countdown` takes `left` in seconds and goes red under an hour.
 

@@ -87,6 +87,71 @@
     },
     "Toggle": {
       "cardMode": "column"
+    },
+    "HomeScreen": {
+      "cardMode": "column",
+      "viewport": "760x900",
+      "primaryStory": "Desktop"
+    },
+    "HeroPickScreen": {
+      "cardMode": "column",
+      "viewport": "760x900",
+      "primaryStory": "Desktop"
+    },
+    "LoadoutScreen": {
+      "cardMode": "column",
+      "viewport": "760x900",
+      "primaryStory": "Desktop"
+    },
+    "BattleScreen": {
+      "cardMode": "column",
+      "viewport": "760x900",
+      "primaryStory": "Desktop"
+    },
+    "RunEndScreen": {
+      "cardMode": "column",
+      "viewport": "760x900",
+      "primaryStory": "Desktop"
+    },
+    "ShopScreen": {
+      "cardMode": "column",
+      "viewport": "760x900",
+      "primaryStory": "Desktop"
+    },
+    "PackOpenScreen": {
+      "cardMode": "column",
+      "viewport": "760x900",
+      "primaryStory": "Desktop"
+    },
+    "QuestsScreen": {
+      "cardMode": "column",
+      "viewport": "760x900",
+      "primaryStory": "Desktop"
+    },
+    "BagScreen": {
+      "cardMode": "column",
+      "viewport": "760x900",
+      "primaryStory": "Desktop"
+    },
+    "DuelLobbyScreen": {
+      "cardMode": "column",
+      "viewport": "760x900",
+      "primaryStory": "Desktop"
+    },
+    "DuelConfirmScreen": {
+      "cardMode": "column",
+      "viewport": "760x900",
+      "primaryStory": "Desktop"
+    },
+    "DuelScreen": {
+      "cardMode": "column",
+      "viewport": "760x900",
+      "primaryStory": "Desktop"
+    },
+    "GameScreen": {
+      "cardMode": "column",
+      "viewport": "760x900",
+      "primaryStory": "Desktop"
     }
   },
   "docsMap": {
@@ -122,7 +187,20 @@
     "General": "../groups/templates.md",
     "WorldMap": "../groups/templates.md",
     "Booting": "../groups/templates.md",
-    "Fatal": "../groups/templates.md"
+    "Fatal": "../groups/templates.md",
+    "HomeScreen": "../groups/templates.md",
+    "HeroPickScreen": "../groups/templates.md",
+    "LoadoutScreen": "../groups/templates.md",
+    "BattleScreen": "../groups/templates.md",
+    "RunEndScreen": "../groups/templates.md",
+    "ShopScreen": "../groups/templates.md",
+    "PackOpenScreen": "../groups/templates.md",
+    "QuestsScreen": "../groups/templates.md",
+    "BagScreen": "../groups/templates.md",
+    "DuelLobbyScreen": "../groups/templates.md",
+    "DuelConfirmScreen": "../groups/templates.md",
+    "DuelScreen": "../groups/templates.md",
+    "GameScreen": "../groups/templates.md"
   },
   "readmeHeader": ".design-sync/conventions.md"
 }

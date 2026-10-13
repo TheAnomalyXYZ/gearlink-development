@@ -11,6 +11,7 @@
   },
   "include": [
     "./entry.ts",
+    "./game-screens.tsx",
     "./virtual.d.ts",
     "../../src/client/global.ts",
     "../../src/client/module.d.ts"
