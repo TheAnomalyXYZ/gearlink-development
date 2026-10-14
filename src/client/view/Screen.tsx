@@ -2577,10 +2577,12 @@ export const Screen = ({ v }: { v: View }) => (
               }}
             >
               <HeroBackdrop s={v.heroScene} />
+              {/* Above the hero row: the sticker floats past its box and would
+                  otherwise cover (and swallow taps on) BACK. */}
               <div
                 style={{
                   position: 'relative',
-                  zIndex: '2',
+                  zIndex: '5',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
