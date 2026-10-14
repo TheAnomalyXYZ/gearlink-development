@@ -1,7 +1,7 @@
 import {
   CELLS,
-  CHAIN_MULT_STEP_X100,
-  CHAIN_MULT_X100,
+  CHAIN_MULT_BASE_X100,
+  CHAIN_MULT_GROWTH_PCT,
   GRID_COLS,
   GRID_ROWS,
   JUNK_FLAG,
@@ -25,13 +25,22 @@ export const areAdjacent = (a: number, b: number): boolean => {
   return dr <= 1 && dc <= 1 && dr + dc > 0;
 };
 
+/** Exponential chain table, built with integer maths so client and server
+ *  replays agree bit-for-bit (Math.pow is not guaranteed identical across
+ *  engines). Indexed by chain length; a chain can never exceed the board. */
+const CHAIN_MULT_TABLE: number[] = (() => {
+  const out: number[] = new Array<number>(CELLS + 1).fill(0);
+  let v = CHAIN_MULT_BASE_X100;
+  for (let n = MIN_LINK; n <= CELLS; n++) {
+    out[n] = v;
+    v += Math.floor((v * CHAIN_MULT_GROWTH_PCT) / 100);
+  }
+  return out;
+})();
+
 export const chainMultX100 = (len: number, m: Mutators): number => {
   if (len < MIN_LINK) return 0;
-  const last = CHAIN_MULT_X100.length - 1;
-  const base =
-    len <= last
-      ? CHAIN_MULT_X100[len]!
-      : CHAIN_MULT_X100[last]! + CHAIN_MULT_STEP_X100 * (len - last);
+  const base = CHAIN_MULT_TABLE[Math.min(len, CELLS)]!;
   return m.chainFrenzy ? base + 15 : base;
 };
 

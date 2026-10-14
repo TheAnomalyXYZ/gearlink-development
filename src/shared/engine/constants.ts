@@ -20,11 +20,13 @@ export const BOMB_MULT_X100 = 40;
 export const BOMB_CENTER_MULT_X100 = 80;
 
 /**
- * Re-based so a card's POWER is literally what a 3-link pays: index 3 is 100%.
- * Growth is gentle and near-linear (+20, +22, +24, ... per extra orb).
+ * Re-based so a card's POWER is literally what a 3-link pays: a 3-link is 100%.
+ * Growth is exponential: each extra orb compounds the multiplier by
+ * CHAIN_MULT_GROWTH_PCT, so short chains barely gain while long ones snowball
+ * (3:100, 4:120, 5:144, 6:172, 8:247, 10:355, 12:511, 15:882).
  */
-export const CHAIN_MULT_X100 = [0, 0, 0, 100, 120, 142, 166, 192, 220, 250];
-export const CHAIN_MULT_STEP_X100 = 32;
+export const CHAIN_MULT_BASE_X100 = 100;
+export const CHAIN_MULT_GROWTH_PCT = 20;
 
 export const PLAYER_HP = 40;
 export const GLASS_KNIGHT_HP = 24;
