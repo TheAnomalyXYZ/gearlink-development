@@ -31,8 +31,8 @@ export const GLASS_KNIGHT_HP = 24;
 
 export const WAVE_BASE_HP_MIN = 21;
 export const WAVE_BASE_HP_MAX = 25;
-export const WAVE_BASE_STR_MIN = 3;
-export const WAVE_BASE_STR_MAX = 4;
+export const WAVE_BASE_STR_MIN = 5;
+export const WAVE_BASE_STR_MAX = 6;
 
 export const WAVE_HP_GROWTH_BANDS = [
   { u: 6, x: 1050 },
@@ -40,12 +40,12 @@ export const WAVE_HP_GROWTH_BANDS = [
   { u: Infinity, x: 1090 },
 ];
 export const WAVE_STR_GROWTH_BANDS = [
-  { u: 6, x: 1040 },
-  { u: 11, x: 1065 },
+  { u: 6, x: 1060 },
+  { u: 11, x: 1085 },
   { u: Infinity, x: 1135 },
 ];
 export const PERIOD_BANDS = [
-  { u: 6, p: 3 },
+  { u: 4, p: 3 },
   { u: Infinity, p: 2 },
 ];
 /** A period-1 wave leaves no turn to attack in, so cadence never drops below 2. */
@@ -85,7 +85,9 @@ export const WAVE_CLEAR_BONUS = 50;
 export const COMBO_BONUS = 5;
 export const COINS_PER_SCORE = 40;
 
-export const REFILL_WEIGHT = { attack: 85, block: 105, effect: 110 };
+/** Heal sits lowest: on a starved board a heal link is a lifeline, not a
+ *  default pick, so taking damage actually threatens the run. */
+export const REFILL_WEIGHT = { attack: 110, block: 105, effect: 70 };
 export const MAX_DETONATION_STAGES = 8;
 
 export const EFFECT_COLOR: Record<string, string> = {
