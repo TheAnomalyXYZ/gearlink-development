@@ -81,3 +81,22 @@ void test('a closed day nobody played says the crown went unclaimed', () => {
   assert.ok(html.includes('Nobody claimed the crown this day.'));
   assert.ok(!html.includes('CHAMPION'));
 });
+
+void test("the daily poster leads with a board of the day's tiles", () => {
+  const p = posterFor('2026-10-01');
+  assert.equal(p.tiles.length, 5);
+  const html = renderToStaticMarkup(<Daily poster={p} now={LIVE} />);
+  for (const t of p.tiles) assert.ok(html.includes(t.icon), 'tile art missing');
+  assert.ok(html.includes('min-h-0 glb-tile'), 'the chain is not animating');
+  assert.ok(html.includes('-LINK'), 'the link burst is missing');
+});
+
+void test('a closed day stills its board', () => {
+  const p = posterFor('2026-10-01');
+  const html = renderToStaticMarkup(<Daily poster={p} now={p.endsAt} />);
+  assert.ok(
+    !html.includes('min-h-0 glb-tile'),
+    'a closed board is still looping'
+  );
+  assert.ok(!html.includes('-LINK'), 'a closed board still bursts');
+});

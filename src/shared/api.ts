@@ -216,7 +216,7 @@ export type ChallengeCard = {
   cls: HeroClass;
   heroPerk: string;
   /** Their five, as art plus the orb colour each becomes on the board. */
-  gear: { icon: string; tint: string; name: string }[];
+  gear: { icon: string; tint: string; name: string; effect: string }[];
 };
 
 /** The reader of a challenge post, as the card draws them on the open side.
@@ -255,6 +255,8 @@ export type DailyPoster = {
   top: { username: string; score: number; avatar: string }[];
   /** How many players are on this post's ladder. */
   players: number;
+  /** The day's five tile kinds, for the board the poster leads with. */
+  tiles: { icon: string; effect: string }[];
 };
 
 export type ChallengeResponse = {

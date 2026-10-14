@@ -39,6 +39,7 @@ const cardFor = (trophies: number, avatar = ''): ChallengeCard => {
         icon: getGearImageUrl(g.id),
         tint: EFFECT_TINTS[g.effect]![Math.min(ord, 2)]!,
         name: g.name,
+        effect: g.effect,
       };
     }),
   };
@@ -119,4 +120,15 @@ void test('a missing snoovatar falls back to plain Snoo, never the class art', (
   );
   // Knight is the only rung with no numeral; Bronze 1 must still show one.
   assert.ok(html.includes('>I<'), 'Bronze 1 lost its numeral');
+});
+
+void test("a challenge post leads with the duellist's board, put as a dare", () => {
+  const html = renderToStaticMarkup(<Challenge card={cardFor(900)} />);
+  assert.ok(html.includes('CAN YOU OUT-LINK u/duellist?'));
+  assert.equal(
+    html.match(/min-h-0 glb-tile/g)?.length,
+    6,
+    'chain is not 6 links'
+  );
+  assert.ok(html.includes('6-LINK'), 'the link burst is missing');
 });

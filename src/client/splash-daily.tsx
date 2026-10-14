@@ -1,10 +1,12 @@
 /**
- * The inline view of a Daily Battle post: the day's poster.
+ * The inline view of a Daily Battle post: the day's puzzle.
  *
- * It sells the race for the crown, not the foe. Whoever holds this post's
- * ladder stands centre stage on a podium - the champion lit by wheeling light
- * and a crown - while the day's foe looms behind them in its region's colour.
- * Before anyone has run it is three open seats and a crown nobody holds yet.
+ * It leads with the board - the day's five tiles, a link tracing through it -
+ * because the race for the crown is a race to chain better than everyone
+ * else. The day's foe stands small above it, its health knocked down each
+ * time the link lands, and a one-line ladder below holds whoever leads this
+ * post's. Before anyone has run it is three open seats and a crown nobody
+ * holds yet.
  *
  * A post outlives its day. Once the UTC midnight after it passes, the poster
  * turns to final standings: the stage goes grey, a stamp closes the banner, the
@@ -16,6 +18,7 @@
 import { useEffect, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import type { DailyPoster } from '../shared/api.js';
+import { BoardSlot, HitBar, MiniBoard } from './splash-board.js';
 import { MOTION, PIXEL, TITLE } from './splash-style.js';
 
 /** Reddit's plain snoo, for a player with no snoovatar - the podium seats
@@ -510,6 +513,140 @@ export const PodiumSeat = ({
   );
 };
 
+/**
+ * One seat on the daily card's ladder strip: medal, face, handle and score
+ * in a single slim chip, so the board above keeps the card's height. First
+ * place wears the crown, and the CHAMPION tag once the day has closed.
+ */
+export const LadderSeat = ({
+  place,
+  row,
+  ended,
+}: {
+  place: number;
+  row: DailyPoster['top'][number] | undefined;
+  ended: boolean;
+}) => {
+  const [broken, setBroken] = useState(false);
+  const [fill, lip] = MEDAL[place]!;
+  const first = place === 0;
+  return (
+    <div
+      className="dly-seat relative flex min-w-0 flex-1 items-center gap-1.5 px-1.5 py-1"
+      style={{
+        animationDelay: 0.3 + place * 0.12 + 's',
+        background: row ? 'rgba(6,10,22,.82)' : 'rgba(6,10,22,.5)',
+        border: row
+          ? `2px solid ${first ? fill : '#000'}`
+          : '2px dashed rgba(160,180,215,.45)',
+        borderRadius: '8px 2px 8px 2px',
+        boxShadow: row && first ? `0 0 10px ${fill}66` : 'none',
+      }}
+    >
+      {first ? (
+        <span
+          className="glk-float absolute -top-2.5 -left-1.5 z-10 leading-none"
+          style={{
+            fontSize: 13,
+            filter: row
+              ? 'drop-shadow(0 0 4px #FFD34E)'
+              : 'grayscale(1) opacity(.55)',
+          }}
+          aria-hidden="true"
+        >
+          👑
+        </span>
+      ) : null}
+      <span
+        className="flex shrink-0 items-center justify-center"
+        style={{
+          width: 16,
+          height: 16,
+          borderRadius: 999,
+          border: '2px solid #000',
+          background: `linear-gradient(180deg,${fill},${lip})`,
+          fontFamily: PIXEL,
+          fontSize: 9,
+          color: '#2A1600',
+          lineHeight: 1,
+        }}
+      >
+        {place + 1}
+      </span>
+      <div
+        className="flex shrink-0 items-center justify-center overflow-hidden"
+        style={{
+          width: 24,
+          height: 24,
+          borderRadius: 6,
+          border: '2px solid #000',
+          background: row
+            ? `radial-gradient(circle at 50% 35%,${fill}aa,#1B2440 75%)`
+            : 'transparent',
+        }}
+      >
+        {row ? (
+          <img
+            src={broken || !row.avatar ? SNOO : row.avatar}
+            alt={row.username}
+            onError={() => setBroken(true)}
+            className="h-full w-full object-cover object-top"
+          />
+        ) : (
+          <span
+            className="glk-blink"
+            style={{ fontFamily: PIXEL, fontSize: 11, color: '#7A8BB0' }}
+          >
+            ?
+          </span>
+        )}
+      </div>
+      <div className="flex min-w-0 flex-col items-start leading-tight">
+        <span
+          className="max-w-full truncate"
+          style={{
+            fontSize: 8,
+            color: row ? '#FFF' : '#8A9BBF',
+            textTransform: row ? 'none' : 'uppercase',
+            letterSpacing: row ? 0 : '.1em',
+          }}
+        >
+          {row ? 'u/' + row.username : 'open seat'}
+        </span>
+        {row ? (
+          <span
+            style={{
+              fontFamily: PIXEL,
+              fontSize: 11,
+              color: fill,
+              ...STROKE,
+              WebkitTextStroke: '2px #000',
+            }}
+          >
+            {row.score.toLocaleString('en-US')}
+          </span>
+        ) : null}
+      </div>
+      {first && ended && row ? (
+        <span
+          className="absolute -top-2 right-1 px-1"
+          style={{
+            fontFamily: PIXEL,
+            fontSize: 7,
+            color: '#2A1600',
+            background: 'linear-gradient(180deg,#FFE88A,#FFB627)',
+            border: '2px solid #000',
+            borderRadius: 3,
+            letterSpacing: '.1em',
+          }}
+        >
+          CHAMPION
+        </span>
+      ) : null}
+    </div>
+  );
+};
+
 /** Confetti over a closed day's champion. Fixed positions so the poster
  *  renders the same on the server as in the feed. */
 const CONFETTI = Array.from({ length: 16 }, (_, i) => ({
@@ -566,7 +703,7 @@ export const Daily = ({
       <div
         className="absolute inset-0"
         style={{
-          background: `radial-gradient(60% 45% at 50% 62%,${accent}30,rgba(8,12,26,0) 70%),linear-gradient(180deg,rgba(8,12,26,.9),rgba(8,12,26,.3) 26%,rgba(8,12,26,.4) 50%,rgba(8,12,26,.97) 84%)`,
+          background: `radial-gradient(60% 45% at 50% 50%,${accent}30,rgba(8,12,26,0) 70%),linear-gradient(180deg,rgba(8,12,26,.9),rgba(8,12,26,.55) 30%,rgba(8,12,26,.6) 60%,rgba(8,12,26,.97) 88%)`,
         }}
       />
       {ended && champ
@@ -586,74 +723,86 @@ export const Daily = ({
 
       <DailyBanner poster={poster} ended={ended} />
 
-      {/* The stage: the foe in its own space up top, the podium below it.
-          A short card drops the foe so the podium keeps its room. */}
-      <div className="relative flex min-h-0 w-full max-w-110 flex-1 flex-col">
-        <div className="pointer-events-none relative flex min-h-0 flex-1 flex-col items-center [@media(max-height:420px)]:hidden">
-          <div className="relative flex min-h-0 w-full flex-1 items-end justify-center pb-1">
-            <div
-              className="glk-spin absolute top-1/2 left-1/2 aspect-square h-[170%]"
+      {/* The day's foe, small: the puzzle's target rather than its subject.
+          Its health drops each time the board's link lands. */}
+      <div className="glk-rise glk-d1 relative z-10 flex w-full max-w-[400px] shrink-0 items-center gap-2 [@media(max-height:380px)]:hidden">
+        <div
+          className="relative flex shrink-0 items-end justify-center overflow-hidden"
+          style={{
+            width: 'clamp(40px,11vh,60px)',
+            height: 'clamp(40px,11vh,60px)',
+            borderRadius: '8px 2px 8px 2px',
+            border: `2px solid ${ended ? '#6F7C94' : accent}`,
+            background: `radial-gradient(80% 70% at 50% 85%,${accent}55,rgba(6,10,22,.9) 75%)`,
+          }}
+        >
+          {broken ? null : (
+            <img
+              src={poster.foeArt}
+              alt={poster.foe}
+              onError={() => setBroken(true)}
+              className={`${ended ? '' : 'glb-hit'} h-[88%] w-[88%] object-contain object-bottom`}
               style={{
-                background: `repeating-conic-gradient(${accent}22 0deg 10deg,transparent 10deg 30deg)`,
-                maskImage: 'radial-gradient(circle,#000 15%,transparent 60%)',
-                WebkitMaskImage:
-                  'radial-gradient(circle,#000 15%,transparent 60%)',
-                animationPlayState: ended ? 'paused' : 'running',
+                imageRendering: 'pixelated',
+                filter: ended
+                  ? 'grayscale(1) brightness(.55)'
+                  : 'drop-shadow(0 3px 3px rgba(0,0,0,.7))',
               }}
             />
-            <div
-              className="absolute bottom-0 left-1/2 h-2.5 w-[26%] -translate-x-1/2"
-              style={{
-                borderRadius: '50%',
-                background: 'rgba(0,0,0,.55)',
-                filter: 'blur(3px)',
-              }}
-            />
-            {broken ? null : (
-              <img
-                src={poster.foeArt}
-                alt={poster.foe}
-                onError={() => setBroken(true)}
-                className={`${ended ? '' : 'glk-bob'} relative h-full max-h-40 max-w-[60%] object-contain object-bottom`}
-                style={{
-                  imageRendering: 'pixelated',
-                  opacity: ended ? 0.5 : 1,
-                  filter: ended
-                    ? 'grayscale(1) brightness(.55)'
-                    : `drop-shadow(0 0 12px ${accent}88) drop-shadow(0 4px 6px rgba(0,0,0,.7))`,
-                }}
-              />
-            )}
-            {ended
-              ? null
-              : [0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
-                  <span
-                    key={i}
-                    className={`glk-mote glk-m${i}`}
-                    style={{
-                      background: accent,
-                      boxShadow: `0 0 6px ${accent}`,
-                    }}
-                  />
-                ))}
-          </div>
+          )}
         </div>
+        <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
+          <div className="flex w-full items-baseline justify-between gap-2">
+            <span
+              className="truncate"
+              style={{
+                fontFamily: PIXEL,
+                fontSize: 'clamp(11px,3.2vw,14px)',
+                color: '#FFF',
+                textShadow: '0 2px 0 #000',
+              }}
+            >
+              {poster.foe.toUpperCase()}
+            </span>
+            <span
+              className="shrink-0"
+              style={{ fontSize: 8, color: accent, letterSpacing: '.12em' }}
+            >
+              {poster.region.toUpperCase()}
+            </span>
+          </div>
+          {ended ? (
+            <HitBar from={0} to={0} color="#6F7C94" />
+          ) : (
+            <HitBar to={64} color={RED} hit="-36" />
+          )}
+          <span className="truncate" style={{ fontSize: 8, color: '#9DB4D4' }}>
+            {poster.tagline}
+          </span>
+        </div>
+      </div>
 
-        <div className="relative z-10 mx-auto flex w-full max-w-95 shrink-0 flex-col pt-5">
-          <div className="flex items-end gap-1.5 px-1">
-            <PodiumSeat place={1} row={poster.top[1]} ended={ended} />
-            <PodiumSeat place={0} row={champ} ended={ended} />
-            <PodiumSeat place={2} row={poster.top[2]} ended={ended} />
-          </div>
-          {/* The floor the pedestals stand on. */}
-          <div
-            className="h-1.25 w-full"
-            style={{
-              background: `linear-gradient(90deg,transparent,${accent},transparent)`,
-              boxShadow: `0 0 10px ${accent}`,
-            }}
+      {/* The day's board. */}
+      <BoardSlot className="glk-rise glk-d2 z-10 max-w-[420px]">
+        <MiniBoard
+          tiles={poster.tiles}
+          seed={poster.day * 2654435761}
+          len={5 + (poster.day % 3)}
+          accent={accent}
+          still={ended}
+        />
+      </BoardSlot>
+
+      {/* Whoever leads the ladder, in one slim row below the board. */}
+      <div className="relative z-10 flex w-full max-w-[420px] shrink-0 gap-1.5 pt-1.5">
+        {[0, 1, 2].map((place) => (
+          <LadderSeat
+            key={place}
+            place={place}
+            row={poster.top[place]}
+            ended={ended}
           />
-        </div>
+        ))}
       </div>
 
       <div
@@ -666,7 +815,7 @@ export const Daily = ({
             : 'Nobody claimed the crown this day.'
           : poster.players === 0
             ? 'Nobody on the board yet - the first run takes the crown.'
-            : raiders + ' on this ladder. Knock them off.'}
+            : raiders + ' on this ladder. Out-chain them.'}
       </div>
 
       <div className="glk-rise glk-d4 relative z-10 flex shrink-0 flex-wrap items-center justify-center gap-x-3 gap-y-1.5">

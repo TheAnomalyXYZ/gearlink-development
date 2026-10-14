@@ -2,33 +2,22 @@
  * The inline view of the general GearLink post - the one a sub pins as
  * the place to play from.
  *
- * It belongs to no day, no region and no foe, so it sells the game itself: the
- * three heroes landing full height in the game's own sky, the gear they link
- * spinning in round them, the title dropping in letter by letter with a glint
- * running along it, and light wheeling behind it all.
+ * It belongs to no day, no region and no foe, so it sells the game itself -
+ * and the game is the puzzle: a live board fills the card, a link tracing
+ * through it on a loop, under the title dropping in letter by letter. The
+ * three heroes stand in a row beneath it as the ones the links fight for.
  *
  * Its own module, like the other feed cards, so it renders in a test without
  * the stylesheet the feed entry point imports.
  */
 import type { CSSProperties, ReactNode } from 'react';
-import { GENERAL_GEAR, GENERAL_HEROES, MOTION, PIXEL } from './splash-style.js';
-
-/** Where each piece of gear hangs, as % of the gear ring - which is wider
- *  than the heroes' row, so the pieces fill the sky to either side of them
- *  rather than sitting on top of them. Two zig-zag columns of five, one
- *  each side, staggered so neither reads as a grid. */
-const GEAR_SPOT: CSSProperties[] = [
-  { left: '13%', top: '2%' },
-  { right: '13%', top: '0%' },
-  { left: '2%', top: '22%' },
-  { right: '2%', top: '20%' },
-  { left: '13%', top: '42%' },
-  { right: '13%', top: '44%' },
-  { left: '2%', bottom: '20%' },
-  { right: '2%', bottom: '14%' },
-  { left: '13%', bottom: '0%' },
-  { right: '13%', bottom: '2%' },
-];
+import { BoardSlot, MiniBoard } from './splash-board.js';
+import {
+  GENERAL_HEROES,
+  GENERAL_TILES,
+  MOTION,
+  PIXEL,
+} from './splash-style.js';
 
 /** The two layers of light behind the card - white, and a warm gold that
  *  turns the other way so the two cross and overlap: broad beams that ramp up, hold,
@@ -92,7 +81,7 @@ export const HeroStander = ({
       className="glk-land relative flex flex-col items-center justify-end"
       style={{
         zIndex: mid ? 2 : 1,
-        width: mid ? '30%' : '24%',
+        width: mid ? 'clamp(40px,14vw,72px)' : 'clamp(34px,11vw,58px)',
         // The middle one lands last, as the headline act.
         animationDelay: `${0.25 + (mid ? 0.3 : i * 0.08)}s`,
       }}
@@ -114,13 +103,9 @@ export const HeroStander = ({
         alt={hero.name}
         className="glk-bob relative w-full object-contain object-bottom"
         style={{
-          // Capped by the card's height too - and by what the title, the
-          // button and their padding leave of it - so a short feed slot
-          // still fits all three without a foot on the tagline. The sides
-          // stand a head shorter than the middle.
-          maxHeight: mid
-            ? 'min(46vh,calc(100vh - 240px))'
-            : 'min(38vh,calc((100vh - 240px) * .82))',
+          // Kept small: the board is the headline act, the heroes its cast.
+          // The sides stand a head shorter than the middle.
+          maxHeight: mid ? 'clamp(34px,13vh,72px)' : 'clamp(28px,11vh,60px)',
           animationDelay: `${i * 0.45}s`,
           imageRendering: 'pixelated',
           filter: `drop-shadow(0 0 10px ${hero.color}99) drop-shadow(0 4px 0 rgba(0,0,0,.35))`,
@@ -134,7 +119,7 @@ export const HeroStander = ({
    is a Devvit host call this module stays clear of. */
 export const General = ({ cta }: { cta?: ReactNode }) => (
   <div
-    className="relative flex h-screen max-h-screen w-full flex-col items-center justify-between overflow-hidden px-4 pt-[clamp(20px,7vh,40px)] pb-[clamp(20px,7vh,40px)] text-center"
+    className="relative flex h-screen max-h-screen w-full flex-col items-center gap-1.5 overflow-hidden px-4 pt-[clamp(10px,4vh,28px)] pb-[clamp(10px,4vh,28px)] text-center"
     style={{
       backgroundColor: '#2A7FD0',
       backgroundImage: 'url(/art/PocketKnights/sky_v3.png)',
@@ -156,10 +141,7 @@ export const General = ({ cta }: { cta?: ReactNode }) => (
       }}
     />
     {/* Light wheeling slowly behind everything, in two layers of broad soft
-        beams turning opposite ways. The blur takes off whatever edge the
-        gradient leaves, and the wheel is big enough to sweep the whole card - the card's own
-        edges crop it. The mask cuts out the hot centre behind the heroes and
-        lets the beams die off before the corners. */}
+        beams turning opposite ways, centred on the board. */}
     {RAYS.map((r) => (
       <div
         key={r.cls}
@@ -193,7 +175,7 @@ export const General = ({ cta }: { cta?: ReactNode }) => (
         aria-label={TITLE}
         style={{
           fontFamily: PIXEL,
-          fontSize: 'clamp(28px,8.5vw,44px)',
+          fontSize: 'clamp(26px,8vw,42px)',
           color: '#FFE16A',
           ...STROKE,
           textShadow: '0 5px 0 #000, 0 0 22px rgba(255,180,60,.55)',
@@ -225,7 +207,7 @@ export const General = ({ cta }: { cta?: ReactNode }) => (
           boxShadow: '0 3px 0 0 rgba(0,0,0,.4)',
         }}
       >
-        MATCH · LINK · FIGHT
+        LINK · CHAIN · BREAK
         <span
           className="glk-sheen pointer-events-none absolute inset-y-0 left-0 w-8 -skew-x-12"
           style={{
@@ -236,39 +218,14 @@ export const General = ({ cta }: { cta?: ReactNode }) => (
       </div>
     </div>
 
-    {/* The stage: three heroes fanned out, gear in orbit. */}
-    <div className="relative flex min-h-0 w-full max-w-[400px] flex-1 items-center justify-center py-2">
-      <div className="pointer-events-none absolute inset-y-0 left-1/2 z-20 w-[min(150%,100vw)] max-w-[600px] -translate-x-1/2">
-        {GENERAL_GEAR.map((g, i) => (
-          <span
-            key={g}
-            className="glk-gear-in absolute h-[clamp(24px,7vw,36px)] w-[clamp(24px,7vw,36px)]"
-            style={{ ...GEAR_SPOT[i], animationDelay: `${0.6 + i * 0.07}s` }}
-          >
-            <img
-              src={g}
-              alt=""
-              className="glk-float h-full w-full object-contain"
-              style={{
-                imageRendering: 'pixelated',
-                animationDelay: `${i * 0.35}s`,
-                filter:
-                  'drop-shadow(0 0 6px rgba(255,220,120,.6)) drop-shadow(0 3px 0 rgba(0,0,0,.5))',
-              }}
-            />
-          </span>
-        ))}
-      </div>
-      {/* A warm pool of light behind the heroes, breathing. */}
-      <div
-        className="glk-breathe pointer-events-none absolute top-1/2 left-1/2 aspect-square w-[80%] -translate-x-1/2 -translate-y-1/2"
-        style={{
-          borderRadius: '50%',
-          background:
-            'radial-gradient(circle,rgba(255,226,140,.45),rgba(255,190,80,.15) 45%,rgba(255,190,80,0) 70%)',
-        }}
-      />
-      {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => {
+    {/* The puzzle, live. */}
+    <BoardSlot className="z-10 my-1 max-w-[440px]">
+      <MiniBoard tiles={GENERAL_TILES} seed={0x6e4b} len={6} />
+    </BoardSlot>
+
+    {/* The cast the links fight for, feet on one line. */}
+    <div className="relative z-10 flex w-full shrink-0 items-end justify-center gap-1 [@media(max-height:360px)]:hidden">
+      {[0, 1, 2, 3, 4, 5].map((i) => {
         const tint = MOTE_TINT[i % MOTE_TINT.length] ?? '#FFD34E';
         return (
           <span
@@ -278,15 +235,9 @@ export const General = ({ cta }: { cta?: ReactNode }) => (
           />
         );
       })}
-      {/* The row is only as tall as its tallest hero, and that row is what
-          gets centred - so the group sits in the middle, feet still level. */}
-      <div className="absolute inset-0 z-10 flex items-center justify-center">
-        <div className="flex w-full items-end justify-center">
-          {GENERAL_HEROES.map((h, i) => (
-            <HeroStander key={h.name} hero={h} i={i} />
-          ))}
-        </div>
-      </div>
+      {GENERAL_HEROES.map((h, i) => (
+        <HeroStander key={h.name} hero={h} i={i} />
+      ))}
     </div>
 
     <div className="glk-rise glk-d4 relative z-10 flex shrink-0 flex-col items-center gap-1.5">
@@ -297,7 +248,7 @@ export const General = ({ cta }: { cta?: ReactNode }) => (
           textShadow: '0 1px 0 #0B2A5C, 0 0 6px #0B2A5C',
         }}
       >
-        Pick a hero, link your gear and take down every wave they throw at you.
+        Drag through 3+ matching gear. Longer chains hit harder.
       </div>
       {/* The button gets a halo pulsing out from behind it and a little
           nudge every few seconds - it is the one thing here to press. */}

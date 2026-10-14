@@ -24,6 +24,28 @@ const GHOST_TOWN = {
     { username: 'gearmonger', score: 7615, avatar: '' },
   ],
   players: 42,
+  tiles: [
+    {
+      icon: '/art/NeuraKnights/Gear/Archer/Archer_Weapon_Legendary_Base.png',
+      effect: 'attack',
+    },
+    {
+      icon: '/art/NeuraKnights/Gear/Archer/Archer_Weapon_Epic_Base.png',
+      effect: 'attack',
+    },
+    {
+      icon: '/art/NeuraKnights/Gear/Archer/Archer_Off_Hand_Epic_Base.png',
+      effect: 'block',
+    },
+    {
+      icon: '/art/NeuraKnights/Gear/Archer/Archer_Off_Hand_Rare_Base.png',
+      effect: 'block',
+    },
+    {
+      icon: '/art/NeuraKnights/Gear/Archer/Archer_Necklace_Epic_Base.png',
+      effect: 'effect',
+    },
+  ],
 };
 
 const CASTLE = {
@@ -39,6 +61,28 @@ const CASTLE = {
   tagline: 'The crown is up for grabs.',
   top: [],
   players: 0,
+  tiles: [
+    {
+      icon: '/art/NeuraKnights/Gear/Mage/Mage_Weapon_Legendary_Base.png',
+      effect: 'attack',
+    },
+    {
+      icon: '/art/NeuraKnights/Gear/Mage/Mage_Weapon_Epic_Base.png',
+      effect: 'attack',
+    },
+    {
+      icon: '/art/NeuraKnights/Gear/Mage/Mage_Off_Hand_Epic_Base.png',
+      effect: 'block',
+    },
+    {
+      icon: '/art/NeuraKnights/Gear/Mage/Mage_Off_Hand_Rare_Base.png',
+      effect: 'block',
+    },
+    {
+      icon: '/art/NeuraKnights/Gear/Mage/Mage_Necklace_Epic_Base.png',
+      effect: 'effect',
+    },
+  ],
 };
 
 /** A Daily Battle post in the desktop feed: a live day with a ladder: the podium shows who holds the crown. */

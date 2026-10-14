@@ -16,7 +16,7 @@ import type { HeroClass } from '../../shared/engine/types.js';
  *  The one a moderator pins as the place to play from. */
 export const createPost = async () => {
   return await reddit.submitCustomPost({
-    title: 'Gearlink - link your gear, break the wave',
+    title: 'Gearlink - chain 3+ matching gear, break the wave',
     textFallback: {
       text: 'Gearlink: link your gear, break the wave. Open the post to play.',
     },
@@ -68,11 +68,11 @@ export const createChallengePost = async (
     title:
       'u/' +
       username +
-      ' is taking duels - ' +
+      ' threw down a board - ' +
       league.name +
       ', ' +
       trophies +
-      ' trophies. Come and break their link.',
+      ' trophies. Can you out-link them?',
     postData: { ...data },
     textFallback: {
       text:
@@ -165,6 +165,7 @@ export const readChallengeCard = async (
         icon: getGearImageUrl(g.id),
         tint: EFFECT_TINTS[g.effect]![Math.min(ord, 2)]!,
         name: g.name,
+        effect: g.effect,
       };
     });
 

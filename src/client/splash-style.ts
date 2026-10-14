@@ -65,6 +65,15 @@ export const GENERAL_GEAR = [
   GEAR + 'Warrior/Hero_Necklace_Epic_Base.png',
 ];
 
+/** The general post's board: the Hero's starting five, as tile kinds. */
+export const GENERAL_TILES = [
+  { icon: GEAR + 'Warrior/Hero_Weapon_Legendary_Base.png', effect: 'attack' },
+  { icon: GEAR + 'Warrior/Hero_Weapon_Epic_Base.png', effect: 'attack' },
+  { icon: GEAR + 'Warrior/Hero_Off_Hand_Epic_Base.png', effect: 'block' },
+  { icon: GEAR + 'Warrior/Hero_Off_Hand_Rare_Base.png', effect: 'block' },
+  { icon: GEAR + 'Warrior/Hero_Necklace_Epic_Base.png', effect: 'effect' },
+];
+
 export const PIXEL = "'Yoster Island',Volter,monospace";
 
 /**

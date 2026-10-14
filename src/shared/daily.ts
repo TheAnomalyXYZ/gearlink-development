@@ -7,6 +7,8 @@
  */
 import type { DailyBattle, DailyPoster } from './api.js';
 import { FIRST_LOCATION, LOCATIONS } from './engine/campaign.js';
+import { GEAR_BY_ID, defaultLoadout, getGearImageUrl } from './engine/gear.js';
+import type { HeroClass } from './engine/types.js';
 import {
   WAVE_ENEMIES,
   backgroundUrlFor,
@@ -100,6 +102,18 @@ export const dailyBattleFor = (dayKey: string): DailyBattle => {
   return { day, locationId: dailyLocationId(day), endsAt: start + DAY_MS };
 };
 
+const TILE_CLASSES: HeroClass[] = ['Hero', 'Archer', 'Mage'];
+
+/** The five tile kinds a day's poster board is laid from: one class's
+ *  starting kit, the class turning over day by day. */
+export const dailyTiles = (day: number): DailyPoster['tiles'] => {
+  const cls = TILE_CLASSES[((day % 3) + 3) % 3] ?? 'Hero';
+  return defaultLoadout(cls).flatMap((id) => {
+    const g = GEAR_BY_ID[id];
+    return g ? [{ icon: getGearImageUrl(id), effect: g.effect }] : [];
+  });
+};
+
 /** The poster for one day's post. With no ladder given it is what a fresh
  *  daily post looks like. */
 export const posterFor = (
@@ -117,5 +131,6 @@ export const posterFor = (
     ...dailyFoe(day),
     top,
     players,
+    tiles: dailyTiles(day),
   };
 };

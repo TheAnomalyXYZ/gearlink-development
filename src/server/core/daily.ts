@@ -37,7 +37,7 @@ const submitDailyPost = async (dayKey: string) => {
       foe.foe +
       ' guards the ' +
       foe.region +
-      '. Who takes the crown today?',
+      '. Chain your way to the crown.',
     postData: { ...data },
     textFallback: {
       text: "Today's Gearlink Daily Battle. Fresh ladder, empty crown - open the post to play.",

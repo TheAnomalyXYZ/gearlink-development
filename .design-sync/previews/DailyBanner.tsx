@@ -15,6 +15,7 @@ const POSTER = {
   tagline: 'The dead keep score too.',
   top: [],
   players: 0,
+  tiles: [],
 };
 
 /** The ribbon: title, then the day's chip in the poster's accent. */

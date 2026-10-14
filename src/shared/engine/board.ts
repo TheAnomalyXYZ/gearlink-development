@@ -38,9 +38,13 @@ const CHAIN_MULT_TABLE: number[] = (() => {
   return out;
 })();
 
+/** The chain multiplier with no mutators in play, x100. */
+export const baseChainMultX100 = (len: number): number =>
+  len < MIN_LINK ? 0 : CHAIN_MULT_TABLE[Math.min(len, CELLS)]!;
+
 export const chainMultX100 = (len: number, m: Mutators): number => {
   if (len < MIN_LINK) return 0;
-  const base = CHAIN_MULT_TABLE[Math.min(len, CELLS)]!;
+  const base = baseChainMultX100(len);
   return m.chainFrenzy ? base + 15 : base;
 };
 
