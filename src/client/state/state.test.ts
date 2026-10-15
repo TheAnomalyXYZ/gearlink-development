@@ -9,7 +9,13 @@ import {
 } from '../../shared/engine/index.js';
 import type { Gear } from '../../shared/engine/index.js';
 import { MUTATORS } from './appState.js';
-import { duelLogLine, linkPreview, swingPop } from './feedback.js';
+import {
+  comboHitsFor,
+  duelLogLine,
+  linkPreview,
+  splitHits,
+  swingPop,
+} from './feedback.js';
 import { clampPan, panBounds } from './mapPan.js';
 import { packSummary, toOpenCards } from './packs.js';
 import { Timers } from './timers.js';
@@ -129,4 +135,27 @@ void test('pack cards drop unknown pulls and the summary names the best one', ()
   assert.match(s, /^1 new piece/);
   assert.match(s, /\+5 coins from duplicates/);
   assert.match(s, /best: /);
+});
+
+void test('a 3-link is one hit and every extra orb adds one more', () => {
+  assert.equal(comboHitsFor(1), 1);
+  assert.equal(comboHitsFor(MIN_LINK), 1);
+  assert.equal(comboHitsFor(MIN_LINK + 1), 2);
+  assert.equal(comboHitsFor(MIN_LINK + 5), 6);
+});
+
+void test('a multi-hit split always sums to the damage the engine dealt', () => {
+  for (const total of [1, 2, 7, 13, 24, 100])
+    for (let n = 1; n <= 12; n++) {
+      const hits = splitHits(total, n);
+      assert.equal(
+        hits.reduce((a, b) => a + b, 0),
+        total
+      );
+      assert.ok(hits.every((h) => h > 0));
+      assert.equal(hits.length, Math.min(n, total));
+    }
+  // The remainder lands on the finisher, never the opener.
+  assert.deepEqual(splitHits(11, 3), [3, 4, 4]);
+  assert.deepEqual(splitHits(0, 3), []);
 });

@@ -271,6 +271,56 @@ const chipsFor = (st: AppState) => {
     chipMultAnim: on ? pop(st.chain.length) : 'none',
   };
 };
+/** Combo colours climb with the count: gold, then amber, then hot red. */
+const comboTint = (n: number): string =>
+  n >= 6 ? '#FF6B6B' : n >= 4 ? '#FFC24B' : '#FFF2B0';
+/** Where hit `i`'s number lands over the monster: scattered so a flurry reads
+ *  as many hits, not one number being replaced. Deterministic per index. */
+const STRIKE_SPOTS: readonly (readonly [number, number])[] = [
+  [50, 34],
+  [30, 22],
+  [70, 26],
+  [38, 46],
+  [64, 44],
+  [24, 36],
+  [76, 38],
+  [46, 16],
+];
+/** The multi-hit layer over the monster: each hit's number, and the climbing
+ *  HITS counter with its running total. */
+const strikeFor = (st: AppState, maxHp: number) => {
+  const c = st.combo;
+  const scale = (v: number) => Math.min(1, v / Math.max(1, maxHp));
+  return {
+    strikePops: st.strikePops.map((p) => {
+      const spot = STRIKE_SPOTS[p.i % STRIKE_SPOTS.length]!;
+      const big = p.last && !!c && c.of > 1;
+      return {
+        key: p.i,
+        text: '-' + p.dmg,
+        left: spot[0] + '%',
+        top: spot[1] + '%',
+        color: big ? comboTint(c.of) : '#FFFFFF',
+        size: Math.round((big ? 30 : 20) + 14 * scale(p.dmg)) + 'px',
+        anim:
+          (big ? 'glStrikeBig 900ms' : 'glStrikeNum 620ms') +
+          ' cubic-bezier(.2,.9,.3,1) forwards',
+      };
+    }),
+    strikeComboDisplay: c && c.n >= 2 ? 'flex' : 'none',
+    strikeComboCount: c ? String(c.n) : '',
+    strikeComboColor: c ? comboTint(c.n) : '#FFF2B0',
+    strikeComboSize: c ? Math.min(54, 30 + 3 * c.n) + 'px' : '30px',
+    // Alternating names so every new count punches in again.
+    strikeComboAnim: c
+      ? 'glComboPunch' +
+        (c.n % 2 ? 'A' : 'B') +
+        ' 240ms cubic-bezier(.3,1.8,.5,1) both'
+      : 'none',
+    strikeComboTotal: c && c.n === c.of ? c.total + ' DMG' : '',
+    strikeComboTotalDisplay: c && c.n === c.of ? 'block' : 'none',
+  };
+};
 /** A coin bundle's art is a stack that grows with the bundle: 2 coins for the
  *  smallest, up to 6, zig-zagged. */
 const coinStack = (k: number) => {
@@ -604,8 +654,9 @@ export const buildView = (app: GearLinkApp): View => {
     /* The kill advances bs.wave immediately, but the fallen monster stays on
          screen through the death beat - so EVERYTHING the HUD shows is derived
          from this one held wave, not from bs.wave. */
-    const showWave =
-      st.monPhase === 'dying' && st.dying ? Math.max(1, bs.wave - 1) : bs.wave;
+    const held =
+      (st.monPhase === 'dying' || st.monPhase === 'combo') && !!st.dying;
+    const showWave = held ? Math.max(1, bs.wave - 1) : bs.wave;
     const enemy = app.enemyAt(null, showWave);
     const disp = app.waveDisplay(showWave);
     const sxNow = Object.assign({}, NO_STATUS, bs.stx || {});
@@ -730,8 +781,8 @@ export const buildView = (app: GearLinkApp): View => {
       scoreLabel: 'SCORE',
       score: app.scoreOf(bs).toLocaleString(),
       turns: bs.turnsUsed,
-      bgUrl: st.monPhase === 'dying' && st.dying ? st.dying.bg : disp.bg,
-      monsterUrl: st.monPhase === 'dying' && st.dying ? st.dying.url : disp.url,
+      bgUrl: held && st.dying ? st.dying.bg : disp.bg,
+      monsterUrl: held && st.dying ? st.dying.url : disp.url,
       /* Living monsters play their 8-frame idle sheet; the dying one falls
          back to its still so the death tween reads cleanly. */
       monsterSheet: st.monPhase === 'dying' ? '' : disp.sheet,
@@ -743,8 +794,7 @@ export const buildView = (app: GearLinkApp): View => {
             's steps(' +
             IDLE_FRAMES +
             ') infinite',
-      monsterName:
-        st.monPhase === 'dying' && st.dying ? st.dying.name : disp.name,
+      monsterName: held && st.dying ? st.dying.name : disp.name,
       monsterOpacity: st.monPhase === 'empty' ? 0 : 1,
       monsterAnim:
         st.monPhase === 'dying'
@@ -756,7 +806,9 @@ export const buildView = (app: GearLinkApp): View => {
               : st.swing === 'landed'
                 ? 'glStrike 520ms ease-out both'
                 : st.hitWho === 'monster'
-                  ? 'glHitV3 .42s ease-out'
+                  ? // Alternating names so each hit of a flurry restarts it.
+                    ((st.slashGen || 0) % 2 ? 'glHitV3' : 'glHitV3B') +
+                    ' .42s ease-out'
                   : intent === 'charge'
                     ? 'none'
                     : 'glLoom 1200ms ease-in-out infinite',
@@ -800,6 +852,7 @@ export const buildView = (app: GearLinkApp): View => {
             ((st.slashGen || 0) % 2 ? 'B' : 'A') +
             ' 340ms 90ms ease-out both'
           : 'none',
+      ...strikeFor(st, enemy.hp),
       enemyFrac: Math.max(
         0,
         Math.min(1, (st.hpShown == null ? bs.enemyHp : st.hpShown) / enemy.hp)

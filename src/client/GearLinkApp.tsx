@@ -144,8 +144,11 @@ import {
   duelLogLine,
   duelPops,
   foeAnnouncement,
+  comboGapMs,
+  comboHitsFor,
   linkPreview,
   runPops,
+  splitHits,
   swingPop,
   type Preview,
 } from './state/feedback.js';
@@ -221,6 +224,7 @@ type TimerKey =
   | 'link'
   | 'forge'
   | 'land'
+  | 'combo'
   | 'reject'
   | 'blast'
   | 'spawn'
@@ -1543,7 +1547,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       this.timers.after('ftue', 900, this.advanceFtue);
     }
     const prevMon = this.waveDisplay(bs.wave);
-    const land = () => this.landTurn(out, prevMon);
+    const land = () => this.landTurn(out, prevMon, bs.enemyHp, move.length);
 
     this.timers.clear('link');
     if (out.detonators.length > 0) {
@@ -1655,41 +1659,46 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   /** The player's payout lands; then, as its own announced beat, the swing. */
   private landTurn(
     out: StepResult,
-    prevMon: ReturnType<typeof enemyDisplayFor>
+    prevMon: ReturnType<typeof enemyDisplayFor>,
+    prevHp: number,
+    chainLen: number
   ): void {
     const lastStage = out.stages.length
       ? out.stages[out.stages.length - 1]!
       : null;
     const allCleared = lastStage ? lastStage.cleared : out.cleared;
-    const struck = out.attackDealt > 0 || out.burnDealt > 0;
-    if (out.waveCleared) {
-      this.timers.clear('hpRoll');
-      this.setState({ hpShown: 0 });
-    } else this.rollHp(Math.max(0, out.bs.enemyHp));
-    if (struck) audio.play('attack');
+    // The attack lands as a flurry: one hit per orb past a 3-link, splitting
+    // (never changing) the total the engine dealt.
+    const hits = splitHits(out.attackDealt, comboHitsFor(chainLen));
+    if (hits.length === 0) {
+      if (out.burnDealt > 0) audio.play('attack');
+      if (out.waveCleared) {
+        this.timers.clear('hpRoll');
+        this.setState({ hpShown: 0 });
+      } else this.rollHp(Math.max(0, out.bs.enemyHp));
+    }
     if (out.blockGained > 0) audio.play('block');
     if (out.healed > 0) audio.play('heal');
     if (out.fired.length > 0) audio.play('rider', { gain: 0.7 });
-    if (out.waveCleared) audio.play('kill');
     juice.bind(this);
-    if (out.waveCleared) juice.impact('kill');
-    else if (struck)
-      juice.impact(
-        out.attackDealt >=
-          0.25 * (out.attackDealt + Math.max(0, out.bs.enemyHp))
-          ? 'big'
-          : 'hit'
-      );
+    if (hits.length === 0 && out.waveCleared) {
+      audio.play('kill');
+      juice.impact('kill');
+    } else if (hits.length === 0 && out.burnDealt > 0) juice.impact('hit');
     juice.dropTicks(fallDistances(allCleared), 6);
 
+    // A kill that is still being hit holds the fallen wave on screen, alive,
+    // until its last hit; only then does it fall.
+    const killNow = out.waveCleared && hits.length <= 1;
     this.setState((s) => ({
       bs: out.bs,
       clearing: [],
       detonating: [],
       blasting: [],
       arming: [],
-      slashGen: struck ? s.slashGen + 1 : s.slashGen,
-      monPhase: out.waveCleared ? 'dying' : s.monPhase,
+      slashGen:
+        hits.length === 0 && out.burnDealt > 0 ? s.slashGen + 1 : s.slashGen,
+      monPhase: out.waveCleared ? (killNow ? 'dying' : 'combo') : s.monPhase,
       dying: out.waveCleared ? prevMon : s.dying,
       drop: {
         dist: fallDistances(allCleared),
@@ -1698,38 +1707,101 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       },
       kick: out.detonators.length > 0,
       pops: runPops(out),
+      strikePops: [],
+      combo: null,
+      // bs now holds the post-hit HP; the readout stays put until hits land.
+      hpShown: hits.length > 0 ? (s.hpShown ?? prevHp) : s.hpShown,
       // The swing is its own beat, so the player's HP readout is held at its
       // pre-swing value until that beat actually plays.
       pHpShown: out.enemyAttacked ? out.bs.playerHp + out.enemyDamage : null,
-      hitWho: out.attackDealt > 0 ? 'monster' : null,
+      hitWho: hits.length === 0 && out.burnDealt > 0 ? 'monster' : null,
     }));
 
-    this.timers.after('land', 520, () => {
-      /* The monster's turn is a SEPARATE, announced beat: wind-up, then the
-         hit. Resolving it inside the player's payout made the swing invisible
-         - the HP just dropped with everything else. */
-      if (!out.enemyAttacked) {
-        this.finishTurn(out);
-        return;
-      }
+    if (hits.length === 0) {
+      this.timers.after('land', 520, () => this.monsterBeat(out));
+      return;
+    }
+    this.landHit(out, hits, 0, prevHp);
+  }
+
+  /** Hit `i` of the attack: slash, flash, its number over the monster, the HP
+   *  stepping down, and the combo count climbing. The last hit carries the
+   *  burn, the kill and the impact, then hands over to the monster's beat. */
+  private landHit(
+    out: StepResult,
+    hits: number[],
+    i: number,
+    prevHp: number
+  ): void {
+    const n = hits.length;
+    const last = i === n - 1;
+    let dealt = 0;
+    for (let k = 0; k <= i; k++) dealt += hits[k]!;
+    if (last && out.waveCleared) {
+      this.timers.clear('hpRoll');
+      this.setState({ hpShown: 0 });
+    } else
+      this.rollHp(
+        last ? Math.max(0, out.bs.enemyHp) : Math.max(0, prevHp - dealt)
+      );
+    juice.strike(i, n);
+    if (last) {
+      if (out.waveCleared) {
+        audio.play('kill');
+        juice.impact('kill');
+      } else
+        juice.impact(
+          n > 1 ||
+            out.attackDealt >=
+              0.25 * (out.attackDealt + Math.max(0, out.bs.enemyHp))
+            ? 'big'
+            : 'hit'
+        );
+    }
+    this.setState((s) => ({
+      slashGen: s.slashGen + 1,
+      hitWho: 'monster',
+      strikePops: [...s.strikePops, { dmg: hits[i]!, i, last }],
+      combo: n > 1 ? { n: i + 1, of: n, total: dealt } : null,
+      monPhase: last && s.monPhase === 'combo' ? 'dying' : s.monPhase,
+    }));
+    if (last) {
+      // The finisher's count lingers a little longer than a single hit does.
+      this.timers.after('land', n > 1 ? 640 : 520, () => this.monsterBeat(out));
+      return;
+    }
+    this.timers.after('combo', comboGapMs(n), () =>
+      this.landHit(out, hits, i + 1, prevHp)
+    );
+  }
+
+  /** The monster's turn is a SEPARATE, announced beat: wind-up, then the hit.
+   *  Resolving it inside the player's payout made the swing invisible - the HP
+   *  just dropped with everything else. */
+  private monsterBeat(out: StepResult): void {
+    if (!out.enemyAttacked) {
+      this.finishTurn(out);
+      return;
+    }
+    this.setState({
+      pops: [],
+      strikePops: [],
+      combo: null,
+      drop: null,
+      kick: false,
+      swing: out.enemyHeavy ? 'heavy' : 'attack',
+    });
+    this.timers.after('swing', 620, () => {
+      audio.play(out.enemyDamage > 0 ? 'hurt' : 'blocked');
+      if (out.enemyDamage > 0) juice.impact('hurt');
       this.setState({
-        pops: [],
-        drop: null,
-        kick: false,
-        swing: out.enemyHeavy ? 'heavy' : 'attack',
+        hitWho: 'player',
+        pops: [swingPop(out.enemyDamage)],
+        pHpShown: null,
+        swing: 'landed',
+        lastSwing: { damage: out.enemyDamage, blocked: out.enemyBlocked },
       });
-      this.timers.after('swing', 620, () => {
-        audio.play(out.enemyDamage > 0 ? 'hurt' : 'blocked');
-        if (out.enemyDamage > 0) juice.impact('hurt');
-        this.setState({
-          hitWho: 'player',
-          pops: [swingPop(out.enemyDamage)],
-          pHpShown: null,
-          swing: 'landed',
-          lastSwing: { damage: out.enemyDamage, blocked: out.enemyBlocked },
-        });
-        this.timers.after('swing', 560, () => this.finishTurn(out));
-      });
+      this.timers.after('swing', 560, () => this.finishTurn(out));
     });
   }
 
@@ -1749,6 +1821,8 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         busy: true,
         hitWho: null,
         pops: [],
+        strikePops: [],
+        combo: null,
         kick: false,
         swing: null,
       });
@@ -1760,7 +1834,13 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     if (out.waveCleared) {
       // The kill lands, the fallen enemy plays out, the stage sits empty a
       // beat, then the next one walks in.
-      this.setState({ pops: [], drop: null, kick: false });
+      this.setState({
+        pops: [],
+        strikePops: [],
+        combo: null,
+        drop: null,
+        kick: false,
+      });
       this.timers.after('spawn', 240, () => {
         this.setState({ monPhase: 'empty', dying: null });
         this.timers.after('spawn', 260, () => {
@@ -1777,6 +1857,8 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       busy: false,
       hitWho: null,
       pops: [],
+      strikePops: [],
+      combo: null,
       drop: null,
       kick: false,
       swing: null,

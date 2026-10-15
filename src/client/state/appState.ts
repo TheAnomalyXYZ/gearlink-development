@@ -50,6 +50,10 @@ export type Phase =
   | 'duel';
 
 export type Pop = { text: string; color: string; top: string };
+/** One landed hit of a multi-hit attack, floated over the monster. */
+export type StrikePop = { dmg: number; i: number; last: boolean };
+/** The running hit count of a multi-hit attack: `n` of `of` hits landed. */
+export type Combo = { n: number; of: number; total: number };
 export type Drop = { dist: number[]; gen: number; spawn: number | null };
 export type Place = {
   side: 'above' | 'below';
@@ -142,6 +146,9 @@ export type AppState = {
   hitWho: 'monster' | 'player' | null;
   drop: Drop | null;
   pops: Pop[];
+  /** The hits of the attack now landing, over the monster. */
+  strikePops: StrikePop[];
+  combo: Combo | null;
   arming: number[];
   detonating: number[];
   blasting: number[];
@@ -152,7 +159,9 @@ export type AppState = {
   /** The link as drawn, so tiles clear in the order they were linked. */
   clearOrder: number[];
   pHpShown: number | null;
-  monPhase: 'dying' | 'empty' | 'spawning' | null;
+  /** `combo`: a killing multi-hit is still landing, so the fallen wave stays
+   *  on screen (alive) until its last hit, then it becomes `dying`. */
+  monPhase: 'combo' | 'dying' | 'empty' | 'spawning' | null;
   dying: { name: string; url: string; bg: string } | null;
   swing: 'attack' | 'heavy' | 'landed' | null;
   lastSwing: { damage: number; blocked: number } | null;
@@ -304,6 +313,8 @@ export const BATTLE_RESET = {
   rejecting: [],
   kick: false,
   slashGen: 0,
+  strikePops: [],
+  combo: null,
   hpShown: null,
   clearOrder: [],
   pHpShown: null,

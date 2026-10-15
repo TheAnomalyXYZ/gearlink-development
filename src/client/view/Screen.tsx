@@ -263,6 +263,107 @@ const PostSprite = ({ v, size }: { v: View; size: string }) => (
 );
 
 /** The battle laid out for a wide inline post (see postLayout.ts). */
+/** The multi-hit layer over the monster: each hit's number where it landed,
+ *  and the HITS counter punching up with every one. Sits OUTSIDE the monster's
+ *  own animated box so the hit flash never whitens the text. */
+const StrikeLayer = ({ v }: { v: View }) => (
+  <div
+    style={{
+      position: 'absolute',
+      inset: '0',
+      pointerEvents: 'none',
+      zIndex: '6',
+      fontFamily: PX,
+    }}
+  >
+    {(v.strikePops || []).map((p: any) => (
+      <div
+        key={p.key}
+        style={{
+          position: 'absolute',
+          left: p.left,
+          top: p.top,
+          width: '0',
+          height: '0',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <div
+          style={{
+            whiteSpace: 'nowrap',
+            fontSize: p.size,
+            color: p.color,
+            textShadow: '0 2px 0 #141D2E',
+            WebkitTextStroke: '4px #141D2E',
+            paintOrder: 'stroke fill',
+            animation: p.anim,
+          }}
+        >
+          {p.text}
+        </div>
+      </div>
+    ))}
+    <div
+      style={{
+        position: 'absolute',
+        right: '-14%',
+        top: '-6%',
+        display: v.strikeComboDisplay,
+        flexDirection: 'column',
+        alignItems: 'center',
+        transform: 'rotate(-8deg)',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          gap: '4px',
+          animation: v.strikeComboAnim,
+        }}
+      >
+        <span
+          style={{
+            fontSize: v.strikeComboSize,
+            lineHeight: '1',
+            color: v.strikeComboColor,
+            textShadow: '0 3px 0 #141D2E',
+            WebkitTextStroke: '5px #141D2E',
+            paintOrder: 'stroke fill',
+          }}
+        >
+          {v.strikeComboCount}
+        </span>
+        <span
+          style={{
+            fontSize: '14px',
+            color: '#FFFFFF',
+            WebkitTextStroke: '4px #141D2E',
+            paintOrder: 'stroke fill',
+          }}
+        >
+          HITS!
+        </span>
+      </div>
+      <div
+        style={{
+          display: v.strikeComboTotalDisplay,
+          marginTop: '2px',
+          fontSize: '12px',
+          color: v.strikeComboColor,
+          WebkitTextStroke: '3px #141D2E',
+          paintOrder: 'stroke fill',
+          animation: 'glPop 260ms ease-out both',
+        }}
+      >
+        {v.strikeComboTotal}
+      </div>
+    </div>
+  </div>
+);
+
 const PostBattle = ({ v, p }: { v: View; p: PostView }) => (
   <div
     ref={v.postRootRef}
@@ -480,6 +581,7 @@ const PostBattle = ({ v, p }: { v: View; p: PostView }) => (
             ></div>
           </div>
         </div>
+        <StrikeLayer v={v} />
         <div
           style={{
             position: 'absolute',
@@ -3708,90 +3810,93 @@ export const Screen = ({ v }: { v: View }) => (
                     gap: '8px',
                   }}
                 >
-                  <div
-                    data-juice="monster"
-                    style={{
-                      position: 'relative',
-                      width: 'clamp(96px,22vh,190px)',
-                      height: 'clamp(96px,22vh,190px)',
-                      opacity: v.monsterOpacity,
-                      backgroundImage: v.monsterSheet
-                        ? 'none'
-                        : `url(${v.monsterUrl})`,
-                      backgroundSize: 'contain',
-                      backgroundRepeat: 'no-repeat',
-                      backgroundPosition: 'center bottom',
-                      imageRendering: 'pixelated',
-                      animation: v.monsterAnim,
-                    }}
-                  >
-                    {/* Idle sheet: one strip of 8 square frames slid a frame
+                  <div style={{ position: 'relative' }}>
+                    <div
+                      data-juice="monster"
+                      style={{
+                        position: 'relative',
+                        width: 'clamp(96px,22vh,190px)',
+                        height: 'clamp(96px,22vh,190px)',
+                        opacity: v.monsterOpacity,
+                        backgroundImage: v.monsterSheet
+                          ? 'none'
+                          : `url(${v.monsterUrl})`,
+                        backgroundSize: 'contain',
+                        backgroundRepeat: 'no-repeat',
+                        backgroundPosition: 'center bottom',
+                        imageRendering: 'pixelated',
+                        animation: v.monsterAnim,
+                      }}
+                    >
+                      {/* Idle sheet: one strip of 8 square frames slid a frame
                         at a time inside a square window; the juice tweens
                         above still move the whole monster. */}
-                    <div
-                      style={{
-                        position: 'absolute',
-                        left: '50%',
-                        bottom: '0',
-                        height: '100%',
-                        aspectRatio: '1 / 1',
-                        maxWidth: '100%',
-                        transform: 'translateX(-50%)',
-                        overflow: 'hidden',
-                        display: v.monsterSheet ? 'block' : 'none',
-                      }}
-                    >
                       <div
-                        data-idle=""
                         style={{
                           position: 'absolute',
-                          left: '0',
-                          top: '0',
-                          width: '800%',
+                          left: '50%',
+                          bottom: '0',
                           height: '100%',
-                          background: `url(${v.monsterSheet}) 0 0/100% 100% no-repeat`,
-                          imageRendering: 'pixelated',
-                          animation: v.monsterIdleAnim,
-                          willChange: 'transform',
+                          aspectRatio: '1 / 1',
+                          maxWidth: '100%',
+                          transform: 'translateX(-50%)',
+                          overflow: 'hidden',
+                          display: v.monsterSheet ? 'block' : 'none',
                         }}
-                      ></div>
-                    </div>
-                    <div
-                      style={{
-                        position: 'absolute',
-                        inset: '0',
-                        overflow: 'visible',
-                        display: v.slashDisplay,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        pointerEvents: 'none',
-                      }}
-                    >
+                      >
+                        <div
+                          data-idle=""
+                          style={{
+                            position: 'absolute',
+                            left: '0',
+                            top: '0',
+                            width: '800%',
+                            height: '100%',
+                            background: `url(${v.monsterSheet}) 0 0/100% 100% no-repeat`,
+                            imageRendering: 'pixelated',
+                            animation: v.monsterIdleAnim,
+                            willChange: 'transform',
+                          }}
+                        ></div>
+                      </div>
                       <div
                         style={{
                           position: 'absolute',
-                          width: '120%',
-                          height: '7px',
-                          borderRadius: '9999px',
-                          background:
-                            'linear-gradient(90deg,rgba(255,255,255,0),#FFFFFF 45%,#FFF2B0 60%,rgba(255,242,176,0))',
-                          boxShadow: '0 0 12px 4px rgba(255,255,255,.75)',
-                          animation: v.slashAnimA,
+                          inset: '0',
+                          overflow: 'visible',
+                          display: v.slashDisplay,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          pointerEvents: 'none',
                         }}
-                      ></div>
-                      <div
-                        style={{
-                          position: 'absolute',
-                          width: '96%',
-                          height: '5px',
-                          borderRadius: '9999px',
-                          background:
-                            'linear-gradient(90deg,rgba(255,255,255,0),#FFFFFF 50%,rgba(255,158,161,0))',
-                          boxShadow: '0 0 10px 3px rgba(255,140,140,.7)',
-                          animation: v.slashAnimB,
-                        }}
-                      ></div>
+                      >
+                        <div
+                          style={{
+                            position: 'absolute',
+                            width: '120%',
+                            height: '7px',
+                            borderRadius: '9999px',
+                            background:
+                              'linear-gradient(90deg,rgba(255,255,255,0),#FFFFFF 45%,#FFF2B0 60%,rgba(255,242,176,0))',
+                            boxShadow: '0 0 12px 4px rgba(255,255,255,.75)',
+                            animation: v.slashAnimA,
+                          }}
+                        ></div>
+                        <div
+                          style={{
+                            position: 'absolute',
+                            width: '96%',
+                            height: '5px',
+                            borderRadius: '9999px',
+                            background:
+                              'linear-gradient(90deg,rgba(255,255,255,0),#FFFFFF 50%,rgba(255,158,161,0))',
+                            boxShadow: '0 0 10px 3px rgba(255,140,140,.7)',
+                            animation: v.slashAnimB,
+                          }}
+                        ></div>
+                      </div>
                     </div>
+                    <StrikeLayer v={v} />
                   </div>
                   <div
                     ref={v.setFtueEnemy}

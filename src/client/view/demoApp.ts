@@ -144,6 +144,8 @@ export const demoApp = (over: Record<string, unknown>): GearLinkApp => {
     rejecting: [],
     kick: false,
     slashGen: 0,
+    strikePops: [],
+    combo: null,
     hpShown: null,
     pHpShown: null,
     monPhase: null,

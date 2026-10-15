@@ -301,6 +301,28 @@ class Juice {
     vib(kind === 'bomb' ? [30, 40, 60] : kind === 'kill' ? 24 : 12);
   }
 
+  /** Hit `i` (0-based) of an `of`-hit attack. Each slash pitches up the ladder
+   *  and, from the second hit on, a counter tick climbs with it, so the combo
+   *  is heard counting. A multi-hit finisher adds a heavy thud (and a shimmer
+   *  on long chains). Every hit but the last also gets a short hit-stop and a
+   *  shake; the last one is the caller's `impact`. */
+  strike(i: number, of: number): void {
+    const s = STEPS[Math.min(i, STEPS.length - 1)] ?? 0;
+    const last = i === of - 1;
+    audio.play('attack', { rate: Math.pow(2, s / 24) });
+    if (i > 0)
+      audio.play('link', { rate: Math.pow(2, (s + 5) / 12), gain: 0.45 });
+    if (last && of > 1) {
+      audio.play('blocked', { rate: 0.85, gain: 0.7 });
+      if (of >= 4) audio.play('rider', { rate: 1.25, gain: 0.55 });
+      return;
+    }
+    if (last) return;
+    this.freeze(30);
+    this.addTrauma(0.1 + 0.02 * i);
+    vib(8);
+  }
+
   freeze(ms: number): void {
     freezeTimers(this.app, ms);
     const list = (

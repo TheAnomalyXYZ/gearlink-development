@@ -143,11 +143,31 @@ export const linkPreview = (p: {
   };
 };
 
-/** Floats for the player's side of a campaign turn. */
+/** How many hits an attack link lands: a 3-link is one hit, and every orb past
+ *  it adds one more. A bomb detonation (or anything shorter) is a single hit. */
+export const comboHitsFor = (chainLen: number): number =>
+  chainLen >= MIN_LINK ? chainLen - MIN_LINK + 1 : 1;
+
+/** Split an attack's total into `n` hits that sum to exactly that total. The
+ *  remainder rides on the LAST hits, so the finisher is never the smallest.
+ *  A total smaller than `n` lands fewer hits rather than zero-damage ones. */
+export const splitHits = (total: number, n: number): number[] => {
+  if (total <= 0) return [];
+  const k = Math.max(1, Math.min(n, total));
+  const base = Math.floor(total / k);
+  const rem = total - base * k;
+  return Array.from({ length: k }, (_, i) => base + (i >= k - rem ? 1 : 0));
+};
+
+/** Ms between hits: quick enough that long chains still feel like a flurry
+ *  rather than a wait, slow enough that each hit reads. */
+export const comboGapMs = (n: number): number =>
+  Math.max(80, 150 - 8 * Math.max(0, n - 2));
+
+/** Floats for the player's side of a campaign turn. The attack itself is not
+ *  here: it lands hit by hit over the monster (`strikePops`). */
 export const runPops = (out: StepResult): Pop[] => {
   const pops: Pop[] = [];
-  if (out.attackDealt > 0)
-    pops.push({ text: '-' + out.attackDealt, color: COLOR.damage, top: '4%' });
   if (out.burnDealt > 0)
     pops.push({
       text: '-' + out.burnDealt,
