@@ -3,7 +3,11 @@ import './index.css';
 import { StrictMode, Suspense, lazy, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { api } from './api.js';
-import type { ChallengeResponse, WarChestPost } from '../shared/api.js';
+import type {
+  ChallengeResponse,
+  DailyPoster,
+  WarChestPost,
+} from '../shared/api.js';
 import { requestExpandedMode, showToast } from '@devvit/web/client';
 import { Challenge } from './splash-card.js';
 import { Chest } from './splash-chest.js';
@@ -83,6 +87,45 @@ const GiveableChest = ({
 };
 
 /**
+ * A Daily Battle post. A signed-in reader plays the day's battle right in the
+ * feed: PLAY swaps the poster for the game in post mode, which boots straight
+ * into the fight (the full game is still a button away from there). A
+ * logged-out reader, or a post whose day is over, opens the full game.
+ */
+const PlayableDaily = ({
+  poster,
+  signedIn,
+}: {
+  poster: DailyPoster;
+  signedIn: boolean;
+}) => {
+  const [playing, setPlaying] = useState(false);
+  const daily = (
+    <Daily
+      poster={poster}
+      cta={
+        signedIn ? (
+          <ClaimButton
+            label="PLAY TODAY'S BATTLE"
+            sparkle
+            onClick={() => setPlaying(true)}
+          />
+        ) : (
+          <Enter label="PLAY TODAY'S BATTLE" sparkle />
+        )
+      }
+      endedCta={<Enter label="PLAY" />}
+    />
+  );
+  if (!playing) return daily;
+  return (
+    <Suspense fallback={daily}>
+      <PostGame />
+    </Suspense>
+  );
+};
+
+/**
  * The inline view, as it appears in the feed.
  *
  * Deliberately tiny up front: no engine, no profile fetch, no card table. It
@@ -92,7 +135,7 @@ const GiveableChest = ({
  *
  * Four answers. A CHALLENGE post gets the duellist who made it. A Daily
  * Battle post gets the day's poster - its foe, its region and the top of its
- * own ladder. A War Chest post gets the subreddit's chest, with giving right
+ * own ladder, and its battle plays right there in the feed. A War Chest post gets the subreddit's chest, with giving right
  * there in the feed. Every other post is a playable battle: the game chunk is
  * fetched only then, with the general splash shown while it loads and to a
  * logged-out reader. Until the answer lands the card is a bare dark shell, so
@@ -136,13 +179,7 @@ export const Splash = () => {
   if (res.chest)
     return <GiveableChest initial={res.chest} signedIn={!!res.viewer} />;
   if (res.poster)
-    return (
-      <Daily
-        poster={res.poster}
-        cta={<Enter label="PLAY TODAY'S BATTLE" sparkle />}
-        endedCta={<Enter label="PLAY" />}
-      />
-    );
+    return <PlayableDaily poster={res.poster} signedIn={!!res.viewer} />;
   const general = <General cta={<Enter label="PLAY NOW" sparkle />} />;
   // A logged-out reader has no profile to play with: they get the splash.
   if (!res.viewer) return general;

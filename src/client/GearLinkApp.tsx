@@ -402,8 +402,13 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
             return;
           }
           if (res.daily) {
-            if (Date.now() < res.daily.endsAt)
-              this.pickLocation(res.daily.locationId)();
+            // The post plays it inline, straight into the battle; the full
+            // game picks up a battle the post handed it, else the build.
+            if (Date.now() < res.daily.endsAt) {
+              if (this.postMode) this.startDailyPost();
+              else if (!(takeGoTo() === 'resume' && this.resumeLiveRun()))
+                this.pickLocation(res.daily.locationId)();
+            }
           }
           // Opened from a War Chest post: straight to the chest.
           else if (res.warChestPost) this.openWarChest();
@@ -911,7 +916,9 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   /** PLAY AGAIN on a Daily Battle's end screen: back into its build. */
   replayDaily = (): void => {
     const daily = this.state.daily;
-    if (daily) this.pickLocation(daily.locationId)();
+    if (!daily) return;
+    if (this.postMode) this.startDailyPost();
+    else this.pickLocation(daily.locationId)();
   };
 
   goHome = this.goStep('home');
@@ -1304,6 +1311,31 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         locationId: this.postStartId(),
         flow: 'run',
         picked: ownedLoadout('Hero', s.profile.gear),
+        homeMenu: false,
+        modal: null,
+      }),
+      () => {
+        this.startRun();
+        this.setState({ ftueStep: null });
+      }
+    );
+  };
+
+  /** A Daily Battle post's battle: straight into the day's location with the
+   *  build already on hand, no hero step. */
+  startDailyPost = (): void => {
+    const daily = this.state.daily;
+    if (!daily) return;
+    if (this.postAuto) clearTimeout(this.postAuto);
+    this.postIntroDone = true;
+    this.setState(
+      (s) => ({
+        locationId: daily.locationId,
+        flow: 'run',
+        picked:
+          s.picked.length === 5
+            ? s.picked
+            : ownedLoadout(s.heroClass, s.profile.gear),
         homeMenu: false,
         modal: null,
       }),
