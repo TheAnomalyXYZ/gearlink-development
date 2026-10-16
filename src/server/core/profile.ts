@@ -17,6 +17,10 @@ import {
 import { settlePrize } from '../../shared/engine/season.js';
 import type { SeasonPrize } from '../../shared/engine/season.js';
 import { removeFromPool } from './duelpool.js';
+import { finalStanding } from './solo.js';
+import { soloTierById, titleIsLive } from '../../shared/engine/solo.js';
+import type { SoloPrize, SoloTitle } from '../../shared/engine/solo.js';
+import { weeklyFlairFor } from '../../shared/engine/flair.js';
 import { MAP_LENGTH, MAX_ASCENSION } from '../../shared/engine/campaign.js';
 import { normaliseHearts } from '../../shared/engine/hearts.js';
 import { LEVEL_CONFIG } from '../../shared/engine/level.js';
@@ -151,6 +155,39 @@ const parsePrize = (raw: string | undefined): SeasonPrize | null => {
   }
 };
 
+const parseSoloPrize = (raw: string | undefined): SoloPrize | null => {
+  if (!raw) return null;
+  try {
+    const p = JSON.parse(raw) as Partial<SoloPrize>;
+    if (typeof p.week !== 'number' || !soloTierById(String(p.tier)))
+      return null;
+    return {
+      week: p.week,
+      rank: Number(p.rank) || 0,
+      tier: p.tier!,
+      rewards: Array.isArray(p.rewards) ? p.rewards : [],
+    };
+  } catch {
+    return null;
+  }
+};
+
+const parseSoloTitle = (raw: string | undefined): SoloTitle | null => {
+  if (!raw) return null;
+  try {
+    const p = JSON.parse(raw) as Partial<SoloTitle>;
+    if (typeof p.week !== 'number' || !soloTierById(String(p.tier)))
+      return null;
+    return { week: p.week, rank: Number(p.rank) || 0, tier: p.tier! };
+  } catch {
+    return null;
+  }
+};
+
+/** Weeks back a returning player is still settled for. Older ladders have
+ *  expired anyway. */
+const SOLO_LOOKBACK = 4;
+
 /** The wallet alone, read without touching the profile. For the feed view,
  *  which must not create a profile for someone who has only scrolled past -
  *  the first real visit is what counts a new player. */
@@ -220,6 +257,45 @@ export const loadProfile = async (
   const listed =
     h['duelListed'] === '1' && num(h['duelListedWeek'], -1) === week;
 
+  /* The solo leaderboard settles the same lazy way: the first read in a new
+     week looks up where the player finished every week since the last one it
+     checked, pays each placing once, and hands out last week's title. */
+  let soloPrize = parseSoloPrize(h['soloPrize']);
+  let soloTitle = parseSoloTitle(h['soloTitle']);
+  if (h['soloSettled'] !== String(week - 1)) {
+    const fields: Record<string, string> = { soloSettled: String(week - 1) };
+    const from = Math.max(
+      num(h['soloSettled'], week - 2) + 1,
+      week - SOLO_LOOKBACK
+    );
+    for (let w = from; w <= week - 1; w++) {
+      const placed = await finalStanding(w, userId).catch(() => null);
+      if (!placed || !(await claimSoloWeek(userId, w))) continue;
+      for (const r of placed.tier.rewards) {
+        if (r.kind === 'coins') coins += r.amount;
+        else if (r.kind === 'gems') gems += r.amount;
+        else packs = { ...packs, [r.packId]: (packs[r.packId] ?? 0) + 1 };
+      }
+      soloPrize = {
+        week: w,
+        rank: placed.rank,
+        tier: placed.tier.id,
+        rewards: placed.tier.rewards,
+      };
+      fields['coins'] = String(coins);
+      fields['gems'] = String(gems);
+      fields['packs'] = JSON.stringify(packs);
+      fields['soloPrize'] = JSON.stringify(soloPrize);
+      if (w === week - 1) {
+        soloTitle = { tier: placed.tier.id, week: w, rank: placed.rank };
+        fields['soloTitle'] = JSON.stringify(soloTitle);
+      }
+    }
+    await redis.hSet(profileKey(userId), fields);
+  }
+  if (!titleIsLive(soloTitle, week)) soloTitle = null;
+  const titleFlair = soloTitle ? weeklyFlairFor(soloTitle.tier) : null;
+
   return {
     username,
     coins,
@@ -240,9 +316,15 @@ export const loadProfile = async (
     duelListed: listed,
     duelWeekDuels: duels,
     duelPrize: prize,
-    flairs: Object.keys(h)
-      .filter((f) => f.startsWith(FLAIR_FIELD) && h[f] === '1')
-      .map((f) => f.slice(FLAIR_FIELD.length)),
+    soloPrize,
+    soloTitle,
+    // Banked unlocks, plus the weekly title flair while it is held.
+    flairs: [
+      ...Object.keys(h)
+        .filter((f) => f.startsWith(FLAIR_FIELD) && h[f] === '1')
+        .map((f) => f.slice(FLAIR_FIELD.length)),
+      ...(titleFlair ? [titleFlair.id] : []),
+    ],
     flair: h['flair'] || null,
     donated: Math.max(0, Math.floor(num(h['donated'], 0))),
     level: clamp(Math.floor(num(h['level'], 1)), 1, LEVEL_CONFIG.cap),
@@ -259,6 +341,19 @@ const claimPrizeWeek = async (userId: string, week: number) => {
   const first = (await redis.incrBy(key, 1)) === 1;
   if (first) await redis.expire(key, 30 * 86_400);
   return first;
+};
+
+/** True for exactly one caller per player and solo week. */
+const claimSoloWeek = async (userId: string, week: number) => {
+  const key = `soloprize:${userId}:${week}`;
+  const first = (await redis.incrBy(key, 1)) === 1;
+  if (first) await redis.expire(key, 60 * 86_400);
+  return first;
+};
+
+/** The leaderboard prize notice has been seen; the payout already landed. */
+export const dismissSoloPrize = async (userId: string): Promise<void> => {
+  await redis.hDel(profileKey(userId), ['soloPrize']);
 };
 
 /** One more duel toward this week's prize. */

@@ -14,6 +14,8 @@
  * unlocked, and the server sets it as their flair in the subreddit.
  */
 import { PATRON_DONATED } from './warchest.js';
+import { SOLO_TIERS } from './solo.js';
+import type { SoloTierId } from './solo.js';
 
 export type FlairTextColor = 'dark' | 'light';
 
@@ -32,7 +34,10 @@ export type FlairUnlock =
   /** Duel trophies, as currently held. */
   | { kind: 'trophies'; min: number }
   /** Coins given to the subreddit's war chest, over all weeks. */
-  | { kind: 'donated'; min: number };
+  | { kind: 'donated'; min: number }
+  /** A weekly leaderboard title. HELD, never banked: it can be worn for the
+   *  week after the one that earned it, and is gone after that. */
+  | { kind: 'weekly'; tier: SoloTierId };
 
 export type FlairDef = {
   /** Stored against unlocks, so a retuned flair keeps its id and one that is
@@ -95,7 +100,39 @@ export const FLAIRS: FlairDef[] = [
     textColor: 'dark',
     backgroundColor: '#AEE45D',
   },
+  {
+    id: 'weekly-champion',
+    text: 'Weekly Champion',
+    blurb: 'Finish #1 on the weekly leaderboard. Worn for one week.',
+    unlock: { kind: 'weekly', tier: 'champion' },
+    textColor: 'dark',
+    backgroundColor: '#FFC24B',
+  },
+  {
+    id: 'weekly-podium',
+    text: 'Weekly Top 3',
+    blurb: 'Finish top 3 on the weekly leaderboard. Worn for one week.',
+    unlock: { kind: 'weekly', tier: 'podium' },
+    textColor: 'dark',
+    backgroundColor: '#C9D4E8',
+  },
+  {
+    id: 'weekly-top10',
+    text: 'Weekly Top 10',
+    blurb: 'Finish top 10 on the weekly leaderboard. Worn for one week.',
+    unlock: { kind: 'weekly', tier: 'top10' },
+    textColor: 'dark',
+    backgroundColor: '#E09A5A',
+  },
 ];
+
+/** True for a flair that is held for a week rather than kept for good. */
+export const isWeeklyFlair = (def: FlairDef): boolean =>
+  def.unlock.kind === 'weekly';
+
+/** The weekly flair a tier lets its holder wear. */
+export const weeklyFlairFor = (tier: SoloTierId): FlairDef | null =>
+  flairById(SOLO_TIERS.find((t) => t.id === tier)?.flairId ?? '');
 
 export const flairById = (id: string): FlairDef | null =>
   FLAIRS.find((f) => f.id === id) ?? null;
@@ -117,6 +154,9 @@ export const flairUnlocked = (def: FlairDef, facts: FlairFacts): boolean => {
       return facts.trophies >= u.min;
     case 'donated':
       return facts.donated >= u.min;
+    case 'weekly':
+      // Held from the ladder, never banked by a sync.
+      return false;
   }
 };
 

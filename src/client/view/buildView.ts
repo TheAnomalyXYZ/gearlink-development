@@ -90,6 +90,7 @@ import {
 import { DEFAULT_SNOO, GEARLINK_ICON, NAV_ICON } from './assets.js';
 import { syncVictory } from '../fx/victory.js';
 import { postVm } from './postLayout.js';
+import { leaderboardView } from './leaderboardView.js';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import {
   BOMB_PAL,
@@ -1390,14 +1391,6 @@ export const buildView = (app: GearLinkApp): View => {
         shadow: BTN.secondary.shadow,
       },
     ];
-  } else if (st.modal === 'board') {
-    modalTitle = st.leaderboard.length ? 'BLACKSMITHS' : 'NO RUNS YET';
-    modalRows = st.leaderboard.map((b: any) => ({
-      title: b.rank + '. ' + b.username + ' / ' + b.hero,
-      detail: b.waves + ' waves cleared, best link ' + b.chain,
-      meta: b.score.toLocaleString(),
-      metaColor: b.isYou ? '#AEE45D' : b.rank === 1 ? '#FFC24B' : '#9DB4D4',
-    }));
   }
 
   const endBs = bs || {
@@ -2933,7 +2926,6 @@ export const buildView = (app: GearLinkApp): View => {
     homeMenuDisplay: st.homeMenu ? 'flex' : 'none',
     homeMenuOpen: st.homeMenu,
     homeMenuItems: [
-      { label: 'BLACKSMITHS', icon: 'board', run: app.openBoardFromMenu },
       { label: 'HOW TO PLAY', icon: 'how', run: app.openHowFromMenu },
       { label: 'WAR CHEST', icon: 'chest', run: app.openWarChestFromMenu },
       { label: 'FLAIR', icon: 'flair', run: app.openFlairFromMenu },
@@ -3359,7 +3351,9 @@ export const buildView = (app: GearLinkApp): View => {
               },
             ]
       ),
-    modalOpen: !!st.modal,
+    // The leaderboard draws its own sheet rather than the shared modal.
+    modalOpen: !!st.modal && st.modal !== 'board',
+    lb: leaderboardView(st, app),
     modalTitle,
     modalRows,
     modalActions,

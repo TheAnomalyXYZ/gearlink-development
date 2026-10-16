@@ -19,6 +19,11 @@ import type { View } from './buildView.js';
 import type { PostView } from './postLayout.js';
 import { MenuIcon, SpeakerIcon, VolumeSlider } from './SettingsControls.js';
 import { WorldMap } from './WorldMap.js';
+import {
+  LeaderboardFab,
+  LeaderboardSheet,
+  SoloPrizeNotice,
+} from './Leaderboard.js';
 import { GENERAL_GEAR } from '../splash-style.js';
 
 const PIXEL = 'VolterTitle,Volter,monospace';
@@ -2351,6 +2356,12 @@ export const Screen = ({ v }: { v: View }) => (
                   ))}
                 </div>
               </div>
+
+              <LeaderboardFab
+                lb={v.lb}
+                transform={v.lb.fabT}
+                transition={v.wmChromeTr}
+              />
             </div>
           </>
         ) : null}
@@ -9728,12 +9739,14 @@ export const Screen = ({ v }: { v: View }) => (
                   }}
                 >
                   <MenuIcon kind="board" color="#000000" />
-                  BLACKSMITHS
+                  LEADERBOARD
                 </div>
               </div>
             </div>
           </>
         ) : null}
+
+        <LeaderboardSheet lb={v.lb} stop={v.stop} />
 
         {v.modalOpen ? (
           <>
@@ -10673,6 +10686,8 @@ export const Screen = ({ v }: { v: View }) => (
             </div>
           </div>
         </div>
+
+        <SoloPrizeNotice lb={v.lb} stop={v.stop} />
       </div>
     </div>
   </div>

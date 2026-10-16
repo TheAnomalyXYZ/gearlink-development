@@ -57,7 +57,8 @@ void test('each unlock kind is a threshold on its own fact', () => {
 });
 
 void test('only flairs not already owned come back as new', () => {
-  const all = FLAIRS.map((f) => f.id);
+  // Weekly titles are held from the leaderboard, never banked by a sync.
+  const all = FLAIRS.filter((f) => f.unlock.kind !== 'weekly').map((f) => f.id);
   const rich: FlairFacts = {
     progress: 1e9,
     ascension: 1e9,

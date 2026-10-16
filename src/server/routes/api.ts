@@ -25,6 +25,7 @@ import type {
   Profile,
   ProfileResponse,
   QuestsResponse,
+  SoloBoardsResponse,
   SubmitRunRequest,
   SubmitRunResponse,
   WarChestResponse,
@@ -32,6 +33,7 @@ import type {
 import {
   countDuel,
   dismissPrize,
+  dismissSoloPrize,
   loadProfile,
   peekCoins,
   profileKey,
@@ -55,6 +57,7 @@ import {
 } from '../core/stats.js';
 import { coinBundleSku, packSku } from '../../shared/admin.js';
 import { getLeaderboard, recordScore } from '../core/leaderboard.js';
+import { getSoloBoard, recordSoloRun, soloWeekNow } from '../core/solo.js';
 import {
   advanceRefreshCursor,
   claimRefresh,
@@ -133,18 +136,27 @@ api.get('/init', async (c) => {
   // Before the profile read: a first read writes the profile, and the visit
   // has to see whether one existed to know if this is a new player.
   await recordVisit(me.userId, me.username);
-  const [profile, leaderboard, challenger, daily, isModerator, chestWeek] =
-    await Promise.all([
-      // Boot also catches up flair unlocks: one added to the catalogue since
-      // the last visit lands for everyone who already qualifies.
-      loadProfile(me.userId, me.username).then((p) => syncFlairs(me.userId, p)),
-      getLeaderboard(me.postId, me.userId),
-      // A failed read only means the post opens like any other.
-      readChallengeFoe(me.postId, me.userId, me.username).catch(() => null),
-      readDailyBattle(me.postId).catch(() => null),
-      isModeratorSafe(me.userId),
-      readWarChestWeek(me.postId).catch(() => null),
-    ]);
+  const [
+    profile,
+    leaderboard,
+    challenger,
+    daily,
+    isModerator,
+    chestWeek,
+    solo,
+  ] = await Promise.all([
+    // Boot also catches up flair unlocks: one added to the catalogue since
+    // the last visit lands for everyone who already qualifies.
+    loadProfile(me.userId, me.username).then((p) => syncFlairs(me.userId, p)),
+    getLeaderboard(me.postId, me.userId),
+    // A failed read only means the post opens like any other.
+    readChallengeFoe(me.postId, me.userId, me.username).catch(() => null),
+    readDailyBattle(me.postId).catch(() => null),
+    isModeratorSafe(me.userId),
+    readWarChestWeek(me.postId).catch(() => null),
+    // A short board: init only needs the viewer's row and the top few.
+    getSoloBoard(soloWeekNow(), me.userId, 10),
+  ]);
   return c.json<InitResponse>({
     type: 'init',
     postId: me.postId,
@@ -154,7 +166,29 @@ api.get('/init', async (c) => {
     daily,
     isModerator,
     warChestPost: chestWeek !== null,
+    solo,
   });
+});
+
+/** The weekly solo leaderboard: this week live, and last week's final table
+ *  (whose top players hold this week's titles). */
+api.get('/solo', async (c) => {
+  const me = who();
+  if (!me) return unauthorised(c);
+  const week = soloWeekNow();
+  const [current, last] = await Promise.all([
+    getSoloBoard(week, me.userId),
+    getSoloBoard(week - 1, me.userId),
+  ]);
+  return c.json<SoloBoardsResponse>({ type: 'solo', current, last });
+});
+
+/** Last week's leaderboard prize was paid at the reset; this clears its notice. */
+api.post('/solo/prize/seen', async (c) => {
+  const me = who();
+  if (!me) return unauthorised(c);
+  await dismissSoloPrize(me.userId);
+  return c.json(profileJson(await loadProfile(me.userId, me.username)));
 });
 
 api.get('/leaderboard', async (c) => {
@@ -332,10 +366,19 @@ api.post('/run', async (c) => {
     },
     score
   );
+  // Every campaign battle feeds the subreddit's weekly solo leaderboard.
+  const solo = await recordSoloRun(me.userId, {
+    username: me.username,
+    hero: body.heroClass,
+    chain: state.maxChain,
+    locationId: locId,
+    score,
+  });
 
-  const [after, leaderboard] = await Promise.all([
+  const [after, leaderboard, soloBoard] = await Promise.all([
     loadProfile(me.userId, me.username).then((p) => syncFlairs(me.userId, p)),
     getLeaderboard(me.postId, me.userId),
+    getSoloBoard(solo.week, me.userId, 10),
   ]);
 
   return c.json<SubmitRunResponse>({
@@ -355,6 +398,8 @@ api.post('/run', async (c) => {
     isBestLink,
     profile: after,
     leaderboard,
+    solo,
+    soloBoard,
   });
 });
 

@@ -11,6 +11,7 @@ GearLink is a match-and-link roguelike you play right inside Reddit posts. Equip
 | [The Campaign](campaign.md) | The six locations, monsters, wave affixes, heart containers, ascension |
 | [Duels & Leagues](duels-and-leagues.md) | Real-time PvP-style duels, junk, trophies, weekly leagues and prizes |
 | [Shop, Packs & Quests](shop-and-quests.md) | Coins, gems, packs and odds, duplicates, daily and weekly quests |
+| [Weekly Leaderboard](weekly-leaderboard.md) | Weekly points, title flairs and prizes for the top 10 |
 | [Daily Battle](daily-battle.md) | The daily post, its fresh ladder, and how the crown works |
 | [FAQ](faq.md) | Quick answers to common questions |
 

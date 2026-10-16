@@ -23,6 +23,8 @@ import type {
   DailyBattle,
   LeaderboardEntry,
   Profile,
+  SoloBoard,
+  SoloRunResult,
   ProfileResponse,
   QuestBoard,
   WarChest,
@@ -90,12 +92,22 @@ export type InvTab = 'packs' | 'gear';
 /** Bag > Gear filter chips: everything, only owned, or one effect kind. */
 export type GearFilter = 'all' | 'owned' | 'attack' | 'block' | 'effect';
 export type QuestTab = 'daily' | 'weekly';
+export type BoardTab = 'week' | 'last' | 'today' | 'rewards';
 
 export type AppState = {
   ready: boolean;
   fatal: string | null;
   profile: Profile;
   leaderboard: LeaderboardEntry[];
+  /** This week's solo leaderboard, short form - the floating button's badge. */
+  solo: SoloBoard | null;
+  /** Both weeks in full, once the leaderboard sheet has fetched them. */
+  soloBoards: { current: SoloBoard; last: SoloBoard } | null;
+  /** Which page the leaderboard sheet shows. 'today' is the Daily Battle
+   *  post's own ladder, offered only on one; 'rewards' is the title table. */
+  boardTab: BoardTab;
+  /** What the last banked battle did to the weekly leaderboard. */
+  runSolo: SoloRunResult | null;
 
   phase: Phase;
   heroClass: HeroClass;
@@ -276,6 +288,8 @@ export const EMPTY_PROFILE: Profile = {
   duelListed: false,
   duelWeekDuels: 0,
   duelPrize: null,
+  soloPrize: null,
+  soloTitle: null,
   flairs: [],
   flair: null,
   donated: 0,
@@ -327,6 +341,7 @@ export const BATTLE_RESET = {
   ascended: false,
   heartPiecesEarned: 0,
   runBanked: 'pending',
+  runSolo: null,
   runRank: null,
   runBest: false,
   ftuePlace: null,
@@ -355,6 +370,10 @@ export const INITIAL_STATE: AppState = {
   fatal: null,
   profile: EMPTY_PROFILE,
   leaderboard: [],
+  solo: null,
+  soloBoards: null,
+  boardTab: 'week',
+  runSolo: null,
   phase: 'splash',
   heroClass: 'Hero',
   tab: 'attack',

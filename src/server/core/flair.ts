@@ -11,10 +11,13 @@ import type { Profile } from '../../shared/api.js';
 import {
   FLAIR_TEXT_MAX,
   flairById,
+  isWeeklyFlair,
   newlyUnlockedFlairs,
+  weeklyFlairFor,
 } from '../../shared/engine/flair.js';
 import type { FlairFacts } from '../../shared/engine/flair.js';
 import { FLAIR_FIELD, profileKey, saveProfile } from './profile.js';
+import { finalStanding, soloWeekNow, titleHolders } from './solo.js';
 
 export const flairFacts = (p: Profile): FlairFacts => ({
   progress: p.progress,
@@ -33,8 +36,9 @@ export const flairFacts = (p: Profile): FlairFacts => ({
  */
 export const syncFlairs = async (
   userId: string,
-  profile: Profile
+  given: Profile
 ): Promise<Profile> => {
+  const profile = await stripLapsedTitle(userId, given);
   const earned = newlyUnlockedFlairs(flairFacts(profile), profile.flairs);
   if (!earned.length) return profile;
   try {
@@ -47,6 +51,60 @@ export const syncFlairs = async (
     console.error('flair unlock failed: ' + String(err));
     return profile;
   }
+};
+
+/**
+ * A weekly title flair is only worn while the title is held. Once it lapses
+ * the flair comes off Reddit - here for anyone who opens the game, and from the
+ * weekly scheduler for holders who never come back to see it go.
+ */
+const stripLapsedTitle = async (
+  userId: string,
+  profile: Profile
+): Promise<Profile> => {
+  const worn = profile.flair ? flairById(profile.flair) : null;
+  if (!worn || !isWeeklyFlair(worn) || profile.flairs.includes(worn.id))
+    return profile;
+  return (await removeTitleFlair(userId, profile.username, worn.id))
+    ? { ...profile, flair: null }
+    : profile;
+};
+
+/** Take a lapsed weekly flair off one player. True once it is gone. */
+export const removeTitleFlair = async (
+  userId: string,
+  username: string,
+  flairId: string
+): Promise<boolean> => {
+  const subredditName = context.subredditName;
+  if (!subredditName) return false;
+  try {
+    await reddit.removeUserFlair(subredditName, username);
+  } catch (err) {
+    console.error('title flair remove failed: ' + String(err));
+    return false;
+  }
+  await saveProfile(userId, { flair: null });
+  console.log('[solo] lapsed ' + flairId + ' removed from u/' + username);
+  return true;
+};
+
+/**
+ * Monday's sweep: everyone who held a title LAST week loses it now, unless last
+ * week's ladder handed them the same one again. Only players actually wearing
+ * the lapsed flair are touched.
+ */
+export const lapseTitles = async (): Promise<{ removed: number }> => {
+  const week = soloWeekNow();
+  let removed = 0;
+  for (const h of await titleHolders(week - 2)) {
+    const worn = await redis.hGet(profileKey(h.userId), 'flair');
+    if (worn !== h.tier.flairId) continue;
+    const again = await finalStanding(week - 1, h.userId);
+    if (again && weeklyFlairFor(again.tier.id)?.id === worn) continue;
+    if (await removeTitleFlair(h.userId, h.username, worn)) removed++;
+  }
+  return { removed };
 };
 
 export type EquipResult =

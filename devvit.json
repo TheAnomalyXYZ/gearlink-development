@@ -51,6 +51,10 @@
       "warChest": {
         "endpoint": "/internal/scheduler/warchest-post",
         "cron": "5 0 * * 1"
+      },
+      "soloTitles": {
+        "endpoint": "/internal/scheduler/solo-titles",
+        "cron": "10 0 * * 1"
       }
     }
   },

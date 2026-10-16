@@ -31,6 +31,7 @@ import {
 import { OrderResultStatus, purchase } from '@devvit/payments/client';
 import {
   LOCATIONS,
+  weeklyFlairFor,
   DUEL_FTUE_STEPS,
   DUEL_LOSS_TROPHIES,
   DUEL_THINK_MIN,
@@ -120,6 +121,7 @@ import {
 } from './state/appState.js';
 import type {
   AppState,
+  BoardTab,
   DuelEndKind,
   PackFx,
   QuestFx,
@@ -383,6 +385,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
           ready: true,
           profile: res.profile,
           leaderboard: res.leaderboard,
+          solo: res.solo,
           picked: ownedLoadout(s.heroClass, res.profile.gear),
           challenger: res.challenger,
           daily: res.daily,
@@ -924,12 +927,52 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   goHome = this.goStep('home');
   openPause = (): void => this.setState({ modal: 'pause' });
   resume = (): void => this.setState({ modal: null });
-  openBoard = (): void => this.setState({ modal: 'board' });
+  /** The leaderboard sheet opens on whatever it last showed and refetches
+   *  both weeks, so a rank that moved since boot is current. A Daily Battle
+   *  post opens on its own day's table first. */
+  openBoard = (): void => {
+    this.setState((s) => ({
+      modal: 'board',
+      homeMenu: false,
+      boardTab: s.daily && s.phase === 'end' ? 'today' : s.boardTab,
+    }));
+    void this.loadBoards();
+  };
+  private async loadBoards(): Promise<void> {
+    try {
+      const [res, today] = await Promise.all([
+        api.solo(),
+        this.state.daily ? api.leaderboard() : Promise.resolve(null),
+      ]);
+      this.setState((s) => ({
+        soloBoards: { current: res.current, last: res.last },
+        solo: res.current,
+        leaderboard: today ? today.leaderboard : s.leaderboard,
+      }));
+    } catch {
+      // The sheet keeps showing what boot or the last run already had.
+    }
+  }
+  setBoardTab = (tab: BoardTab) => (): void => this.setState({ boardTab: tab });
+  /** COLLECT on the weekly leaderboard prize - already paid at the reset. */
+  dismissSoloPrize = (): void => {
+    this.setState((s) => ({ profile: { ...s.profile, soloPrize: null } }));
+    void api
+      .soloPrizeSeen()
+      .then((r) => this.adopt(r.profile))
+      .catch(() => undefined);
+  };
+  /** WEAR IT on the prize notice: put the new title flair on straight away. */
+  wearSoloTitle = (): void => {
+    const id = this.state.profile.soloTitle
+      ? weeklyFlairFor(this.state.profile.soloTitle.tier)?.id
+      : undefined;
+    this.dismissSoloPrize();
+    if (id) this.equipFlair(id)();
+  };
   openHow = (): void => this.setState({ modal: 'how' });
   toggleHomeMenu = (): void =>
     this.setState((s) => ({ homeMenu: !s.homeMenu }));
-  openBoardFromMenu = (): void =>
-    this.setState({ modal: 'board', homeMenu: false });
   openHowFromMenu = (): void =>
     this.setState({ modal: 'how', homeMenu: false });
   closeModal = (): void => this.setState({ modal: null });
@@ -1207,6 +1250,8 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       this.setState({
         profile: res.profile,
         leaderboard: res.leaderboard,
+        solo: res.soloBoard,
+        runSolo: res.solo,
         coinsEarned: res.coinsEarned,
         chestBonusPct: res.chestBonusPct,
         runWon: res.won,

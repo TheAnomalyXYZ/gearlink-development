@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { postDailyOnce } from '../core/daily.js';
 import { postWarChestOnce } from '../core/warchest.js';
+import { lapseTitles } from '../core/flair.js';
 
 export const scheduler = new Hono();
 
@@ -25,6 +26,19 @@ scheduler.post('/warchest-post', async (c) => {
     return c.json(result, 200);
   } catch (error) {
     console.error(`[scheduler/warchest-post] failed: ${error}`);
+    return c.json({ status: 'error' }, 500);
+  }
+});
+
+/** Fired by the `soloTitles` cron in devvit.json at Monday 00:10 UTC: takes
+ *  lapsed weekly leaderboard flair off the players who held it. */
+scheduler.post('/solo-titles', async (c) => {
+  try {
+    const result = await lapseTitles();
+    console.log(`[scheduler/solo-titles] ${JSON.stringify(result)}`);
+    return c.json(result, 200);
+  } catch (error) {
+    console.error(`[scheduler/solo-titles] failed: ${error}`);
     return c.json({ status: 'error' }, 500);
   }
 });

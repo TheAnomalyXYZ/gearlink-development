@@ -3,6 +3,7 @@ import type { Hearts } from './engine/hearts.js';
 import type { PulledCard } from './engine/economy.js';
 import type { DuelFoe } from './engine/duel.js';
 import type { SeasonPrize } from './engine/season.js';
+import type { SoloPrize, SoloTitle } from './engine/solo.js';
 import type { QuestPeriod, QuestReward } from './engine/quests.js';
 import type { XpResult } from './engine/level.js';
 
@@ -45,6 +46,12 @@ export type Profile = {
   duelWeekDuels: number;
   /** Last week's league prize, already paid, until the notice is dismissed. */
   duelPrize: SeasonPrize | null;
+  /** Last week's leaderboard prize, already paid, until the notice is
+   *  dismissed. */
+  soloPrize: SoloPrize | null;
+  /** The leaderboard title this player holds this week, or null. Its flair is
+   *  in `flairs` for exactly as long as this is set. */
+  soloTitle: SoloTitle | null;
   /** Ids of the subreddit flairs this player has unlocked, kept for good. */
   flairs: string[];
   /** The unlocked flair this player chose to wear, or null for none. */
@@ -75,6 +82,50 @@ export type LeaderboardEntry = {
   isYou: boolean;
 };
 
+/** One row of the weekly solo leaderboard. */
+export type SoloEntry = {
+  /** 1-based. 0 for a player who has run this week but not scored yet. */
+  rank: number;
+  username: string;
+  /** Every location's best battle score this week, added up. */
+  points: number;
+  hero: HeroClass;
+  /** Longest link this week. */
+  chain: number;
+  /** Battles banked this week - a prize needs SOLO_MIN_RUNS. */
+  runs: number;
+  isYou: boolean;
+};
+
+/** One week of the solo leaderboard. */
+export type SoloBoard = {
+  week: number;
+  startsAt: number;
+  /** The Monday reset that closes it, in ms. */
+  endsAt: number;
+  /** Players on the ladder. */
+  players: number;
+  entries: SoloEntry[];
+  /** The viewer's own row, even when it is below the shown rows. */
+  you: SoloEntry | null;
+};
+
+/** What one banked battle did to the viewer's week. */
+export type SoloRunResult = {
+  week: number;
+  points: number;
+  /** How much this run raised the week - only what it beat a location's best by. */
+  gained: number;
+  rank: number | null;
+  players: number;
+};
+
+export type SoloBoardsResponse = {
+  type: 'solo';
+  current: SoloBoard;
+  last: SoloBoard;
+};
+
 /** A Daily Battle post's fight: its number, the location it is fought at,
  *  and when it closes (the UTC midnight after its day, in ms). */
 export type DailyBattle = { day: number; locationId: string; endsAt: number };
@@ -94,6 +145,8 @@ export type InitResponse = {
   isModerator: boolean;
   /** True on a War Chest post: opening it goes straight to the chest. */
   warChestPost: boolean;
+  /** This week's solo leaderboard, for the floating button's badge. */
+  solo: SoloBoard;
 };
 
 /** A finished run, as the client played it. The server re-runs the moves; the
@@ -140,6 +193,9 @@ export type SubmitRunResponse = {
   isBestLink: boolean;
   profile: Profile;
   leaderboard: LeaderboardEntry[];
+  /** What the battle did on the weekly solo leaderboard. */
+  solo: SoloRunResult;
+  soloBoard: SoloBoard;
 };
 
 /** Spend three pieces on one more container for this class. */

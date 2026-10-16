@@ -2,7 +2,8 @@
 
 A match-and-link roguelike, running as a Devvit app on Reddit. Equip
 five pieces of gear, link orbs of the same gear to attack, block or heal, and
-see how far down the wave ladder you get. Every post carries its own ladder.
+see how far down the wave ladder you get. Every campaign battle feeds one
+weekly, subreddit-wide leaderboard; Daily Battle posts also keep their own.
 
 Ported from the Claude Design POC (`GearLink Battle.dc.html`, engine V3.3). The
 tuning, the copy and the layout are the design's; what is new here is the split
@@ -41,6 +42,7 @@ src/shared/engine/   the game, as pure functions
 src/server/
   core/profile.ts    the wallet and collection, in Redis, keyed by Reddit userId
   core/leaderboard.ts  the per-post ladder (a sorted set plus a detail hash)
+  core/solo.ts       the weekly solo leaderboard (rules in shared/engine/solo.ts)
   routes/api.ts      init, run submission, shop, duel result, coaching flags
 
 src/client/

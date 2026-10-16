@@ -18,6 +18,7 @@ import type {
   SaveDuelLoadoutRequest,
   InitResponse,
   LeaderboardResponse,
+  SoloBoardsResponse,
   OpenPackResponse,
   ProfileResponse,
   QuestsResponse,
@@ -62,6 +63,8 @@ export const api = {
   /** Re-read the wallet after a purchase Reddit fulfilled out of band. */
   profile: () => call<InitResponse>('/init'),
   leaderboard: () => call<LeaderboardResponse>('/leaderboard'),
+  solo: () => call<SoloBoardsResponse>('/solo'),
+  soloPrizeSeen: () => call<ProfileResponse>('/solo/prize/seen', {}),
   submitRun: (run: SubmitRunRequest) => call<SubmitRunResponse>('/run', run),
   buyPack: (packId: string) => call<ProfileResponse>('/shop/pack', { packId }),
   applyHeart: (req: ApplyHeartRequest) =>
