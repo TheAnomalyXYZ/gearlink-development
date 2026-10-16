@@ -15,7 +15,15 @@ const TOP = 28,
   GAP = 12,
   PADB = 12,
   FP = 8,
-  ROW = 28;
+  ROW = 28,
+  /** Phone layout: the side margin, the tile it shrinks scene to keep, the
+   *  shortest scene it will shrink to, and the smallest playable tile. */
+  SIDE = 8,
+  NARROW_TILE = 44,
+  SCENE_MIN = 96,
+  MIN_TILE = 30,
+  /** Room the enemy's intent pills want beside it. */
+  PILLS = 204;
 
 /** Each battle background's bottom rows, darkening, to fill past the art. */
 const FLOOR: Record<string, readonly [string, string, string, string]> = {
@@ -86,24 +94,40 @@ export const postVm = (app: PostApp, st: PostState, b: PostBattle) => {
   if (!on) return { ...base, post: null };
   const W = st.postW || 740,
     H = st.postH || 512;
-  const scene = Math.max(120, Math.min(200, Math.round(H * 0.293)));
-  let frameH = H - TOP - scene - GAP - PADB;
-  let tile = tileFor(frameH);
+  let scene = Math.max(120, Math.min(200, Math.round(H * 0.293)));
+  let tile = tileFor(H - TOP - scene - GAP - PADB);
   let mode: 'wide' | 'narrow' | 'launch' = 'wide';
-  let frameW = fw(tile);
-  if (tile < 40) mode = 'launch';
-  else if (W < frameW + 2 * 140 + 32) {
+  if (tile < 40 || W < fw(tile) + 2 * 140 + 32) {
+    // A phone: the hero row goes above the board, the board is held to the
+    // width, and a short post gives up scene before it gives up the board.
     mode = 'narrow';
-    tile = tileFor(frameH - ROW - 6);
-    if (tile < 40) mode = 'launch';
+    const byW = Math.min(64, Math.floor((W - 2 * SIDE - fw(0)) / 6));
+    const room = (sc: number): number =>
+      tileFor(H - TOP - sc - GAP - PADB - ROW - 6);
+    if (room(scene) < NARROW_TILE)
+      scene = Math.max(
+        SCENE_MIN,
+        Math.min(
+          scene,
+          H - TOP - GAP - PADB - ROW - 6 - fh(Math.min(byW, NARROW_TILE))
+        )
+      );
+    tile = Math.min(byW, room(scene));
+    if (tile < MIN_TILE) mode = 'launch';
   }
-  tile = Math.max(40, tile);
-  frameW = fw(tile);
-  frameH = fh(tile);
+  tile = Math.max(MIN_TILE, tile);
+  const frameW = fw(tile);
+  const frameH = fh(tile);
   const boardTop = TOP + scene + GAP + (mode === 'narrow' ? ROW + 6 : 0);
   // the enemy at a whole number of CSS px per art pixel (sheets hold 120 art px)
-  const ks = Math.max(1, Math.floor((scene + TOP - 30) / 120));
-  const sprite = 120 * ks;
+  // (a scene too short for even 1x scales it down instead)
+  const art = scene + TOP - 30;
+  const sprite = art >= 120 ? 120 * Math.floor(art / 120) : art;
+  // centred, unless that leaves the intent pills too little room beside it
+  const spriteL = Math.max(
+    SIDE,
+    Math.min(Math.round((W - sprite) / 2), W - sprite - 18 - PILLS)
+  );
   // keep the board's measured size in step with this layout
   if (Math.abs((st.boardW || 0) - (tile * 6 + 20)) > 1 && !app.postSizing) {
     app.postSizing = true;
@@ -180,6 +204,7 @@ export const postVm = (app: PostApp, st: PostState, b: PostBattle) => {
       floor3: FL[2],
       floor: FL[3],
       spriteW: Math.round(sprite) + 'px',
+      spriteL: spriteL + 'px',
       launchSprite: Math.round(Math.min(sprite * 1.2, H * 0.45)) + 'px',
       frameWpx: frameW + 'px',
       frameHpx: frameH + 'px',

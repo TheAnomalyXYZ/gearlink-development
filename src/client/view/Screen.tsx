@@ -533,7 +533,7 @@ const PostBattle = ({ v, p }: { v: View; p: PostView }) => (
         right: '0',
         top: p.sceneTop,
         height: p.sceneH,
-        display: 'flex',
+        display: p.launch ? 'none' : 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'flex-end',
@@ -544,6 +544,8 @@ const PostBattle = ({ v, p }: { v: View; p: PostView }) => (
         style={{
           position: 'relative',
           flexShrink: '0',
+          alignSelf: 'flex-start',
+          marginLeft: p.spriteL,
           width: p.spriteW,
           height: p.spriteW,
         }}
@@ -717,6 +719,7 @@ const PostBattle = ({ v, p }: { v: View; p: PostView }) => (
         top: p.boardTop,
         width: p.frameWpx,
         height: p.frameHpx,
+        display: p.launch ? 'none' : 'block',
         transform: 'translateX(-50%)',
         border: '1px solid rgba(255,242,176,.55)',
         borderRadius: '10px',
