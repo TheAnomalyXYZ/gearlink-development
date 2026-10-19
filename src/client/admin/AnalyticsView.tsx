@@ -136,6 +136,7 @@ export const OverviewView = ({ data }: { data: AdminDashboardResponse }) => {
         <MiniStat label="New players" value={fmt(c.new_players)} />
         <MiniStat label="FTUE finished" value={fmt(c.ftue_done)} />
         <MiniStat label="Hearts applied" value={fmt(c.hearts_applied)} />
+        <MiniStat label="Gear upgrades" value={fmt(c.gear_upgrades)} />
         <MiniStat label="Packs opened" value={fmt(c.packs_opened)} />
         <MiniStat label="Ranked duels" value={fmt(c.duels_ranked)} />
         <MiniStat label="Friendly duels" value={fmt(c.duels_friendly)} />

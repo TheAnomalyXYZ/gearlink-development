@@ -28,6 +28,7 @@ import type {
   SoloBoardsResponse,
   SubmitRunRequest,
   SubmitRunResponse,
+  UpgradeGearRequest,
   WarChestResponse,
 } from '../../shared/api.js';
 import {
@@ -108,6 +109,10 @@ import {
   verifyRun,
   applyXp,
   xpLines,
+  GEAR_BY_ID,
+  gearLevelOf,
+  upgradeBlock,
+  upgradeCost,
 } from '../../shared/engine/index.js';
 import type { PulledCard } from '../../shared/engine/economy.js';
 
@@ -261,6 +266,20 @@ api.post('/run', async (c) => {
       { status: 'error', message: 'heart containers mismatch' },
       400
     );
+  // Same reason as the hearts: a level the profile does not hold is a forged
+  // power boost, and the replay would score it as one.
+  const levels = (body.picked ?? []).map((id) =>
+    gearLevelOf(profile.gearLevels, id)
+  );
+  if (
+    !Array.isArray(body.levels) ||
+    body.levels.length !== levels.length ||
+    body.levels.some((l, i) => l !== levels[i])
+  )
+    return c.json<ErrorResponse>(
+      { status: 'error', message: 'gear levels mismatch' },
+      400
+    );
 
   const replay = verifyRun({
     seed: body.seed,
@@ -270,6 +289,7 @@ api.post('/run', async (c) => {
     locationId: locId,
     ascension: profile.ascension,
     hearts,
+    levels,
   });
   if (!replay.ok)
     return c.json<ErrorResponse>(
@@ -451,6 +471,72 @@ api.post('/hearts/apply', async (c) => {
   );
 });
 
+/**
+ * Spend spare copies and coins on one more level for a card.
+ *
+ * Both costs climb with the level (see engine/upgrade.ts). The card's own copy
+ * is never spent, so an upgrade can never take a piece out of a loadout.
+ */
+api.post('/gear/upgrade', async (c) => {
+  const me = who();
+  if (!me) return unauthorised(c);
+
+  const body = (await c.req
+    .json()
+    .catch(() => null)) as UpgradeGearRequest | null;
+  const g = GEAR_BY_ID[body?.id ?? ''];
+  if (!g)
+    return c.json<ErrorResponse>(
+      { status: 'error', message: 'unknown gear' },
+      400
+    );
+
+  const profile = await loadProfile(me.userId, me.username);
+  const owned = profile.gear[g.id] ?? 0;
+  const level = gearLevelOf(profile.gearLevels, g.id);
+  const cost = upgradeCost(g.rarity, level);
+  const block = upgradeBlock(g.rarity, owned, level, profile.coins);
+  if (block || !cost)
+    return c.json<ErrorResponse>(
+      {
+        status: 'error',
+        message:
+          block === 'unowned'
+            ? 'You do not own that gear yet.'
+            : block === 'copies'
+              ? 'You need ' + cost!.copies + ' spare copies.'
+              : block === 'coins'
+                ? 'You need ' + cost!.coins + ' coins.'
+                : 'That gear is already at max level.',
+      },
+      400
+    );
+
+  await saveProfile(me.userId, {
+    gear: { ...profile.gear, [g.id]: owned - cost.copies },
+    gearLevels: { ...profile.gearLevels, [g.id]: level + 1 },
+    coins: profile.coins - cost.coins,
+  });
+  await recordSpend(
+    me.userId,
+    me.username,
+    'gear_upgrade',
+    'coins',
+    cost.coins
+  );
+  await recordEvent('gear_upgrades');
+  const after = await loadProfile(me.userId, me.username);
+  return c.json<ProfileResponse>(
+    profileJson(
+      after,
+      g.name.replace(/^(Warrior|Archer|Mage) /, '') +
+        ' reached level ' +
+        (level + 1) +
+        '.'
+    )
+  );
+});
+
 const profileJson = (profile: Profile, message?: string) => {
   const body: ProfileResponse = { type: 'profile', profile };
   if (message !== undefined) body.message = message;
@@ -626,17 +712,14 @@ api.post('/shop/collect', async (c) => {
       400
     );
 
+  // A duplicate stacks on the card as a spare copy - that is what levels it.
   const gear = { ...profile.gear };
-  let refund = 0;
-  for (const card of held.cards) {
-    gear[card.id] = (gear[card.id] ?? 0) + 1;
-    refund += card.refund;
-  }
+  for (const card of held.cards) gear[card.id] = (gear[card.id] ?? 0) + 1;
   const packs = {
     ...profile.packs,
     [held.packId]: Math.max(0, (profile.packs[held.packId] ?? 0) - 1),
   };
-  await saveProfile(me.userId, { gear, packs, coins: profile.coins + refund });
+  await saveProfile(me.userId, { gear, packs });
   await recordQuestEvents(me.userId, [{ metric: 'packs', amount: 1 }]);
   await recordEvent('packs_opened');
   return c.json(profileJson(await loadProfile(me.userId, me.username)));

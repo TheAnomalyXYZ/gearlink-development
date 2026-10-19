@@ -7,6 +7,7 @@
  */
 import type {
   ApplyHeartRequest,
+  UpgradeGearRequest,
   ChallengeResponse,
   ClaimQuestResponse,
   CollectPackRequest,
@@ -69,6 +70,8 @@ export const api = {
   buyPack: (packId: string) => call<ProfileResponse>('/shop/pack', { packId }),
   applyHeart: (req: ApplyHeartRequest) =>
     call<ProfileResponse>('/hearts/apply', req),
+  upgradeGear: (req: UpgradeGearRequest) =>
+    call<ProfileResponse>('/gear/upgrade', req),
   buyCoins: (bundleId: string) =>
     call<ProfileResponse>('/shop/coins', { bundleId }),
   openPack: (packId: string) =>

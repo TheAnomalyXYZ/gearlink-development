@@ -110,30 +110,30 @@ void test('the duel log names the biggest thing a move did', () => {
   assert.equal(line, 'You hit for 4, sent 2 junk');
 });
 
-const card = (gear: Gear, isNew: boolean, refund: number) => ({
+const card = (gear: Gear, isNew: boolean, owned: number) => ({
   gear,
   isNew,
-  refund,
+  owned,
 });
 
 void test('pack cards drop unknown pulls and the summary names the best one', () => {
   const [a, b] = [GEAR[0]!, GEAR[1]!];
   const cards = toOpenCards([
-    { id: a.id, isNew: true, refund: 0 },
-    { id: 'no-such-gear', isNew: true, refund: 0 },
+    { id: a.id, isNew: true, owned: 1 },
+    { id: 'no-such-gear', isNew: true, owned: 1 },
   ]);
   assert.equal(cards.length, 1);
   const op: OpenState = {
     id: 'p',
     token: 't',
-    cards: [card(a, true, 0), card(b, false, 5)],
+    cards: [card(a, true, 1), card(b, false, 2)],
     shown: 0,
     torn: false,
     from: 'shop',
   };
   const s = packSummary(op);
   assert.match(s, /^1 new piece/);
-  assert.match(s, /\+5 coins from duplicates/);
+  assert.match(s, /1 duplicate stacked/);
   assert.match(s, /best: /);
 });
 

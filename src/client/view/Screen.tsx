@@ -5176,8 +5176,8 @@ export const Screen = ({ v }: { v: View }) => (
                   flexShrink: '0',
                 }}
               >
-                Coins come from ranked runs. Duplicate gear refunds coins by
-                rarity, so a pull is never wasted.
+                Coins come from ranked runs. Duplicate gear stacks as spare
+                copies - spend copies and coins to level a piece up.
               </div>
             </div>
           </>
@@ -6274,10 +6274,10 @@ export const Screen = ({ v }: { v: View }) => (
                               height: '18px',
                               padding: '0 4px',
                               borderRadius: '0 0 4px 0',
-                              background: '#141212',
+                              background: c.countBg,
                               fontFamily: 'VolterTitle,Volter,monospace',
                               fontSize: '12px',
-                              color: '#FFF2B0',
+                              color: c.countFg,
                             }}
                           >
                             {c.count}
@@ -6674,6 +6674,23 @@ export const Screen = ({ v }: { v: View }) => (
                             {v.cardInfoType}
                           </span>
                         </span>
+                        {v.cardInfoLevel ? (
+                          <span
+                            className="glb-chip-in"
+                            style={{
+                              animationDelay: '500ms',
+                              fontSize: '9px',
+                              color: '#FFF2B0',
+                              background: '#1D2956',
+                              border: '1px solid #000000',
+                              borderRadius: '3px',
+                              padding: '2px 6px',
+                              letterSpacing: '.08em',
+                            }}
+                          >
+                            {v.cardInfoLevel}
+                          </span>
+                        ) : null}
                       </div>
                       <div
                         style={{
@@ -6777,6 +6794,72 @@ export const Screen = ({ v }: { v: View }) => (
                           >
                             {v.cardInfoRiderText}
                           </div>
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          width: '100%',
+                          display: v.cardInfoUpDisplay,
+                          flexDirection: 'column',
+                          gap: '5px',
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: v.cardInfoUpCostDisplay,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '10px',
+                            fontSize: '10px',
+                          }}
+                        >
+                          <span style={{ color: v.cardInfoUpCopiesColor }}>
+                            {v.cardInfoUpCopies}
+                          </span>
+                          <span
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              color: v.cardInfoUpCoinsColor,
+                            }}
+                          >
+                            <span
+                              style={{
+                                width: '12px',
+                                height: '12px',
+                                backgroundImage: `url(${v.coinIcon})`,
+                                backgroundSize: 'contain',
+                                backgroundRepeat: 'no-repeat',
+                                backgroundPosition: 'center',
+                                imageRendering: 'pixelated',
+                              }}
+                            ></span>
+                            {v.cardInfoUpCoins}
+                          </span>
+                        </div>
+                        <div
+                          className={v.cardInfoUpRun ? 'glb-press' : undefined}
+                          onClick={v.cardInfoUpRun || undefined}
+                          style={{
+                            cursor: v.cardInfoUpCursor,
+                            opacity: v.cardInfoUpOpacity,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            minHeight: '40px',
+                            border: '3px solid #000000',
+                            borderRadius: '8px 2px 8px 2px',
+                            background: v.cardInfoUpBg,
+                            boxShadow: v.cardInfoUpShadow,
+                            color: '#000000',
+                            fontFamily: PIXEL,
+                            fontSize: '16px',
+                            lineHeight: '1.05',
+                            textAlign: 'center',
+                          }}
+                        >
+                          {v.cardInfoUpLabel}
                         </div>
                       </div>
                       <div className="glb-cta-in" style={{ width: '100%' }}>
@@ -7015,18 +7098,7 @@ export const Screen = ({ v }: { v: View }) => (
                           color: '#FCE370',
                         }}
                       >
-                        <div
-                          style={{
-                            width: '9px',
-                            height: '9px',
-                            backgroundImage: `url(${v.coinIcon})`,
-                            backgroundSize: 'contain',
-                            backgroundRepeat: 'no-repeat',
-                            backgroundPosition: 'center',
-                            imageRendering: 'pixelated',
-                          }}
-                        ></div>
-                        <span>+{c.refund}</span>
+                        <span>DUPE {c.owned}</span>
                       </div>
                       <div
                         style={{

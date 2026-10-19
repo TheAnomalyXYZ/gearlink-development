@@ -16,6 +16,7 @@ import {
 import { CELLS, MIN_LINK } from './constants.js';
 import { MAX_HEART_CONTAINERS } from './hearts.js';
 import { loadoutIsLegal } from './gear.js';
+import { GEAR_MAX_LEVEL } from './upgrade.js';
 import { Run, battleScore, scoreOf } from './run.js';
 import type { HeroClass, RunState } from './types.js';
 
@@ -36,6 +37,9 @@ export type RunSubmission = {
   /** Heart containers the hero fought with. Checked against the profile by the
    *  caller for the same reason. */
   hearts?: number;
+  /** Gear levels, parallel to `picked`. Checked against the profile by the
+   *  caller; here only their range is. */
+  levels?: number[];
 };
 
 export type ReplayResult =
@@ -79,6 +83,13 @@ export const verifyRun = (sub: RunSubmission): ReplayResult => {
   const hearts = sub.hearts ?? 0;
   if (!Number.isInteger(hearts) || hearts < 0 || hearts > MAX_HEART_CONTAINERS)
     return { ok: false, reason: 'bad hearts' };
+  const levels = sub.levels ?? sub.picked.map(() => 1);
+  if (
+    !Array.isArray(levels) ||
+    levels.length !== sub.picked.length ||
+    levels.some((l) => !Number.isInteger(l) || l < 1 || l > GEAR_MAX_LEVEL)
+  )
+    return { ok: false, reason: 'bad gear levels' };
   if (!Array.isArray(sub.moves)) return { ok: false, reason: 'no moves' };
   if (sub.moves.length > MAX_RUN_MOVES)
     return { ok: false, reason: 'too many moves' };
@@ -95,6 +106,7 @@ export const verifyRun = (sub: RunSubmission): ReplayResult => {
     locationId,
     ascension,
     hearts,
+    levels,
   });
   let state = run.start();
   let ended: 'dead' | 'stuck' | 'ended' | 'won' = 'ended';

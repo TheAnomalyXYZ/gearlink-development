@@ -302,6 +302,7 @@ export const loadProfile = async (
     gems,
     trophies,
     gear,
+    gearLevels: obj(h['gearLevels']),
     packs,
     best: parseBest(h['best']),
     ascension: clamp(num(h['ascension'], 0), 0, MAX_ASCENSION),
@@ -373,6 +374,7 @@ export type ProfilePatch = Partial<
     | 'gems'
     | 'trophies'
     | 'gear'
+    | 'gearLevels'
     | 'packs'
     | 'best'
     | 'ascension'
@@ -405,6 +407,8 @@ export const saveProfile = async (
       Math.max(TROPHY_FLOOR, Math.floor(patch.trophies))
     );
   if (patch.gear !== undefined) fields['gear'] = JSON.stringify(patch.gear);
+  if (patch.gearLevels !== undefined)
+    fields['gearLevels'] = JSON.stringify(patch.gearLevels);
   if (patch.packs !== undefined) fields['packs'] = JSON.stringify(patch.packs);
   if (patch.best !== undefined) fields['best'] = JSON.stringify(patch.best);
   if (patch.ascension !== undefined)

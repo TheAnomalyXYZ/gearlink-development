@@ -86,6 +86,11 @@ import {
   riderOf,
   rowOf,
   rewardLabel,
+  atLevel,
+  spareCopies,
+  upgradeBlock,
+  upgradeCost,
+  GEAR_MAX_LEVEL,
 } from '../../shared/engine/index.js';
 import { DEFAULT_SNOO, GEARLINK_ICON, NAV_ICON } from './assets.js';
 import { syncVictory } from '../fx/victory.js';
@@ -386,6 +391,8 @@ const BTN_GOLD = {
 };
 
 export const buildView = (app: GearLinkApp): View => {
+  /** A card as it fights at the profile's level for it. */
+  const lv = (g: Gear): Gear => atLevel(g, app.gearLevel(g.id));
   /* This function indexes the engine's tables by values the UI computes at
      runtime (an orb's effect, a rider's kind, the current hero). Widened
      aliases keep that honest in one place instead of a cast per lookup. */
@@ -597,7 +604,8 @@ export const buildView = (app: GearLinkApp): View => {
         SLOT_ORDER.indexOf(a.slot) - SLOT_ORDER.indexOf(b.slot) ||
         RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity)
     )
-    .map((g, gi) => {
+    .map((g0, gi) => {
+      const g = lv(g0);
       const rd = riderOf(g.id);
       const ownedN = st.profile.gear[g.id] || 0;
       const on = st.picked.indexOf(g.id) >= 0;
@@ -2638,8 +2646,11 @@ export const buildView = (app: GearLinkApp): View => {
             sheenDisplay: shiny ? 'block' : 'none',
             sheenDelay: ((gi % 7) * 0.45).toFixed(2) + 's',
             lockDisplay: n > 0 ? 'none' : 'flex',
-            count: n > 1 ? 'x' + n : '',
-            countDisplay: n > 1 ? 'flex' : 'none',
+            // Level, and a green badge once spare copies and coins buy the next.
+            count: n > 0 ? 'LV' + app.gearLevel(g.id) : '',
+            countDisplay: n > 0 ? 'flex' : 'none',
+            countBg: app.canUpgradeGear(g.id) ? '#AEE45D' : '#141212',
+            countFg: app.canUpgradeGear(g.id) ? '#141212' : '#FCE370',
             inAnim: fxs.listIn(
               'bagGear',
               st.phase === 'inventory' &&
@@ -2706,7 +2717,7 @@ export const buildView = (app: GearLinkApp): View => {
             backDisplay: shown ? 'none' : 'flex',
             newDisplay: shown && c.isNew ? 'flex' : 'none',
             dupeDisplay: shown && !c.isNew ? 'flex' : 'none',
-            refund: c.refund,
+            owned: 'x' + c.owned,
           };
         }),
       };
@@ -2714,7 +2725,8 @@ export const buildView = (app: GearLinkApp): View => {
 
     closeCardInfo: app.closeCardInfo,
     ...(() => {
-      const g = st.cardInfo ? GEAR.find((x) => x.id === st.cardInfo) : null;
+      const g0 = st.cardInfo ? GEAR.find((x) => x.id === st.cardInfo) : null;
+      const g = g0 ? lv(g0) : null;
       if (!g) {
         return {
           cardInfoDisplay: 'none',
@@ -2750,10 +2762,30 @@ export const buildView = (app: GearLinkApp): View => {
           cardInfoCtaBg: BTN_BLUE.bg,
           cardInfoCtaShadow: BTN_BLUE.shadow,
           cardInfoCtaAnim: 'none',
+          cardInfoLevel: '',
+          cardInfoUpDisplay: 'none',
+          cardInfoUpLabel: '',
+          cardInfoUpCopies: '',
+          cardInfoUpCopiesColor: '#CBD9EC',
+          cardInfoUpCoins: '',
+          cardInfoUpCoinsColor: '#CBD9EC',
+          cardInfoUpCostDisplay: 'none',
+          cardInfoUpRun: null,
+          cardInfoUpBg: BTN.disabled.bg,
+          cardInfoUpShadow: BTN.disabled.shadow,
+          cardInfoUpCursor: 'default',
+          cardInfoUpOpacity: 1,
         };
       }
       const n = st.profile.gear[g.id] || 0;
       const shiny = n > 0 && (g.rarity === 'Epic' || g.rarity === 'Legendary');
+      const level = app.gearLevel(g.id);
+      const cost = upgradeCost(g.rarity, level);
+      const spare = spareCopies(n);
+      const block = upgradeBlock(g.rarity, n, level, st.profile.coins);
+      const canUp = block === null && !st.gearUpgrading;
+      // The power the next level would fight with, so the button says what it buys.
+      const nextPower = cost ? atLevel(g0!, level + 1).power : g.power;
       // Prev/next walk the same filtered list the grid shows, wrapping round.
       const list = gearInFilter(st.gearFilter || 'all', st.profile.gear);
       const at0 = list.findIndex((x) => x.id === g.id);
@@ -2792,8 +2824,8 @@ export const buildView = (app: GearLinkApp): View => {
         cardInfoOwn:
           n > 0
             ? n === 1
-              ? 'Owned'
-              : 'Owned x' + n
+              ? 'Owned - no spare copies'
+              : 'Owned x' + n + ' - ' + spare + ' spare'
             : 'Not found yet - pull it from a pack',
         cardInfoOwnColor: n > 0 ? '#2E8B57' : '#8B7355',
         cardInfoWhat:
@@ -2840,6 +2872,27 @@ export const buildView = (app: GearLinkApp): View => {
         cardInfoCtaShadow: n > 0 ? BTN_BLUE.shadow : BTN_GOLD.shadow,
         cardInfoCtaAnim:
           n > 0 || fx.reduced() ? 'none' : 'wmBreath 1.6s ease-in-out infinite',
+        cardInfoLevel: n > 0 ? 'LV ' + level + ' / ' + GEAR_MAX_LEVEL : '',
+        cardInfoUpDisplay: n > 0 ? 'flex' : 'none',
+        cardInfoUpLabel: !cost
+          ? 'MAX LEVEL'
+          : st.gearUpgrading
+            ? 'LEVELLING...'
+            : 'LEVEL UP  ' + g.power + ' > ' + nextPower,
+        cardInfoUpCopies: cost
+          ? Math.min(spare, cost.copies) + '/' + cost.copies + ' copies'
+          : '',
+        cardInfoUpCopiesColor:
+          cost && spare >= cost.copies ? '#AEE45D' : '#FF8A94',
+        cardInfoUpCoins: cost ? String(cost.coins) : '',
+        cardInfoUpCoinsColor:
+          cost && st.profile.coins >= cost.coins ? '#FCE370' : '#FF8A94',
+        cardInfoUpCostDisplay: cost ? 'flex' : 'none',
+        cardInfoUpRun: canUp ? app.upgradeGear(g.id) : null,
+        cardInfoUpBg: canUp ? BTN_GOLD.bg : BTN.disabled.bg,
+        cardInfoUpShadow: canUp ? BTN_GOLD.shadow : BTN.disabled.shadow,
+        cardInfoUpCursor: canUp ? 'pointer' : 'default',
+        cardInfoUpOpacity: canUp || !cost ? 1 : 0.75,
       };
     })(),
 
@@ -3109,7 +3162,8 @@ export const buildView = (app: GearLinkApp): View => {
          panel did: payout at 3/4/5 links and the full effect text. */
     closePeek: app.closePeek,
     ...(() => {
-      const g = st.peek ? GEAR.find((x) => x.id === st.peek) : null;
+      const g0 = st.peek ? GEAR.find((x) => x.id === st.peek) : null;
+      const g = g0 ? lv(g0) : null;
       if (!g || g.cls !== st.heroClass || st.picked.indexOf(g.id) >= 0)
         return {
           peekDisplay: 'none',
@@ -3176,10 +3230,11 @@ export const buildView = (app: GearLinkApp): View => {
     slotNext: app.pageSlot(1),
     slotPagerDisplay: st.picked.filter(Boolean).length > 1 ? 'flex' : 'none',
     ...(() => {
-      const g =
+      const g0 =
         st.lastGear && st.picked.indexOf(st.lastGear) >= 0
           ? GEAR.find((x) => x.id === st.lastGear)
           : null;
+      const g = g0 ? lv(g0) : null;
       if (!g || g.cls !== st.heroClass)
         return {
           slotInfoIconDisplay: 'none',

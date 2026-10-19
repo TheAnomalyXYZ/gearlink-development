@@ -4,20 +4,14 @@
  * Packs pay out GEAR CARDS, which is what makes a collection matter: the
  * loadout picker only offers gear you own, so "take the highest power" stops
  * being available until you have pulled it. Duplicates are not dead weight -
- * they refund coins by rarity.
+ * they stack on the card as spare copies, which is what levels it up (see
+ * upgrade.ts).
  *
  * `rollPack` takes its randomness as an argument because the roll happens on
  * the server. A client-rolled pack is a client-chosen legendary.
  */
 import { GEAR, RARITY_ORDER } from './gear.js';
 import type { Gear, Rarity } from './types.js';
-
-export const DUPE_COINS: Record<Rarity, number> = {
-  Common: 25,
-  Rare: 60,
-  Epic: 150,
-  Legendary: 400,
-};
 
 /** Real pack art from utils/package.ts, so the shop sells the game's own tiers. */
 const PACK_ART = (n: string) => '/art/PocketKnights/Item/' + n + 'Pack_V2.png';
@@ -210,7 +204,9 @@ export const rollCard = (
   return pool[Math.floor(rand() * pool.length)]!;
 };
 
-export type PulledCard = { id: string; isNew: boolean; refund: number };
+/** `owned` is the copies held once this card lands, so a duplicate can show
+ *  how far it moved the stack. */
+export type PulledCard = { id: string; isNew: boolean; owned: number };
 
 /** Roll a whole pack against a wallet snapshot, deciding new-vs-duplicate as it
  *  goes so two copies in one pack cannot both read as new. */
@@ -224,11 +220,7 @@ export const rollPack = (
     const g = rollCard(pack.odds, pack.floor, rand);
     const already =
       (owned[g.id] ?? 0) + cards.filter((c) => c.id === g.id).length;
-    cards.push({
-      id: g.id,
-      isNew: already === 0,
-      refund: already === 0 ? 0 : (DUPE_COINS[g.rarity] ?? 25),
-    });
+    cards.push({ id: g.id, isNew: already === 0, owned: already + 1 });
   }
   return cards;
 };

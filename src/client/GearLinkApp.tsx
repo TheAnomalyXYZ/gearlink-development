@@ -43,7 +43,6 @@ import {
   FOE_CLEAR_MS,
   FOE_LAND_MS,
   FOE_LINK_MS,
-  DUPE_COINS,
   GEAR,
   GEAR_BY_ID,
   GEM_BUNDLES,
@@ -63,6 +62,7 @@ import {
   fallDistances,
   flairById,
   foeLoadout,
+  gearLevelOf,
   hasAnyMove,
   heartsFor,
   isJunk,
@@ -77,6 +77,7 @@ import {
   ownedLoadout,
   resolveLoadout,
   scoreOf,
+  upgradeBlock,
 } from '../shared/engine/index.js';
 import type {
   DuelFoe,
@@ -217,7 +218,10 @@ const isLiveRun = (v: unknown): v is { spec: RunSpec; moves: number[][] } => {
     'ascension' in s &&
     typeof s.ascension === 'number' &&
     'hearts' in s &&
-    typeof s.hearts === 'number'
+    typeof s.hearts === 'number' &&
+    'levels' in s &&
+    Array.isArray(s.levels) &&
+    s.levels.every((l: unknown) => typeof l === 'number')
   );
 };
 
@@ -315,8 +319,13 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   private measuredColumnH = 0;
   private prevPhase: Phase | null = null;
 
-  /** Resolved gear for the current `picked`, reused until `picked` changes. */
-  private loadoutMemo: { picked: string[]; gear: Gear[] } | null = null;
+  /** Resolved gear for the current `picked` at the profile's levels, reused
+   *  until either changes. */
+  private loadoutMemo: {
+    picked: string[];
+    levels: Record<string, number>;
+    gear: Gear[];
+  } | null = null;
 
   private ftueRoot: HTMLElement | null = null;
   private ftueCard: HTMLElement | null = null;
@@ -524,15 +533,58 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         this.fail(e);
       });
   };
+  /** A card's level, as the profile holds it. */
+  gearLevel(id: string): number {
+    return gearLevelOf(this.state.profile.gearLevels, id);
+  }
+  /** Levels for a picked list, in slot order - what a run is built with and
+   *  what the server checks against the profile. */
+  levelsOf(picked: string[]): number[] {
+    return picked.map((id) => this.gearLevel(id));
+  }
+  /** Whether spare copies and coins on hand buy this card its next level. */
+  canUpgradeGear(id: string): boolean {
+    const g = GEAR_BY_ID[id];
+    const p = this.state.profile;
+    return (
+      !!g &&
+      upgradeBlock(g.rarity, p.gear[id] ?? 0, this.gearLevel(id), p.coins) ===
+        null
+    );
+  }
+  /** Spend copies and coins on a card's next level. As with hearts, the
+   *  server owns the wallet and the profile that comes back is adopted whole. */
+  upgradeGear = (id: string) => (): void => {
+    if (this.state.gearUpgrading || !this.canUpgradeGear(id)) return;
+    this.setState({ gearUpgrading: true });
+    void api
+      .upgradeGear({ id })
+      .then((r) => {
+        this.setState({ gearUpgrading: false });
+        this.adopt(r.profile, r.message);
+      })
+      .catch((e) => {
+        this.setState({ gearUpgrading: false });
+        this.fail(e);
+      });
+  };
   perk() {
     return HERO_PERKS[this.state.heroClass] ?? HERO_PERKS.Hero;
   }
-  /** Memoised on the `picked` array: the view and the input handlers ask for
-   *  this many times per render, and it only changes when `picked` does. */
+  /** Memoised on `picked` and the level table: the view and the input handlers
+   *  ask for this many times per render, and it only changes when they do. */
   loadout(): Gear[] {
     const picked = this.state.picked;
-    if (this.loadoutMemo?.picked !== picked)
-      this.loadoutMemo = { picked, gear: resolveLoadout(picked) };
+    const levels = this.state.profile.gearLevels;
+    if (
+      this.loadoutMemo?.picked !== picked ||
+      this.loadoutMemo.levels !== levels
+    )
+      this.loadoutMemo = {
+        picked,
+        levels,
+        gear: resolveLoadout(picked, this.levelsOf(picked)),
+      };
     return this.loadoutMemo.gear;
   }
   scoreOf = (bs: RunState): number => scoreOf(bs);
@@ -547,6 +599,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       locationId: st.locationId,
       ascension: st.profile.ascension,
       hearts: this.heartsOfClass(),
+      levels: this.levelsOf(st.picked),
     };
   }
 
@@ -2712,7 +2765,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         id: rarity === 'Common' ? 'base' : 'bronze',
         token: 'mock-' + Date.now(),
         mock: true,
-        cards: [{ gear, isNew: !dupe, refund: dupe ? DUPE_COINS[rarity] : 0 }],
+        cards: [{ gear, isNew: !dupe, owned: dupe ? 2 : 1 }],
         shown: 0,
         torn: false,
         from: 'shop',

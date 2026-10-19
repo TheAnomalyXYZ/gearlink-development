@@ -9,7 +9,7 @@ export const toOpenCards = (pulls: PulledCard[]): OpenCard[] => {
   const cards: OpenCard[] = [];
   for (const c of pulls) {
     const gear = GEAR_BY_ID[c.id];
-    if (gear) cards.push({ gear, isNew: c.isNew, refund: c.refund });
+    if (gear) cards.push({ gear, isNew: c.isNew, owned: c.owned });
   }
   return cards;
 };
@@ -20,10 +20,10 @@ export const packSummary = (op: OpenState): string => {
     const c = op.cards[0]!;
     return c.isNew
       ? 'New gear - ' + c.gear.rarity
-      : 'Duplicate - refunded ' + c.refund + ' coins';
+      : 'Duplicate - now x' + c.owned + ', spare copies level it up';
   }
   const nw = op.cards.filter((c) => c.isNew).length;
-  const refund = op.cards.reduce((n, c) => n + c.refund, 0);
+  const dupes = op.cards.length - nw;
   let best: OpenCard | undefined;
   for (const c of op.cards)
     if (
@@ -35,7 +35,10 @@ export const packSummary = (op: OpenState): string => {
   const parts = [
     nw > 0 ? nw + (nw === 1 ? ' new piece' : ' new pieces') : 'No new gear',
   ];
-  if (refund > 0) parts.push('+' + refund + ' coins from duplicates');
+  if (dupes > 0)
+    parts.push(
+      dupes + (dupes === 1 ? ' duplicate' : ' duplicates') + ' stacked'
+    );
   if (best) parts.push('best: ' + best.gear.rarity);
   return parts.join('  -  ');
 };

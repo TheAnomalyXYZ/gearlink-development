@@ -153,6 +153,7 @@ export const recordQuestClaim = async (questId: string) =>
 export const recordEvent = async (
   field:
     | 'hearts_applied'
+    | 'gear_upgrades'
     | 'league_entries'
     | 'challenge_posts'
     | 'packs_opened'

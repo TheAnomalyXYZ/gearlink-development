@@ -13,7 +13,7 @@ type Rarity = 'Common' | 'Rare' | 'Epic' | 'Legendary';
 export type StageCard = {
   gear: { id: string; rarity: string; name: string };
   isNew: boolean;
-  refund: number;
+  owned: number;
 };
 /** The app's open-pack state, as far as the stage reads it. `fromRect` is the
  *  shop card the pack was bought from (shared-element entry), when known. */
@@ -194,7 +194,8 @@ type StageUI = {
   collectBtn: HTMLDivElement;
 };
 
-type StagePhase = 'mount' | 'enter' | 'idle' | 'charge' | 'burst' | 'card' | 'pick' | 'done';
+type StagePhase =
+  'mount' | 'enter' | 'idle' | 'charge' | 'burst' | 'card' | 'pick' | 'done';
 
 class Stage {
   readonly app: PackStageApp;
@@ -208,7 +209,6 @@ class Stage {
   readonly ui: StageUI;
   phase: StagePhase = 'mount';
   revealed = 0;
-  refunded = 0;
   stops: (() => void)[] = [];
   tries = 0;
   cardEls: CardEl[] = [];
@@ -505,7 +505,12 @@ class Stage {
     if (n === 3 && !this.starPulse)
       this.starPulse = fx.track(
         u.starLayer.animate(
-          [{ opacity: 0.9 }, { opacity: 1 }, { opacity: 0.85 }, { opacity: 0.9 }],
+          [
+            { opacity: 0.9 },
+            { opacity: 1 },
+            { opacity: 0.85 },
+            { opacity: 0.9 },
+          ],
           { duration: 420, iterations: Infinity, easing: 'ease-in-out' }
         )
       );
@@ -822,9 +827,7 @@ class Stage {
     );
     fx.hitStop(140);
     fx.shake(0.3);
-    this.stops.push(
-      fx.motes(() => this.ui.root, [OUT.Legendary, '#FFF2B0'])
-    );
+    this.stops.push(fx.motes(() => this.ui.root, [OUT.Legendary, '#FFF2B0']));
   }
 
   async stamp(ce: CardEl): Promise<void> {
@@ -850,8 +853,6 @@ class Stage {
   async shatter(ce: CardEl): Promise<void> {
     await fx.wait(500);
     if (this.dead) return;
-    const u = this.ui;
-    const refund = ce.c.refund || 0;
     void anim(
       ce.host,
       [{ filter: 'none' }, { filter: 'grayscale(1) brightness(.8)' }],
@@ -882,7 +883,7 @@ class Stage {
       ce.wrap,
       `position:absolute;left:50%;top:46%;padding:3px 8px 4px;background:#3A4C74;border:3px solid #000000;border-radius:6px 2px 6px 2px;color:#FFFFFF;font-size:${ce.w > 100 ? 14 : 10}px;white-space:nowrap;transform:translate(-50%,-50%) rotate(-10deg)`,
       null,
-      refund ? 'DUPLICATE +' + refund : 'DUPLICATE'
+      ce.c.owned > 1 ? 'DUPLICATE  x' + ce.c.owned : 'DUPLICATE'
     );
     fx.sfx.thud();
     void anim(
@@ -900,38 +901,6 @@ class Stage {
       170,
       'cubic-bezier(.5,0,.75,0)'
     );
-    if (!refund) return;
-    void anim(u.wallet, [{ opacity: 0 }, { opacity: 1 }], 160);
-    const count = Math.max(4, Math.min(14, Math.round(refund / 10)));
-    const base = this.app.state.profile.coins + this.refunded;
-    this.refunded += refund;
-    let step = 0;
-    await new Promise<void>((res) => {
-      fx.flyTo(r, u.walletNum, {
-        icon: this.h.coinIcon,
-        count,
-        stagger: 35,
-        size: 16,
-        arcHeight: 70,
-        onArrive: () => {
-          step++;
-          u.walletNum.textContent = String(
-            base + Math.round((refund * step) / count)
-          );
-          fx.sfx.tick(Math.min(14, step));
-          void anim(
-            u.walletNum,
-            [
-              { transform: 'scale(1.25)', color: '#AEE45D' },
-              { transform: 'scale(1)', color: '#FCE370' },
-            ],
-            160
-          );
-        },
-        onDone: res,
-      });
-    });
-    u.walletNum.textContent = String(base + refund);
   }
 
   async revealNext(): Promise<void> {
@@ -1036,9 +1005,7 @@ class Stage {
       before: (r) =>
         fx.primeRoll(
           'coins',
-          r && r.profile
-            ? r.profile.coins
-            : this.app.state.profile.coins + this.refunded
+          r && r.profile ? r.profile.coins : this.app.state.profile.coins
         ),
       after: () => {
         setTimeout(() => popBag(newCount), 60);

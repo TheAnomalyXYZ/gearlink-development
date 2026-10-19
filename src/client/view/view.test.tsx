@@ -397,7 +397,7 @@ void test('modals render', () => {
 });
 
 void test('a pack open renders sealed, revealed and collectable', () => {
-  const cards = [{ gear: run.loadout[0]!, isNew: true, refund: 0 }];
+  const cards = [{ gear: run.loadout[0]!, isNew: true, owned: 1 }];
   const base = { phase: 'opening' as const };
   renders('sealed', {
     ...base,

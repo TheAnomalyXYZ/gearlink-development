@@ -130,6 +130,9 @@ export type RunConfig = {
   /** Heart containers this hero has banked. The engine takes the COUNT, never
    *  a max-HP figure, so a forged pool cannot be submitted. */
   hearts?: number;
+  /** Each picked piece's gear level, parallel to `picked`. Checked against the
+   *  profile by the server, like the heart containers. */
+  levels?: number[];
 };
 
 export class Run {
@@ -154,7 +157,7 @@ export class Run {
     this.heroClass = cfg.heroClass;
     this.picked = cfg.picked;
     this.mutators = cfg.mutators ?? NO_MUTATORS;
-    this.loadout = resolveLoadout(cfg.picked);
+    this.loadout = resolveLoadout(cfg.picked, cfg.levels);
     this.weights = this.loadout.map((o) => REFILL_WEIGHT[o.effect]);
     this.rng = mulberry32(this.seed);
     // Draw order matters for replay: the base roll consumes the first two

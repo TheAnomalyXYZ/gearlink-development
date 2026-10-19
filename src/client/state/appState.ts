@@ -62,7 +62,8 @@ export type Place = {
   offset: number;
   hole: { top: number; left: number; w: number; h: number };
 };
-export type OpenCard = { gear: Gear; isNew: boolean; refund: number };
+/** `owned` is the copies held once the card lands. */
+export type OpenCard = { gear: Gear; isNew: boolean; owned: number };
 export type OpenState = {
   id: string;
   token: string;
@@ -146,6 +147,8 @@ export type AppState = {
   heartPiecesEarned: number;
   /** An upgrade is in flight; the button stays inert until it lands. */
   heartUpgrading: boolean;
+  /** A gear level-up is in flight; same reason. */
+  gearUpgrading: boolean;
 
   boardW: number;
   boardH: number;
@@ -274,6 +277,7 @@ export const EMPTY_PROFILE: Profile = {
   gems: 0,
   trophies: 0,
   gear: {},
+  gearLevels: {},
   packs: {},
   best: null,
   ascension: 0,
@@ -387,6 +391,7 @@ export const INITIAL_STATE: AppState = {
   mapX: 0,
   mapY: 0,
   heartUpgrading: false,
+  gearUpgrading: false,
   boardW: 0,
   boardH: 0,
   postW: 0,

@@ -14,8 +14,11 @@ export type Profile = {
   coins: number;
   gems: number;
   trophies: number;
-  /** cardId -> copies owned. */
+  /** cardId -> copies owned. Copies past the first are spare, and spare
+   *  copies plus coins are what level a card up. */
   gear: Record<string, number>;
+  /** cardId -> gear level. A card missing here is level 1. */
+  gearLevels: Record<string, number>;
   /** packId -> unopened count. */
   packs: Record<string, number>;
   best: BestRun | null;
@@ -163,6 +166,9 @@ export type SubmitRunRequest = {
   ascension: number;
   /** Heart containers the chosen class has. Checked against the profile. */
   hearts: number;
+  /** Each picked piece's gear level, parallel to `picked`. Checked against
+   *  the profile. */
+  levels: number[];
 };
 
 export type SubmitRunResponse = {
@@ -200,6 +206,8 @@ export type SubmitRunResponse = {
 
 /** Spend three pieces on one more container for this class. */
 export type ApplyHeartRequest = { cls: HeroClass };
+
+export type UpgradeGearRequest = { id: string };
 
 export type BuyPackRequest = { packId: string };
 export type OpenPackRequest = { packId: string };

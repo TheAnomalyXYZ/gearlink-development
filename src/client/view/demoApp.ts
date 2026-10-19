@@ -25,6 +25,7 @@ export const profile: Profile = {
       defaultLoadout(c as 'Hero').map((id) => [id, 1])
     )
   ),
+  gearLevels: {},
   packs: { base: 2, gold: 1 },
   best: { score: 4210, waves: 7, chain: 6, hero: 'Hero' },
   ascension: 1,
@@ -258,6 +259,10 @@ export const demoApp = (over: Record<string, unknown>): GearLinkApp => {
     heartsOfClass: () => 2,
     canUpgradeHp: () => true,
     upgradeHp: curried,
+    gearLevel: () => 1,
+    levelsOf: (picked: string[]) => picked.map(() => 1),
+    canUpgradeGear: () => false,
+    upgradeGear: curried,
     ftueHint: () => null,
     rollUp: (v: number) => v,
     packSummary: () => 'New gear - Rare',

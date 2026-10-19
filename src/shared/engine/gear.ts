@@ -8,6 +8,7 @@ import type {
 } from './types.js';
 import { GEAR } from './gear-data.js';
 import { RIDER_BY_ID } from './rider-data.js';
+import { atLevel } from './upgrade.js';
 
 export { GEAR, RIDER_BY_ID };
 
@@ -165,13 +166,7 @@ export const getGearImageUrl = (cardId: string): string => {
   if (key.indexOf('_Starter_') >= 0)
     return '/art/NeuraKnights/Gear/' + key + '.png';
   const folder = GEAR_FOLDER[key.split('_')[0]!];
-  return folder
-    ? '/art/NeuraKnights/Gear/' +
-        folder +
-        '/' +
-        key +
-        '.png'
-    : '';
+  return folder ? '/art/NeuraKnights/Gear/' + folder + '/' + key + '.png' : '';
 };
 
 /** Default five for a class: strongest two attack, two block, one heal. */
@@ -214,9 +209,18 @@ export const STARTER_GEAR = (): Record<string, number> => {
   return m;
 };
 
-/** Resolve a picked id list into gear objects, in slot order. */
-export const resolveLoadout = (picked: string[]): Gear[] =>
-  picked.map((id) => GEAR_BY_ID[id]).filter((g): g is Gear => !!g);
+/** Resolve a picked id list into gear objects, in slot order. `levels` runs
+ *  parallel to `picked`; a slot without one fights at level 1. */
+export const resolveLoadout = (
+  picked: string[],
+  levels?: readonly number[]
+): Gear[] =>
+  picked
+    .map((id, i) => {
+      const g = GEAR_BY_ID[id];
+      return g ? atLevel(g, levels?.[i] ?? 1) : null;
+    })
+    .filter((g): g is Gear => !!g);
 
 /** A loadout is legal if it is exactly five pieces, all of the hero's class,
  *  with at most two of any one archetype. The server re-checks this: a forged
