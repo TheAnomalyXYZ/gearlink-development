@@ -161,6 +161,7 @@ import { Timers } from './state/timers.js';
 import { buildView } from './view/buildView.js';
 import { Screen } from './view/Screen.js';
 import type { FxRect } from './fx/fx.js';
+import type { GearUpFx } from './fx/gearUpgrade.js';
 import {
   capture as capturePage,
   play as playPage,
@@ -554,17 +555,24 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   }
   /** Spend copies and coins on a card's next level. As with hearts, the
    *  server owns the wallet and the profile that comes back is adopted whole. */
-  upgradeGear = (id: string) => (): void => {
-    if (this.state.gearUpgrading || !this.canUpgradeGear(id)) return;
+  upgradeGear = (id: string, fxh?: GearUpFx) => (): void => {
+    if (this.state.gearUpgrading || !this.canUpgradeGear(id)) {
+      fxh?.fail();
+      return;
+    }
     this.setState({ gearUpgrading: true });
-    void api
-      .upgradeGear({ id })
-      .then((r) => {
-        this.setState({ gearUpgrading: false });
-        this.adopt(r.profile, r.message);
+    // The scene's charge holds until the server answers, and the burst only
+    // plays for a level the profile really has.
+    void Promise.all([api.upgradeGear({ id }), fxh?.charged])
+      .then(([r]) => {
+        fxh?.land();
+        this.setState({ gearUpgrading: false, gearLeveled: id });
+        // The scene already says it; a toast would only talk over it.
+        this.adopt(r.profile, fxh ? undefined : r.message);
       })
       .catch((e) => {
         this.setState({ gearUpgrading: false });
+        fxh?.fail();
         this.fail(e);
       });
   };
@@ -2594,8 +2602,15 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     this.setState({ invTab: t, cardInfo: null });
   pickGearFilter = (f: GearFilter) => (): void =>
     this.setState({ gearFilter: f, cardInfo: null });
-  inspectCard = (id: string) => (): void => this.setState({ cardInfo: id });
-  closeCardInfo = (): void => this.setState({ cardInfo: null });
+  /* Both stay put while a level-up plays, so the scene never loses its card. */
+  inspectCard = (id: string) => (): void => {
+    if (this.state.gearUpgrading) return;
+    this.setState({ cardInfo: id, gearLeveled: null });
+  };
+  closeCardInfo = (): void => {
+    if (this.state.gearUpgrading) return;
+    this.setState({ cardInfo: null });
+  };
 
   buyCoins = (id: string, fxh?: WalletFx) => (): void => {
     const before = this.state.profile.coins;

@@ -114,6 +114,7 @@ import { crisp, preloadCrisp, setCrispNotify } from './crispIcon.js';
 import * as fx from '../fx/fx.js';
 import { syncPackStage } from '../fx/packStage.js';
 import * as fxs from '../fx/screens.js';
+import * as gearUp from '../fx/gearUpgrade.js';
 import {
   DUEL_SETUP_PHASE,
   FTUE_COPY,
@@ -2634,8 +2635,38 @@ export const buildView = (app: GearLinkApp): View => {
           const col = RARITY_OUTLINE[g.rarity] || '#9FB3D1';
           const shiny =
             n > 0 && (g.rarity === 'Epic' || g.rarity === 'Legendary');
+          const lvl = app.gearLevel(g.id);
+          const next = upgradeCost(g.rarity, lvl);
+          const ready = app.canUpgradeGear(g.id);
+          // The bar reads spare copies toward the next level, full at max.
+          const pct = !next
+            ? 100
+            : Math.min(100, Math.round((spareCopies(n) / next.copies) * 100));
+          // The piece just levelled plays its pop once the modal closes on it.
+          const leveled =
+            !st.cardInfo && st.gearLeveled === g.id && !fx.reduced();
           return {
             short: g.name.replace(/^(Warrior|Archer|Mage) /, ''),
+            tier: n > 0 ? g.rarity : 'none',
+            tileClass: 'glb-tile' + (ready ? ' glb-tile-ready' : ''),
+            tileAnim: leveled
+              ? 'glbTileLeveled 900ms cubic-bezier(.3,1.5,.5,1) 120ms both'
+              : undefined,
+            ringDisplay: n > 0 && g.rarity === 'Legendary' ? 'block' : 'none',
+            ringColor: col,
+            iconClass: 'glb-tile-icon' + (shiny ? ' glb-tile-icon-idle' : ''),
+            iconDelay: ((gi % 5) * 0.3).toFixed(2) + 's',
+            barDisplay: n > 0 ? 'block' : 'none',
+            barPct: pct + '%',
+            barBg: !next ? '#FCE370' : ready ? '#AEE45D' : '#4F92F0',
+            barGlow:
+              ready || !next
+                ? '0 0 6px ' + (ready ? '#AEE45D' : '#FCE370')
+                : 'none',
+            barDelay: 260 + (gi % 8) * 40 + 'ms',
+            arrowDisplay: ready ? 'flex' : 'none',
+            badgeClass: ready ? 'glb-badge-ready' : undefined,
+            leveledDisplay: leveled ? 'block' : 'none',
             icon: getGearImageUrl(g.id) || EFFECT_ICON[g.effect],
             typeIcon: EFFECT_ICON[g.effect],
             typeDisplay: n > 0 ? 'block' : 'none',
@@ -2775,6 +2806,17 @@ export const buildView = (app: GearLinkApp): View => {
           cardInfoUpShadow: BTN.disabled.shadow,
           cardInfoUpCursor: 'default',
           cardInfoUpOpacity: 1,
+          cardInfoUpClass: '',
+          cardInfoUpAnim: 'none',
+          cardInfoUpBandDisplay: 'none',
+          cardInfoPips: [],
+          cardInfoBarPct: '0%',
+          cardInfoBarBg: '#4F92F0',
+          cardInfoBarKey: '',
+          cardInfoGearMini: '',
+          cardInfoLvBadge: '',
+          cardInfoLvKey: '',
+          cardInfoLvAnim: 'none',
         };
       }
       const n = st.profile.gear[g.id] || 0;
@@ -2784,6 +2826,9 @@ export const buildView = (app: GearLinkApp): View => {
       const spare = spareCopies(n);
       const block = upgradeBlock(g.rarity, n, level, st.profile.coins);
       const canUp = block === null && !st.gearUpgrading;
+      // Fresh off a level-up: the new pip, the badge and the stats celebrate.
+      const fresh = st.gearLeveled === g.id && !fx.reduced();
+      const col = RARITY_OUTLINE[g.rarity] || '#9FB3D1';
       // The power the next level would fight with, so the button says what it buys.
       const nextPower = cost ? atLevel(g0!, level + 1).power : g.power;
       // Prev/next walk the same filtered list the grid shows, wrapping round.
@@ -2856,11 +2901,17 @@ export const buildView = (app: GearLinkApp): View => {
           value: String(at(k)),
           unit: unit.trim().toUpperCase(),
           color: EFFECT_COLOR[g.effect] || '#1D2956',
+          // Remounted per level, so a level-up replays the bump on each stat.
+          key: level + ':' + k,
           anim: fx.reduced()
             ? 'none'
-            : 'glsRise 360ms cubic-bezier(.2,.9,.3,1) ' +
-              (380 + i * 70) +
-              'ms both',
+            : fresh
+              ? 'glbStatBump 620ms cubic-bezier(.3,1.6,.5,1) ' +
+                (520 + i * 90) +
+                'ms both'
+              : 'glsRise 360ms cubic-bezier(.2,.9,.3,1) ' +
+                (380 + i * 70) +
+                'ms both',
         })),
         cardInfoPos: at0 < 0 ? '' : at0 + 1 + ' / ' + list.length,
         cardInfoNavDisplay: at0 < 0 || list.length < 2 ? 'none' : 'flex',
@@ -2878,7 +2929,7 @@ export const buildView = (app: GearLinkApp): View => {
           ? 'MAX LEVEL'
           : st.gearUpgrading
             ? 'LEVELLING...'
-            : 'LEVEL UP  ' + g.power + ' > ' + nextPower,
+            : 'LEVEL UP   ' + g.power + ' > ' + nextPower,
         cardInfoUpCopies: cost
           ? Math.min(spare, cost.copies) + '/' + cost.copies + ' copies'
           : '',
@@ -2888,11 +2939,73 @@ export const buildView = (app: GearLinkApp): View => {
         cardInfoUpCoinsColor:
           cost && st.profile.coins >= cost.coins ? '#FCE370' : '#FF8A94',
         cardInfoUpCostDisplay: cost ? 'flex' : 'none',
-        cardInfoUpRun: canUp ? app.upgradeGear(g.id) : null,
+        // Short of copies or coins still answers the press - with a reject
+        // shake on what is missing - so the button never feels dead.
+        cardInfoUpRun:
+          cost && n > 0
+            ? (e: FxEvent) =>
+                gearUp.upgradeGear(
+                  app,
+                  {
+                    id: g.id,
+                    block,
+                    copies: cost.copies,
+                    color: col,
+                    fromLevel: level,
+                    fromPower: g.power,
+                    toPower: nextPower,
+                  },
+                  e,
+                  fxHelpers()
+                )
+            : null,
         cardInfoUpBg: canUp ? BTN_GOLD.bg : BTN.disabled.bg,
         cardInfoUpShadow: canUp ? BTN_GOLD.shadow : BTN.disabled.shadow,
-        cardInfoUpCursor: canUp ? 'pointer' : 'default',
+        cardInfoUpCursor: cost ? 'pointer' : 'default',
         cardInfoUpOpacity: canUp || !cost ? 1 : 0.75,
+        cardInfoUpClass: cost ? 'glb-press' : '',
+        cardInfoUpAnim:
+          canUp && !fx.reduced()
+            ? 'wmBreath 1.6s ease-in-out infinite'
+            : 'none',
+        cardInfoUpBandDisplay: canUp ? 'block' : 'none',
+        cardInfoPips: Array.from({ length: GEAR_MAX_LEVEL }, (_, i) => {
+          const lit = i < level;
+          const gained = fresh && i === level - 1;
+          const nextPip = !lit && i === level && canUp;
+          return {
+            bg: lit ? (gained ? '#FFFFFF' : '#FCE370') : '#0E1730',
+            bd: lit ? '#000000' : nextPip ? '#AEE45D' : '#304A69',
+            glow: lit ? '0 0 6px ' + col : 'none',
+            anim: fx.reduced()
+              ? 'none'
+              : gained
+                ? 'glbPipGain 760ms cubic-bezier(.3,1.7,.5,1) 380ms both'
+                : nextPip
+                  ? 'glbPipNext 1s ease-in-out infinite'
+                  : 'glsOrbitIn 260ms cubic-bezier(.2,1.5,.4,1) ' +
+                    (540 + i * 45) +
+                    'ms both',
+          };
+        }),
+        cardInfoBarPct: !cost
+          ? '100%'
+          : Math.min(100, Math.round((spare / cost.copies) * 100)) + '%',
+        cardInfoBarBg: !cost
+          ? '#FCE370'
+          : spare >= cost.copies
+            ? '#AEE45D'
+            : '#4F92F0',
+        // Keyed by level so the bar refills from empty after a level-up.
+        cardInfoBarKey: g.id + ':' + level,
+        cardInfoGearMini: getGearImageUrl(g.id) || EFFECT_ICON[g.effect],
+        cardInfoLvBadge: n > 0 ? 'LV' + level : '',
+        cardInfoLvKey: g.id + ':' + level,
+        cardInfoLvAnim: fx.reduced()
+          ? 'none'
+          : fresh
+            ? 'glbLvSlam 700ms cubic-bezier(.3,1.6,.5,1) 300ms both'
+            : 'glsOrbitIn 360ms cubic-bezier(.2,1.5,.4,1) 460ms both',
       };
     })(),
 

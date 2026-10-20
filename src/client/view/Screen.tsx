@@ -6179,6 +6179,7 @@ export const Screen = ({ v }: { v: View }) => (
                       <div
                         onClick={c.inspect}
                         style={{
+                          position: 'relative',
                           width: '100%',
                           aspectRatio: '1/1',
                           cursor: 'pointer',
@@ -6187,7 +6188,19 @@ export const Screen = ({ v }: { v: View }) => (
                         }}
                       >
                         <div
-                          className="glb-tile"
+                          className="glb-tile-ring"
+                          style={{ display: c.ringDisplay }}
+                        >
+                          <div
+                            className="glb-tile-ring-spin"
+                            style={{
+                              background: `conic-gradient(from 0deg,${c.ringColor},#FFFFFF,${c.ringColor} 30%,rgba(0,0,0,0) 45%,${c.ringColor} 60%,#FFF2B0,${c.ringColor} 80%,rgba(0,0,0,0) 95%,${c.ringColor})`,
+                            }}
+                          ></div>
+                        </div>
+                        <div
+                          className={c.tileClass}
+                          data-rarity={c.tier}
                           style={{
                             position: 'relative',
                             width: '100%',
@@ -6197,6 +6210,7 @@ export const Screen = ({ v }: { v: View }) => (
                             backgroundColor: '#141D2E',
                             boxShadow: c.glow,
                             overflow: 'hidden',
+                            animation: c.tileAnim,
                           }}
                         >
                           <div
@@ -6211,6 +6225,7 @@ export const Screen = ({ v }: { v: View }) => (
                             }}
                           >
                             <div
+                              className={c.iconClass}
                               style={{
                                 width: '100%',
                                 height: '100%',
@@ -6220,6 +6235,42 @@ export const Screen = ({ v }: { v: View }) => (
                                 backgroundPosition: 'center',
                                 imageRendering: 'pixelated',
                                 filter: c.filter,
+                                animationDelay: c.iconDelay,
+                              }}
+                            ></div>
+                          </div>
+                          <div
+                            className="glb-tile-flash"
+                            style={{ display: c.leveledDisplay }}
+                          ></div>
+                          <div
+                            className="glb-up-arrow"
+                            style={{ display: c.arrowDisplay }}
+                          >
+                            ▲
+                          </div>
+                          <div
+                            style={{
+                              position: 'absolute',
+                              left: '4px',
+                              right: '4px',
+                              bottom: '33px',
+                              height: '4px',
+                              display: c.barDisplay,
+                              background: '#0B1220',
+                              border: '1px solid #000000',
+                              borderRadius: '2px',
+                              overflow: 'hidden',
+                            }}
+                          >
+                            <div
+                              className="glb-fill"
+                              style={{
+                                width: c.barPct,
+                                height: '100%',
+                                background: c.barBg,
+                                boxShadow: c.barGlow,
+                                animationDelay: c.barDelay,
                               }}
                             ></div>
                           </div>
@@ -6265,6 +6316,7 @@ export const Screen = ({ v }: { v: View }) => (
                             }}
                           ></div>
                           <div
+                            className={c.badgeClass}
                             style={{
                               position: 'absolute',
                               right: '-2px',
@@ -6272,6 +6324,7 @@ export const Screen = ({ v }: { v: View }) => (
                               display: c.countDisplay,
                               alignItems: 'center',
                               height: '18px',
+                              zIndex: '2',
                               padding: '0 4px',
                               borderRadius: '0 0 4px 0',
                               background: c.countBg,
@@ -6355,6 +6408,7 @@ export const Screen = ({ v }: { v: View }) => (
                     }}
                   >
                     <div
+                      data-fx-upart
                       style={{
                         position: 'relative',
                         flexShrink: '0',
@@ -6422,68 +6476,96 @@ export const Screen = ({ v }: { v: View }) => (
                           style={{ width: '100%', height: '100%' }}
                         >
                           <div
-                            className="glb-sway"
+                            data-fx-upicon
                             style={{ width: '100%', height: '100%' }}
                           >
                             <div
-                              className="glb-float"
-                              style={{
-                                position: 'relative',
-                                width: '100%',
-                                height: '100%',
-                                filter: 'drop-shadow(0 5px 0 rgba(0,0,0,.35))',
-                              }}
+                              className="glb-sway"
+                              style={{ width: '100%', height: '100%' }}
                             >
                               <div
+                                className="glb-float"
                                 style={{
-                                  position: 'absolute',
-                                  inset: '0',
-                                  backgroundImage: `url(${v.cardInfoIcon})`,
-                                  backgroundSize: 'contain',
-                                  backgroundRepeat: 'no-repeat',
-                                  backgroundPosition: 'center',
-                                  imageRendering: 'pixelated',
-                                  filter: v.cardInfoFilter,
-                                }}
-                              ></div>
-                              <div
-                                style={{
-                                  position: 'absolute',
-                                  inset: '0',
-                                  display: v.cardInfoRaysDisplay,
-                                  overflow: 'hidden',
-                                  WebkitMaskImage: `url(${v.cardInfoIcon})`,
-                                  maskImage: `url(${v.cardInfoIcon})`,
-                                  WebkitMaskSize: 'contain',
-                                  maskSize: 'contain',
-                                  WebkitMaskRepeat: 'no-repeat',
-                                  maskRepeat: 'no-repeat',
-                                  WebkitMaskPosition: 'center',
-                                  maskPosition: 'center',
+                                  position: 'relative',
+                                  width: '100%',
+                                  height: '100%',
+                                  filter:
+                                    'drop-shadow(0 5px 0 rgba(0,0,0,.35))',
                                 }}
                               >
-                                <div className="glb-band"></div>
-                              </div>
-                              <div
-                                style={{
-                                  position: 'absolute',
-                                  inset: '0',
-                                  display: v.cardInfoLockDisplay,
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  fontFamily: PIXEL,
-                                  fontSize: '54px',
-                                  color: '#B5C0FF',
-                                  WebkitTextStroke: '6px #000000',
-                                  paintOrder: 'stroke fill',
-                                }}
-                              >
-                                ?
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    inset: '0',
+                                    backgroundImage: `url(${v.cardInfoIcon})`,
+                                    backgroundSize: 'contain',
+                                    backgroundRepeat: 'no-repeat',
+                                    backgroundPosition: 'center',
+                                    imageRendering: 'pixelated',
+                                    filter: v.cardInfoFilter,
+                                  }}
+                                ></div>
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    inset: '0',
+                                    display: v.cardInfoRaysDisplay,
+                                    overflow: 'hidden',
+                                    WebkitMaskImage: `url(${v.cardInfoIcon})`,
+                                    maskImage: `url(${v.cardInfoIcon})`,
+                                    WebkitMaskSize: 'contain',
+                                    maskSize: 'contain',
+                                    WebkitMaskRepeat: 'no-repeat',
+                                    maskRepeat: 'no-repeat',
+                                    WebkitMaskPosition: 'center',
+                                    maskPosition: 'center',
+                                  }}
+                                >
+                                  <div className="glb-band"></div>
+                                </div>
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    inset: '0',
+                                    display: v.cardInfoLockDisplay,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontFamily: PIXEL,
+                                    fontSize: '54px',
+                                    color: '#B5C0FF',
+                                    WebkitTextStroke: '6px #000000',
+                                    paintOrder: 'stroke fill',
+                                  }}
+                                >
+                                  ?
+                                </div>
                               </div>
                             </div>
                           </div>
                         </div>
                       </div>
+                      {v.cardInfoLvBadge ? (
+                        <div
+                          key={v.cardInfoLvKey}
+                          style={{
+                            position: 'absolute',
+                            right: '10px',
+                            bottom: '22px',
+                            padding: '3px 8px 4px',
+                            border: '3px solid #000000',
+                            borderRadius: '8px 2px 8px 2px',
+                            background: '#141D2E',
+                            boxShadow: `0 0 10px ${v.cardInfoGlow}`,
+                            fontFamily: PIXEL,
+                            fontSize: '18px',
+                            lineHeight: '1',
+                            color: '#FFF2B0',
+                            animation: v.cardInfoLvAnim,
+                          }}
+                        >
+                          {v.cardInfoLvBadge}
+                        </div>
+                      ) : null}
                       <div
                         className="glb-press"
                         onClick={v.closeCardInfo}
@@ -6708,8 +6790,8 @@ export const Screen = ({ v }: { v: View }) => (
                           gap: '6px',
                         }}
                       >
-                        {(v.cardInfoLinks || []).map((l: any, lI: number) => (
-                          <Fragment key={lI}>
+                        {(v.cardInfoLinks || []).map((l: any) => (
+                          <Fragment key={l.key}>
                             <div
                               style={{
                                 display: 'flex',
@@ -6801,33 +6883,105 @@ export const Screen = ({ v }: { v: View }) => (
                           width: '100%',
                           display: v.cardInfoUpDisplay,
                           flexDirection: 'column',
-                          gap: '5px',
+                          gap: '8px',
+                          padding: '9px 10px 10px',
+                          background: '#1D2956',
+                          border: '2px solid #000000',
+                          borderRadius: '6px 2px 6px 2px',
+                          boxShadow: '0 3px 0 0 #141D2E',
+                          animation: 'glsRise 360ms ease-out 480ms both',
                         }}
                       >
                         <div
                           style={{
-                            display: v.cardInfoUpCostDisplay,
+                            display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '10px',
-                            fontSize: '10px',
+                            justifyContent: 'space-between',
+                            gap: '3px',
                           }}
                         >
-                          <span style={{ color: v.cardInfoUpCopiesColor }}>
+                          {(v.cardInfoPips || []).map((pp: any, pI: number) => (
+                            <Fragment key={pI}>
+                              <div
+                                style={{
+                                  flex: '1',
+                                  height: '9px',
+                                  background: pp.bg,
+                                  border: `2px solid ${pp.bd}`,
+                                  borderRadius: '2px',
+                                  boxShadow: pp.glow,
+                                  animation: pp.anim,
+                                }}
+                              ></div>
+                            </Fragment>
+                          ))}
+                        </div>
+                        <div
+                          style={{
+                            display: v.cardInfoUpCostDisplay,
+                            alignItems: 'center',
+                            gap: '8px',
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: '18px',
+                              height: '18px',
+                              flexShrink: '0',
+                              backgroundImage: `url(${v.cardInfoGearMini})`,
+                              backgroundSize: 'contain',
+                              backgroundRepeat: 'no-repeat',
+                              backgroundPosition: 'center',
+                              imageRendering: 'pixelated',
+                            }}
+                          ></div>
+                          <div
+                            style={{
+                              flex: '1',
+                              minWidth: '0',
+                              height: '10px',
+                              background: '#0B1220',
+                              border: '2px solid #000000',
+                              borderRadius: '3px',
+                              overflow: 'hidden',
+                            }}
+                          >
+                            <div
+                              key={v.cardInfoBarKey}
+                              className="glb-fill glb-bar-shine"
+                              style={{
+                                width: v.cardInfoBarPct,
+                                height: '100%',
+                                backgroundColor: v.cardInfoBarBg,
+                              }}
+                            ></div>
+                          </div>
+                          <span
+                            data-fx-upcopies
+                            style={{
+                              display: 'inline-block',
+                              flexShrink: '0',
+                              fontSize: '10px',
+                              color: v.cardInfoUpCopiesColor,
+                            }}
+                          >
                             {v.cardInfoUpCopies}
                           </span>
                           <span
+                            data-fx-upcoins
                             style={{
                               display: 'flex',
+                              flexShrink: '0',
                               alignItems: 'center',
                               gap: '3px',
+                              fontSize: '11px',
                               color: v.cardInfoUpCoinsColor,
                             }}
                           >
                             <span
                               style={{
-                                width: '12px',
-                                height: '12px',
+                                width: '13px',
+                                height: '13px',
                                 backgroundImage: `url(${v.coinIcon})`,
                                 backgroundSize: 'contain',
                                 backgroundRepeat: 'no-repeat',
@@ -6839,9 +6993,11 @@ export const Screen = ({ v }: { v: View }) => (
                           </span>
                         </div>
                         <div
-                          className={v.cardInfoUpRun ? 'glb-press' : undefined}
+                          className={v.cardInfoUpClass}
                           onClick={v.cardInfoUpRun || undefined}
                           style={{
+                            position: 'relative',
+                            overflow: 'hidden',
                             cursor: v.cardInfoUpCursor,
                             opacity: v.cardInfoUpOpacity,
                             display: 'flex',
@@ -6857,9 +7013,16 @@ export const Screen = ({ v }: { v: View }) => (
                             fontSize: '16px',
                             lineHeight: '1.05',
                             textAlign: 'center',
+                            animation: v.cardInfoUpAnim,
                           }}
                         >
-                          {v.cardInfoUpLabel}
+                          <div
+                            className="glb-band"
+                            style={{ display: v.cardInfoUpBandDisplay }}
+                          ></div>
+                          <span style={{ position: 'relative' }}>
+                            {v.cardInfoUpLabel}
+                          </span>
                         </div>
                       </div>
                       <div className="glb-cta-in" style={{ width: '100%' }}>

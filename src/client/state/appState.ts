@@ -149,6 +149,9 @@ export type AppState = {
   heartUpgrading: boolean;
   /** A gear level-up is in flight; same reason. */
   gearUpgrading: boolean;
+  /** The card that last levelled up, so its pips and tile can celebrate once.
+   *  Cleared when another card is inspected. */
+  gearLeveled: string | null;
 
   boardW: number;
   boardH: number;
@@ -392,6 +395,7 @@ export const INITIAL_STATE: AppState = {
   mapY: 0,
   heartUpgrading: false,
   gearUpgrading: false,
+  gearLeveled: null,
   boardW: 0,
   boardH: 0,
   postW: 0,
