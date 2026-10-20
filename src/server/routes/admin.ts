@@ -28,6 +28,7 @@ import { isModerator } from '../core/mods.js';
 import { loadProfile, profileKey, saveProfile } from '../core/profile.js';
 import { removeFromPool, isInPool } from '../core/duelpool.js';
 import { resetQuests } from '../core/quests.js';
+import { resetStreak } from '../core/streak.js';
 import {
   PLAYERS_FIRST,
   PLAYERS_HANDLES,
@@ -265,7 +266,8 @@ admin.post('/user/:userId/gift', async (c) => {
 });
 
 /**
- * Wipe a player back to a fresh account: profile, this period's quests, any
+ * Wipe a player back to a fresh account: profile, this period's quests, the
+ * login streak, any
  * half-open pack, and their place in the duel pool. They stay in the player
  * index (they are still a player), and per-post ladder scores are kept. The
  * profile going takes `seenFtue` and the primers with it, so the next open
@@ -274,6 +276,7 @@ admin.post('/user/:userId/gift', async (c) => {
 const wipePlayer = async (userId: string): Promise<void> => {
   await redis.del(profileKey(userId), `open:${userId}`);
   await resetQuests(userId);
+  await resetStreak(userId);
   await removeFromPool(userId);
 };
 

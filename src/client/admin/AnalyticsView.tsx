@@ -147,6 +147,16 @@ export const OverviewView = ({ data }: { data: AdminDashboardResponse }) => {
         <MiniStat label="League entries" value={fmt(c.league_entries)} />
         <MiniStat label="Challenge posts" value={fmt(c.challenge_posts)} />
         <MiniStat label="Quests claimed" value={fmt(c.quests_claimed)} />
+        <MiniStat label="Login rewards" value={fmt(c.streak_claims)} />
+        <MiniStat
+          label="7+ day streaks"
+          value={
+            fmt(c.streak_week_plus) +
+            ' · ' +
+            pct(c.streak_week_plus, c.streak_claims) +
+            '%'
+          }
+        />
       </div>
 
       <SegmentBar

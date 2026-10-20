@@ -149,6 +149,12 @@ export const recordQuestClaim = async (questId: string) =>
     await bump(questKey(today()), { [questId]: 1 });
   });
 
+/** A daily login reward claimed, at the streak it made. */
+export const recordStreakClaim = async (count: number) =>
+  safely('recordStreakClaim', () =>
+    bumpDay({ streak_claims: 1, streak_week_plus: count >= 7 ? 1 : 0 })
+  );
+
 /** Any one-off day counter with no extra breakdown. */
 export const recordEvent = async (
   field:

@@ -96,6 +96,7 @@ import { DEFAULT_SNOO, GEARLINK_ICON, NAV_ICON } from './assets.js';
 import { syncVictory } from '../fx/victory.js';
 import { postVm } from './postLayout.js';
 import { leaderboardView } from './leaderboardView.js';
+import { streakUi } from './streakView.js';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import {
   BOMB_PAL,
@@ -3048,7 +3049,7 @@ export const buildView = (app: GearLinkApp): View => {
         img: NAV_ICON.quests,
         icon: '30px',
         active: false,
-        alert: questClaimable > 0,
+        alert: questClaimable > 0 || !!st.streak?.claimable,
       },
       {
         label: 'FIGHT',
@@ -3522,6 +3523,7 @@ export const buildView = (app: GearLinkApp): View => {
     // The leaderboard draws its own sheet rather than the shared modal.
     modalOpen: !!st.modal && st.modal !== 'board',
     lb: leaderboardView(st, app),
+    streak: streakUi(st, app),
     modalTitle,
     modalRows,
     modalActions,

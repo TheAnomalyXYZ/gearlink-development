@@ -26,6 +26,7 @@ import type {
   ProfileResponse,
   QuestsResponse,
   SoloBoardsResponse,
+  StreakClaimResponse,
   SubmitRunRequest,
   SubmitRunResponse,
   UpgradeGearRequest,
@@ -54,8 +55,10 @@ import {
   recordQuestClaim,
   recordRun,
   recordSpend,
+  recordStreakClaim,
   recordVisit,
 } from '../core/stats.js';
+import { claimDailyStreak, loadStreak } from '../core/streak.js';
 import { coinBundleSku, packSku } from '../../shared/admin.js';
 import { getLeaderboard, recordScore } from '../core/leaderboard.js';
 import { getSoloBoard, recordSoloRun, soloWeekNow } from '../core/solo.js';
@@ -149,6 +152,7 @@ api.get('/init', async (c) => {
     isModerator,
     chestWeek,
     solo,
+    streak,
   ] = await Promise.all([
     // Boot also catches up flair unlocks: one added to the catalogue since
     // the last visit lands for everyone who already qualifies.
@@ -161,6 +165,7 @@ api.get('/init', async (c) => {
     readWarChestWeek(me.postId).catch(() => null),
     // A short board: init only needs the viewer's row and the top few.
     getSoloBoard(soloWeekNow(), me.userId, 10),
+    loadStreak(me.userId),
   ]);
   return c.json<InitResponse>({
     type: 'init',
@@ -172,6 +177,7 @@ api.get('/init', async (c) => {
     isModerator,
     warChestPost: chestWeek !== null,
     solo,
+    streak,
   });
 });
 
@@ -1087,6 +1093,34 @@ api.post('/quests/claim', async (c) => {
     type: 'questClaim',
     profile,
     board,
+    message: res.message,
+  });
+});
+
+/* ---------- daily login streak ---------- */
+
+/** Pay today's login reward. The day and the streak are the server's own, so
+ *  the client names nothing. */
+api.post('/streak/claim', async (c) => {
+  const me = who();
+  if (!me) return unauthorised(c);
+  const res = await claimDailyStreak(me.userId, me.username);
+  if (!res.ok)
+    return c.json<ErrorResponse>(
+      { status: 'error', message: res.message },
+      400
+    );
+  const [profile, streak] = await Promise.all([
+    loadProfile(me.userId, me.username),
+    loadStreak(me.userId),
+  ]);
+  await recordStreakClaim(streak.count);
+  return c.json<StreakClaimResponse>({
+    type: 'streakClaim',
+    profile,
+    streak,
+    rewards: res.rewards,
+    milestone: res.milestone,
     message: res.message,
   });
 });

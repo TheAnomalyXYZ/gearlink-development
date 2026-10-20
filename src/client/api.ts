@@ -23,6 +23,7 @@ import type {
   OpenPackResponse,
   ProfileResponse,
   QuestsResponse,
+  StreakClaimResponse,
   SubmitRunRequest,
   SubmitRunResponse,
   WarChestResponse,
@@ -92,6 +93,7 @@ export const api = {
   quests: () => call<QuestsResponse>('/quests'),
   claimQuest: (questId: string) =>
     call<ClaimQuestResponse>('/quests/claim', { questId }),
+  claimStreak: () => call<StreakClaimResponse>('/streak/claim', {}),
   ftueSeen: (which: 'run' | 'duel' | 'duelSetup') =>
     call<ProfileResponse>('/ftue/seen', { which }),
   prizeSeen: () => call<ProfileResponse>('/duel/prize/seen', {}),

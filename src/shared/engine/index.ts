@@ -18,3 +18,4 @@ export * from './flair.js';
 export * from './warchest.js';
 export * from './solo.js';
 export * from './upgrade.js';
+export * from './streak.js';

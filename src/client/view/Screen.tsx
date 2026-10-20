@@ -19,6 +19,7 @@ import type { View } from './buildView.js';
 import type { PostView } from './postLayout.js';
 import { MenuIcon, SpeakerIcon, VolumeSlider } from './SettingsControls.js';
 import { WorldMap } from './WorldMap.js';
+import { StreakNotice, StreakStrip } from './DailyStreak.js';
 import {
   LeaderboardFab,
   LeaderboardSheet,
@@ -5329,6 +5330,8 @@ export const Screen = ({ v }: { v: View }) => (
                   </div>
                 </div>
               </div>
+
+              <StreakStrip sk={v.streak} />
 
               <div
                 style={{
@@ -10922,6 +10925,7 @@ export const Screen = ({ v }: { v: View }) => (
           </div>
         </div>
 
+        <StreakNotice sk={v.streak} stop={v.stop} />
         <SoloPrizeNotice lb={v.lb} stop={v.stop} />
       </div>
     </div>

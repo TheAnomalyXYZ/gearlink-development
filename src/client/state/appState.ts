@@ -17,6 +17,7 @@ import type {
   HeroClass,
   Mutators,
   RunState,
+  StreakView,
 } from '../../shared/engine/index.js';
 import type {
   ClaimQuestResponse,
@@ -213,6 +214,15 @@ export type AppState = {
   questTab: QuestTab;
   /** The quest whose claim is in flight, so a double tap cannot fire twice. */
   questClaiming: string | null;
+
+  /** The daily login streak, null until boot lands. */
+  streak: StreakView | null;
+  /** The login reward calendar is up. */
+  streakOpen: boolean;
+  /** Today's claim is in flight, so a double tap cannot fire twice. */
+  streakClaiming: boolean;
+  /** The day number the last claim paid, for the slot's pop on screen. */
+  streakJustClaimed: number | null;
 
   /** Bumped to re-render when a crisp tile icon or an FX roller ticks. */
   crispGen: number;
@@ -417,6 +427,10 @@ export const INITIAL_STATE: AppState = {
   quests: null,
   questTab: 'daily',
   questClaiming: null,
+  streak: null,
+  streakOpen: false,
+  streakClaiming: false,
+  streakJustClaimed: null,
   warChest: null,
   donating: null,
   crispGen: 0,

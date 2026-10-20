@@ -2478,3 +2478,53 @@ html[data-post] .gl-shell {
     animation: none !important;
   }
 }
+
+/* ---------- daily login streak ---------- */
+@keyframes glStreakGlow {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.25);
+  }
+}
+@keyframes glStreakStamp {
+  0% {
+    opacity: 0;
+    transform: scale(2.4) rotate(-20deg);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(0.9) rotate(4deg);
+  }
+  100% {
+    transform: scale(1) rotate(0);
+  }
+}
+@keyframes glStreakFlicker {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(0.94, 1.06);
+  }
+}
+.gl-streak-today {
+  animation: glStreakGlow 1.4s ease-in-out infinite;
+}
+.gl-streak-stamp {
+  animation: glStreakStamp 420ms cubic-bezier(0.3, 1.4, 0.5, 1) both;
+}
+.gl-streak-flame {
+  transform-origin: 50% 100%;
+  animation: glStreakFlicker 0.9s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gl-streak-today,
+  .gl-streak-stamp,
+  .gl-streak-flame {
+    animation: none !important;
+  }
+}

@@ -37,7 +37,7 @@ const stroked = (size: string, color: string, stroke = 5) => ({
 
 /** A tiny pixel sprite from a character map: `#` outline, `G` fill, `L` lip,
  *  `W` shine, `R`/`B` gems, `.` empty. */
-const Sprite = ({
+export const Sprite = ({
   map,
   width,
   colors,
@@ -408,7 +408,7 @@ const Row = ({ r, i }: { r: LbRow; i: number }) => (
   </div>
 );
 
-const RewardChip = ({ r }: { r: LbReward }) => (
+export const RewardChip = ({ r }: { r: LbReward }) => (
   <div
     style={{
       display: 'flex',

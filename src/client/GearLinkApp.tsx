@@ -282,6 +282,9 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   /** The post's own intro (straight into a battle) has been played or skipped. */
   postIntroDone = false;
   private postAuto: ReturnType<typeof setTimeout> | null = null;
+  /** The login reward has been put up once this session; after that it waits
+   *  to be opened from the quests screen. */
+  private streakOffered = false;
   private postRo: ResizeObserver | null = null;
   private moves: number[][] = [];
 
@@ -368,6 +371,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     if (this.prevPhase !== st.phase) {
       this.prevPhase = st.phase;
       this.syncFtueToPhase();
+      if (st.phase === 'home') this.offerStreak();
     }
     this.syncMusic();
     // Don't consume the step until a placement actually lands, so a frame that
@@ -396,6 +400,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
           profile: res.profile,
           leaderboard: res.leaderboard,
           solo: res.solo,
+          streak: res.streak,
           picked: ownedLoadout(s.heroClass, res.profile.gear),
           challenger: res.challenger,
           daily: res.daily,
@@ -426,6 +431,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
           // Opened from a War Chest post: straight to the chest.
           else if (res.warChestPost) this.openWarChest();
           else this.routeAfterBoot();
+          this.offerStreak();
         }
       );
     } catch (e) {
@@ -2587,6 +2593,44 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         fxh?.fail?.();
         this.fail(e);
         this.refreshQuests();
+      });
+  };
+
+  /* ---------- daily login streak ---------- */
+
+  /** Put today's login reward up, once a session, the first time the player
+   *  is on the home screen with nothing else asking for them - never over the
+   *  first-run coaching, a battle, or the inline post. */
+  private offerStreak(): void {
+    const st = this.state;
+    if (this.postMode || this.streakOffered || !st.streak?.claimable) return;
+    if (!st.profile.seenFtue || st.ftueStep || st.modal) return;
+    if (st.phase !== 'home') return;
+    this.streakOffered = true;
+    this.setState({ streakOpen: true, streakJustClaimed: null });
+  }
+  openStreak = (): void =>
+    this.setState({ streakOpen: true, streakJustClaimed: null });
+  closeStreak = (): void => this.setState({ streakOpen: false });
+
+  claimStreak = (): void => {
+    if (this.state.streakClaiming || !this.state.streak?.claimable) return;
+    this.setState({ streakClaiming: true });
+    void api
+      .claimStreak()
+      .then((r) => {
+        this.setState({
+          streak: r.streak,
+          streakClaiming: false,
+          streakJustClaimed: r.streak.count,
+        });
+        audio.play('coins');
+        this.adopt(r.profile, r.message);
+        safeToast(showToast, r.message);
+      })
+      .catch((e) => {
+        this.setState({ streakClaiming: false });
+        this.fail(e);
       });
   };
 

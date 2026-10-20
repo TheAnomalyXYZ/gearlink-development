@@ -26,6 +26,10 @@ const ZERO_COUNTERS = {
   packs_opened: 0,
   quests_claimed: 0,
   ftue_done: 0,
+  // Daily login rewards claimed, and how many of those were on a streak of a
+  // week or more - the share that has made coming back a habit.
+  streak_claims: 0,
+  streak_week_plus: 0,
   // Purchase totals. A moderator's buys land in the tester hash instead, so
   // these only ever count real players.
   gold_orders: 0,
@@ -56,6 +60,8 @@ export const DAILY_FIELDS: readonly DailyField[] = [
   'packs_opened',
   'quests_claimed',
   'ftue_done',
+  'streak_claims',
+  'streak_week_plus',
   'gold_orders',
   'gems_purchased',
   'refunds',

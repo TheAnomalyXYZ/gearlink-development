@@ -4,8 +4,8 @@
 
 | Currency | How you get it | What it's for |
 | --- | --- | --- |
-| 🪙 **Coins** | Battles (1 coin per 40 score), quests, league prizes, duplicate refunds | Base Packs |
-| 💎 **Gems** | Quests, league prizes, or bought with Reddit Gold | Bronze, Silver and Gold Packs; trading for coins |
+| 🪙 **Coins** | Battles (1 coin per 40 score), quests, daily rewards, league prizes, duplicate refunds | Base Packs |
+| 💎 **Gems** | Quests, daily rewards, league prizes, or bought with Reddit Gold | Bronze, Silver and Gold Packs; trading for coins |
 
 New accounts start with **250 coins** and **60 gems**.
 
@@ -52,6 +52,33 @@ Pull a card you already own and it turns into coins:
 | Hoard | 1,300 | 500 | +40% (best rate) |
 
 Gem purchases go through Reddit's own payments. Everything in the game can also be earned for free.
+
+## Daily rewards & streaks
+
+Open GearLink once a day and claim a login reward. Claim on back-to-back days (days reset at 00:00 UTC) to build a **streak**. The rewards run in a 7-day cycle that repeats:
+
+| Day | Reward |
+| --- | --- |
+| 1 | 50 coins |
+| 2 | 80 coins |
+| 3 | 5 gems |
+| 4 | 120 coins |
+| 5 | Base Pack |
+| 6 | 150 coins + 5 gems |
+| 7 | Bronze Pack + 10 gems, and a **shield** |
+
+**Shields.** Every finished week earns a shield (you can hold 2). If you miss a day, a shield is spent automatically on your next claim and your streak carries on. Miss more days than you have shields and the streak restarts at day 1.
+
+**Milestones.** Long streaks pay a one-off bonus on top of that day's reward:
+
+| Streak | Bonus |
+| --- | --- |
+| 14 days | Silver Pack |
+| 30 days | Gold Pack + 30 gems |
+| 60 days | Gold Pack + 60 gems |
+| 100 days | 2 Gold Packs + 100 gems |
+
+The reward calendar pops up the first time you reach the home screen each day. You can also open it from the top of the **Quests** screen.
 
 ## Quests
 

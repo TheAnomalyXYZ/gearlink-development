@@ -6,6 +6,7 @@ import type { SeasonPrize } from './engine/season.js';
 import type { SoloPrize, SoloTitle } from './engine/solo.js';
 import type { QuestPeriod, QuestReward } from './engine/quests.js';
 import type { XpResult } from './engine/level.js';
+import type { StreakView } from './engine/streak.js';
 
 /** Everything the client needs to boot: who the player is, what they own, and
  *  where this post's ladder currently stands. */
@@ -150,6 +151,8 @@ export type InitResponse = {
   warChestPost: boolean;
   /** This week's solo leaderboard, for the floating button's badge. */
   solo: SoloBoard;
+  /** The daily login streak, and whether today's reward is waiting. */
+  streak: StreakView;
 };
 
 /** A finished run, as the client played it. The server re-runs the moves; the
@@ -387,6 +390,17 @@ export type ClaimQuestResponse = {
   type: 'questClaim';
   profile: Profile;
   board: QuestBoard;
+  message: string;
+};
+
+export type StreakClaimResponse = {
+  type: 'streakClaim';
+  profile: Profile;
+  streak: StreakView;
+  /** Everything the claim paid, milestone included. */
+  rewards: QuestReward[];
+  /** The streak milestone this claim hit, if any. */
+  milestone: number | null;
   message: string;
 };
 
