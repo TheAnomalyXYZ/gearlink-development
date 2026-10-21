@@ -144,7 +144,7 @@ const classic = (cls: HeroClass): SkinDef => ({
 });
 
 /** Each class runs the same ladder - levels 5 and 15 and 30, The King, two
- *  gear sets - so no hero is the slow one to dress up. */
+ *  gear sets, one shop exclusive - so no hero is the slow one to dress up. */
 export const SKINS: SkinDef[] = [
   classic('Hero'),
   {
@@ -177,7 +177,7 @@ export const SKINS: SkinDef[] = [
     name: 'Arcane Scholar',
     tag: 'Magic',
     img: skinArt('Hero', 'arcane'),
-    unlock: { kind: 'level', min: 40 },
+    unlock: { kind: 'gems', price: SKIN_GEM_PRICE },
   },
   {
     id: 'hero-royal',

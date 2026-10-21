@@ -37,9 +37,12 @@ void test('every class has a free classic and every set resolves', () => {
   }
 });
 
-void test('one or two outfits are gem-only and never earned by play', () => {
+void test('each hero has one or two gem-only outfits, never earned by play', () => {
   const gem = SKINS.filter((s) => s.unlock.kind === 'gems');
-  assert.ok(gem.length >= 1 && gem.length <= 2);
+  for (const cls of ['Hero', 'Archer', 'Mage'] as const) {
+    const n = gem.filter((s) => s.cls === cls).length;
+    assert.ok(n >= 1 && n <= 2, cls + ' has ' + n + ' gem outfits');
+  }
   const maxed: SkinFacts = {
     level: 50,
     ascension: 9,

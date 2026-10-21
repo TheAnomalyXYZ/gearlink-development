@@ -23,7 +23,7 @@ Locked outfits show as a dark silhouette with what it takes to unlock them. When
 | **Defeat The King** | Royal Crusader | Royal Marksman | Royal Vizier |
 | Collect a **full gear set** | Frostguard (Crystal Set) | Frostbow (Zephyr Set) | Frost Sage (Frost Set) |
 | Collect a **full gear set** | Ember Lord (Dragon Set) | Emberstrike (Hunter Set) | Pyromancer (Fire Set) |
-| Special | Arcane Scholar (reach **level 40**) | **Sakura** (250 💎) | **Starweaver** (250 💎) |
+| **Shop** (250 💎) | Arcane Scholar | Sakura | Starweaver |
 
 Once you unlock an outfit, it's yours for good, even if a new ascension sends you back to the start of the map.
 
@@ -46,7 +46,7 @@ The outfit picker shows how many pieces of a set you have, e.g. *Frost Set 3/5*.
 
 ## Shop outfits
 
-**Sakura** (Archer) and **Starweaver** (Mage) can only be bought, for **250 gems** each. You can't earn them by playing. You start wearing an outfit as soon as you buy it.
+Each hero has one outfit you can only buy: **Arcane Scholar** (Hero), **Sakura** (Archer) and **Starweaver** (Mage), for **250 gems** each. You can't earn them by playing. You start wearing an outfit as soon as you buy it.
 
 [Gems](shop-and-quests.md#currencies) come from quests, daily rewards and prizes, or can be bought with Reddit Gold.
 
