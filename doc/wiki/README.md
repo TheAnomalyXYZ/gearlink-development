@@ -7,7 +7,7 @@ GearLink is a match-and-link roguelike you play right inside Reddit posts. Equip
 | Page | What's in it |
 | --- | --- |
 | [How to Play](how-to-play.md) | The board, linking, bombs, the enemy's swing meter, scoring |
-| [Heroes & Gear](heroes-and-gear.md) | The three heroes, every gear card, rider effects, loadout rules |
+| [Heroes & Gear](heroes-and-gear.md) | The three heroes, every gear card, rider effects, gear levels, loadout rules |
 | [Outfits](outfits.md) | Every hero outfit, how to unlock it, gear sets and shop outfits |
 | [The Campaign](campaign.md) | The six locations, monsters, wave affixes, heart containers, ascension |
 | [Duels & Leagues](duels-and-leagues.md) | Real-time PvP-style duels, junk, trophies, weekly leagues and prizes |

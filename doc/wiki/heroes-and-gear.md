@@ -33,14 +33,36 @@ Each piece becomes one orb colour on the board, so your loadout literally decide
 
 ## Rarity
 
-| Rarity | Colour | Duplicate refund |
-| --- | --- | --- |
-| Common | Grey-blue | 25 coins |
-| Rare | Blue | 60 coins |
-| Epic | Purple | 150 coins |
-| Legendary | Gold | 400 coins |
+| Rarity | Colour |
+| --- | --- |
+| Common | Grey-blue |
+| Rare | Blue |
+| Epic | Purple |
+| Legendary | Gold |
 
 Legendary cards exist only as weapons, one per hero.
+
+## Gear levels
+
+Pulling a card you already own adds a **spare copy** to it. Spare copies plus coins **level the card up**, from level 1 to **level 10**.
+
+- Each level adds **+10% of the card's base Power** (level 10 = +90%). The card's type and rider never change.
+- The card itself always keeps one copy. Only copies past the first are spare.
+- To level up, open a gear card's details and tap **LEVEL UP**.
+
+| Level up | Spare copies | Common | Rare | Epic | Legendary |
+| --- | --- | --- | --- | --- | --- |
+| 1 → 2 | 1 | 40 | 80 | 160 | 320 |
+| 2 → 3 | 2 | 80 | 160 | 320 | 640 |
+| 3 → 4 | 3 | 120 | 240 | 480 | 960 |
+| 4 → 5 | 4 | 200 | 400 | 800 | 1,600 |
+| 5 → 6 | 5 | 280 | 560 | 1,120 | 2,240 |
+| 6 → 7 | 6 | 400 | 800 | 1,600 | 3,200 |
+| 7 → 8 | 8 | 560 | 1,120 | 2,240 | 4,480 |
+| 8 → 9 | 10 | 760 | 1,520 | 3,040 | 6,080 |
+| 9 → 10 | 12 | 1,000 | 2,000 | 4,000 | 8,000 |
+
+Coin costs are per level. Getting a card from level 1 to 10 takes 51 spare copies.
 
 ## Rider effects
 
@@ -60,7 +82,7 @@ Riders only fire from a **drawn link**, never from a bomb blast.
 
 ## Gear list
 
-"Rider" shows the effect and the minimum link length it needs (e.g. *Burn 3 @ 4+* = apply 3 Burn on a link of 4 or more).
+Power shown is at level 1. "Rider" shows the effect and the minimum link length it needs (e.g. *Burn 3 @ 4+* = apply 3 Burn on a link of 4 or more).
 
 ### Hero
 
@@ -78,6 +100,8 @@ Riders only fire from a **drawn link**, never from a bomb blast.
 | Galvanic Plate | Chest | Epic | 6 | – |
 | Leather Helm | Hat | Common | 2 | Strength 3 @ 4+ |
 | Shadow Helm | Hat | Rare | 4 | – |
+| Knight's Helm | Hat | Epic | 6 | Grit 1 @ 5+ |
+| Warrior's Crest | Necklace | Common | 4 | Strength 3 @ 4+ |
 | Swift Crest | Necklace | Rare | 6 | – |
 | Dragon Crest | Necklace | Epic | 8 | Grit 1 @ 5+ |
 
@@ -86,14 +110,17 @@ Riders only fire from a **drawn link**, never from a bomb blast.
 | Name | Slot | Rarity | Power | Rider |
 | --- | --- | --- | --- | --- |
 | Shortbow | Weapon | Common | 9 | – |
+| Hunter's Arbalest | Weapon | Rare | 13 | Mark 1 @ 4+ |
 | Zephyr Bow | Weapon | Epic | 17 | – |
 | Artemial Arcbow | Weapon | Legendary | 18 | Mark 1 @ 5+ |
+| Ranger's Quiver | Off-Hand | Common | 7 | Mark 1 @ 4+ |
 | Iron Quiver | Off-Hand | Rare | 11 | Strength 1 @ 4+ |
 | Infinite Quiver | Off-Hand | Epic | 15 | – |
 | Leather Cuirass | Chest | Common | 3 | Strength 1 @ 4+ |
 | Vernal Cloak | Chest | Rare | 5 | – |
 | Sylvan Plate | Chest | Epic | 7 | Mark 2 @ 5+ |
 | Feathered Cap | Hat | Common | 3 | – |
+| Marksman's Scope | Hat | Rare | 5 | Mark 2 @ 4+ |
 | Blitz Bandanna | Hat | Epic | 7 | – |
 | Rabbit Talisman | Necklace | Common | 5 | Mark 1 @ 4+ |
 | Lizard Talisman | Necklace | Rare | 7 | – |
@@ -103,16 +130,20 @@ Riders only fire from a **drawn link**, never from a bomb blast.
 
 | Name | Slot | Rarity | Power | Rider |
 | --- | --- | --- | --- | --- |
+| Mage's Staff | Weapon | Common | 7 | – |
 | Flame Staff | Weapon | Rare | 11 | Burn 3 @ 4+ |
 | Frost Staff | Weapon | Epic | 15 | Frost 4 @ 5+ |
 | Tempest Staff | Weapon | Legendary | 17 | Burn 4 @ 5+ |
 | Arcane Tome | Off-Hand | Common | 6 | Strength 1 @ 4+ |
 | Frozen Tome | Off-Hand | Rare | 10 | Frost 3 @ 4+ |
 | Infernal Tome | Off-Hand | Epic | 14 | Burn 1 @ 5+ |
+| Novice's Robes | Chest | Common | 3 | Strength 2 @ 4+ |
 | Glacial Robes | Chest | Rare | 5 | Frost 3 @ 4+ |
 | Scintillating Robes | Chest | Epic | 7 | Burn 2 @ 5+ |
+| Wizard's Hat | Hat | Common | 3 | Burn 2 @ 4+ |
 | Smoldering Hat | Hat | Rare | 5 | – |
 | Icicle Hat | Hat | Epic | 7 | – |
+| Mage's Amulet | Necklace | Common | 5 | Burn 4 @ 4+ |
 | Molten Amulet | Necklace | Rare | 7 | Burn 5 @ 4+ |
 | Frostbite Amulet | Necklace | Epic | 9 | – |
 

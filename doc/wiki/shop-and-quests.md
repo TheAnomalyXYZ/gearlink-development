@@ -4,7 +4,7 @@
 
 | Currency | How you get it | What it's for |
 | --- | --- | --- |
-| 🪙 **Coins** | Battles (1 coin per 40 score), quests, daily rewards, league prizes, duplicate refunds | Base Packs |
+| 🪙 **Coins** | Battles (1 coin per 40 score), quests, daily rewards, league prizes | Base Packs, [levelling up gear](heroes-and-gear.md#gear-levels) |
 | 💎 **Gems** | Quests, daily rewards, league prizes, or bought with Reddit Gold | Bronze, Silver and Gold Packs; trading for coins |
 
 New accounts start with **250 coins** and **60 gems**.
@@ -24,14 +24,9 @@ If a pack rolls below its guarantee, it's bumped up to the guaranteed rarity. Si
 
 ### Duplicates
 
-Pull a card you already own and it turns into coins:
+Pull a card you already own and it becomes a **spare copy** of that card. Spare copies and coins level the card up; see [Gear levels](heroes-and-gear.md#gear-levels).
 
-| Rarity | Refund |
-| --- | --- |
-| Common | 25 coins |
-| Rare | 60 coins |
-| Epic | 150 coins |
-| Legendary | 400 coins |
+Owning every piece of a gear set also unlocks a hero [outfit](outfits.md#gear-sets).
 
 ## Coin bundles (paid in gems)
 
