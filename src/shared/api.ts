@@ -63,6 +63,11 @@ export type Profile = {
   flairs: string[];
   /** The unlocked flair this player chose to wear, or null for none. */
   flair: string | null;
+  /** Ids of the hero outfits this player has unlocked, kept for good. Each
+   *  class's Classic look is free and never listed. */
+  skins: string[];
+  /** The outfit each class wears. A class missing here wears its Classic. */
+  skinWorn: Partial<Record<HeroClass, string>>;
   /** Coins this player has given to the subreddit's war chest, over all weeks. */
   donated: number;
   /** Player level, fed by XP from every location attempt. */
@@ -513,5 +518,11 @@ export type DonateResponse = {
 
 /** Wear an unlocked flair in the subreddit, or null to take it off. */
 export type EquipFlairRequest = { flairId: string | null };
+
+/** Wear an owned outfit on its own class. */
+export type EquipSkinRequest = { skinId: string };
+
+/** Buy a shop-exclusive outfit with gems. */
+export type BuySkinRequest = { skinId: string };
 
 export type ErrorResponse = { status: 'error'; message: string };

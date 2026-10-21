@@ -187,6 +187,7 @@ export const MAX_GIFT_AMOUNT = 100_000;
 export const packSku = (packId: string) => 'pack:' + packId;
 export const coinBundleSku = (bundleId: string) => 'coins:' + bundleId;
 export const goldSku = (sku: string) => 'gold:' + sku;
+export const skinSku = (skinId: string) => 'skin:' + skinId;
 
 export type SkuCurrency = 'gold' | 'gems' | 'coins';
 
@@ -195,6 +196,7 @@ export type SkuCurrency = 'gold' | 'gems' | 'coins';
 export const skuCurrency = (sku: string): SkuCurrency => {
   if (sku.startsWith('gold:')) return 'gold';
   if (sku.startsWith('coins:')) return 'gems';
+  if (sku.startsWith('skin:')) return 'gems';
   if (sku.startsWith('pack:')) {
     const pack = packById(sku.slice(5));
     return pack?.cur === 'gems' ? 'gems' : 'coins';

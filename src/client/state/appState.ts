@@ -203,7 +203,15 @@ export type AppState = {
   ftueSample: { damage: number; killed: boolean };
 
   preview: Preview | null;
-  modal: 'pause' | 'how' | 'board' | 'settings' | 'flair' | 'warchest' | null;
+  modal:
+    | 'pause'
+    | 'how'
+    | 'board'
+    | 'settings'
+    | 'flair'
+    | 'skins'
+    | 'warchest'
+    | null;
   /** This week's war chest, once the panel has fetched it. */
   warChest: WarChest | null;
   /** The donation in flight, so a double tap cannot give twice. */
@@ -322,6 +330,8 @@ export const EMPTY_PROFILE: Profile = {
   soloTitle: null,
   flairs: [],
   flair: null,
+  skins: [],
+  skinWorn: {},
   donated: 0,
   level: 1,
   xp: 0,

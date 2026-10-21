@@ -45,6 +45,9 @@ export const profileKey = (userId: string) => `profile:${userId}`;
  *  reset, which drops the hash, takes them with it. */
 export const FLAIR_FIELD = 'flair:';
 
+/** Unlocked outfits, one `skin:<id>` field each, for the same reasons. */
+export const SKIN_FIELD = 'skin:';
+
 /** A fresh account starts with enough coins for the entry pack, so the shop
  *  ladder reads cheap-first rather than leaving the premium crate as the only
  *  affordable buy. */
@@ -114,6 +117,26 @@ const parseHearts = (raw: string | undefined): Hearts => {
 
 const parseCls = (raw: string | undefined): HeroClass | null =>
   raw === 'Hero' || raw === 'Archer' || raw === 'Mage' ? raw : null;
+
+/** Worn outfits, class -> skin id. Ownership is checked where they are drawn,
+ *  so only the shape is policed here. */
+const parseSkinWorn = (
+  raw: string | undefined
+): Partial<Record<HeroClass, string>> => {
+  if (!raw) return {};
+  try {
+    const p: unknown = JSON.parse(raw);
+    if (!p || typeof p !== 'object' || Array.isArray(p)) return {};
+    const out: Partial<Record<HeroClass, string>> = {};
+    for (const [k, v] of Object.entries(p)) {
+      const cls = parseCls(k);
+      if (cls && typeof v === 'string') out[cls] = v;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+};
 
 const parseBest = (raw: string | undefined): BestRun | null => {
   if (!raw) return null;
@@ -397,6 +420,10 @@ export const loadProfile = async (
       ...(titleFlair ? [titleFlair.id] : []),
     ],
     flair: h['flair'] || null,
+    skins: Object.keys(h)
+      .filter((f) => f.startsWith(SKIN_FIELD) && h[f] === '1')
+      .map((f) => f.slice(SKIN_FIELD.length)),
+    skinWorn: parseSkinWorn(h['skinWorn']),
     donated: Math.max(0, Math.floor(num(h['donated'], 0))),
     level: clamp(Math.floor(num(h['level'], 1)), 1, LEVEL_CONFIG.cap),
     xp: Math.max(0, Math.floor(num(h['xp'], 0))),
@@ -458,6 +485,7 @@ export type ProfilePatch = Partial<
     | 'duelPicked'
     | 'duelListed'
     | 'flair'
+    | 'skinWorn'
     | 'level'
     | 'xp'
   >
@@ -505,6 +533,8 @@ export const saveProfile = async (
       fields['duelListedWeek'] = String(duelWeekOf(Date.now()));
   }
   if (patch.flair !== undefined) fields['flair'] = patch.flair ?? '';
+  if (patch.skinWorn !== undefined)
+    fields['skinWorn'] = JSON.stringify(patch.skinWorn);
   if (patch.level !== undefined)
     fields['level'] = String(
       clamp(Math.floor(patch.level), 1, LEVEL_CONFIG.cap)

@@ -2595,6 +2595,38 @@ export const Screen = ({ v }: { v: View }) => (
                     </div>
                   </div>
                   <div
+                    onClick={h.skinRun}
+                    style={{
+                      display: h.skinDisplay,
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '2px',
+                      flexShrink: '0',
+                      padding: '5px 10px 6px',
+                      border: '3px solid #000000',
+                      borderRadius: '8px 2px 8px 2px',
+                      background: '#B5C0FF',
+                      boxShadow:
+                        '0 -4px 0 0 #7E84E6 inset, 0 4px 0 0 #FFF inset, 0 2px 0 0 rgba(0,0,0,.25)',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontFamily: 'VolterTitle,Volter,monospace',
+                        fontSize: '13px',
+                        color: '#000000',
+                      }}
+                    >
+                      OUTFIT
+                    </span>
+                    <span style={{ fontSize: '10px', color: '#1D2956' }}>
+                      {h.skinCount}
+                    </span>
+                  </div>
+                  <div
                     onClick={h.upgradeRun || undefined}
                     style={{
                       display: h.upgradeDisplay,
@@ -10177,6 +10209,96 @@ export const Screen = ({ v }: { v: View }) => (
                       )}
                     </Fragment>
                   ))}
+                  {v.modalSkins && v.modalSkins.length ? (
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                        gap: '8px',
+                      }}
+                    >
+                      {v.modalSkins.map((k: any, kI: number) => (
+                        <div
+                          key={kI}
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '8px 6px',
+                            background: '#FFFFFF',
+                            border: `2px solid ${k.bd}`,
+                            borderRadius: '6px 2px 6px 2px',
+                          }}
+                        >
+                          <img
+                            src={k.img}
+                            alt={k.name}
+                            style={{
+                              height: '96px',
+                              aspectRatio: k.ar,
+                              imageRendering: 'pixelated',
+                              filter: k.filter,
+                            }}
+                          />
+                          <div
+                            style={{
+                              fontFamily: PIXEL,
+                              fontSize: '11px',
+                              color: '#1D2956',
+                              textAlign: 'center',
+                            }}
+                          >
+                            {k.name}
+                          </div>
+                          <div
+                            style={{
+                              minHeight: '26px',
+                              fontSize: '9px',
+                              lineHeight: '1.4',
+                              color: k.lineColor,
+                              textAlign: 'center',
+                              textWrap: 'balance',
+                            }}
+                          >
+                            {k.line}
+                          </div>
+                          {k.btn ? (
+                            <div
+                              onClick={k.btn.run}
+                              style={{
+                                alignSelf: 'stretch',
+                                cursor: k.btn.run ? 'pointer' : 'default',
+                                opacity: k.btn.opacity,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '4px',
+                                minHeight: '32px',
+                                border: '3px solid #000000',
+                                borderRadius: '8px 2px 8px 2px',
+                                background: k.btn.bg,
+                                boxShadow: k.btn.shadow,
+                                color: '#000000',
+                                fontFamily: PIXEL,
+                                fontSize: '11px',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {k.btn.icon ? (
+                                <img
+                                  src={k.btn.icon}
+                                  alt=""
+                                  style={{ width: '14px', height: '14px' }}
+                                />
+                              ) : null}
+                              {k.btn.label}
+                            </div>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                   {v.modalChips && v.modalChips.length ? (
                     <div style={{ display: 'flex', gap: '6px' }}>
                       {v.modalChips.map((ch: any, cI: number) => (

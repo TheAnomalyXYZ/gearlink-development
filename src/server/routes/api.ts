@@ -16,6 +16,8 @@ import type {
   DuelRefreshResponse,
   DuelResultRequest,
   EquipFlairRequest,
+  EquipSkinRequest,
+  BuySkinRequest,
   SaveDuelLoadoutRequest,
   ErrorResponse,
   InitResponse,
@@ -43,7 +45,8 @@ import {
   saveProfile,
 } from '../core/profile.js';
 import { isModeratorSafe } from '../core/mods.js';
-import { equipFlair, syncFlairs } from '../core/flair.js';
+import { equipFlair } from '../core/flair.js';
+import { buySkin, equipSkin, syncUnlocks } from '../core/skins.js';
 import {
   donate,
   liveChestBonusPct,
@@ -60,7 +63,7 @@ import {
   recordVisit,
 } from '../core/stats.js';
 import { claimDailyStreak, loadStreak } from '../core/streak.js';
-import { coinBundleSku, packSku } from '../../shared/admin.js';
+import { coinBundleSku, packSku, skinSku } from '../../shared/admin.js';
 import { getLeaderboard, recordScore } from '../core/leaderboard.js';
 import {
   dismissSoloAlert,
@@ -171,9 +174,9 @@ api.get('/init', async (c) => {
     soloAlert,
     streak,
   ] = await Promise.all([
-    // Boot also catches up flair unlocks: one added to the catalogue since
-    // the last visit lands for everyone who already qualifies.
-    loadProfile(me.userId, me.username).then((p) => syncFlairs(me.userId, p)),
+    // Boot also catches up flair and outfit unlocks: one added to the
+    // catalogue since the last visit lands for everyone who already qualifies.
+    loadProfile(me.userId, me.username).then((p) => syncUnlocks(me.userId, p)),
     getLeaderboard(me.postId, me.userId),
     // A failed read only means the post opens like any other.
     readChallengeFoe(me.postId, me.userId, me.username).catch(() => null),
@@ -444,7 +447,7 @@ api.post('/run', async (c) => {
   });
 
   const [after, leaderboard, soloBoard, soloGroup] = await Promise.all([
-    loadProfile(me.userId, me.username).then((p) => syncFlairs(me.userId, p)),
+    loadProfile(me.userId, me.username).then((p) => syncUnlocks(me.userId, p)),
     getLeaderboard(me.postId, me.userId),
     getSoloBoard(solo.week, me.userId, 10),
     getGroupBoard(solo.week, me.userId),
@@ -814,7 +817,14 @@ api.post('/shop/collect', async (c) => {
   await saveProfile(me.userId, { gear, packs });
   await recordQuestEvents(me.userId, [{ metric: 'packs', amount: 1 }]);
   await recordEvent('packs_opened');
-  return c.json(profileJson(await loadProfile(me.userId, me.username)));
+  // The last piece of a gear set unlocks its outfit.
+  return c.json(
+    profileJson(
+      await loadProfile(me.userId, me.username).then((p) =>
+        syncUnlocks(me.userId, p)
+      )
+    )
+  );
 });
 
 /**
@@ -1069,7 +1079,7 @@ api.post('/duel/result', async (c) => {
       { metric: 'duelWins', amount: body.won ? 1 : 0 },
     ]);
   const after = await loadProfile(me.userId, me.username);
-  return c.json(profileJson(await syncFlairs(me.userId, after)));
+  return c.json(profileJson(await syncUnlocks(me.userId, after)));
 });
 
 /**
@@ -1237,6 +1247,53 @@ api.post('/flair/equip', async (c) => {
   );
 });
 
+/* ---------- outfits ---------- */
+
+/** Wear an owned outfit. The class is the outfit's own, so the only thing the
+ *  client names is which. */
+api.post('/skin/equip', async (c) => {
+  const me = who();
+  if (!me) return unauthorised(c);
+  const body = (await c.req
+    .json()
+    .catch(() => null)) as EquipSkinRequest | null;
+  if (typeof body?.skinId !== 'string')
+    return c.json<ErrorResponse>({ status: 'error', message: 'bad body' }, 400);
+  const profile = await loadProfile(me.userId, me.username);
+  const res = await equipSkin(me.userId, profile, body.skinId);
+  if (!res.ok)
+    return c.json<ErrorResponse>(
+      { status: 'error', message: res.message },
+      400
+    );
+  return c.json(
+    profileJson(await loadProfile(me.userId, me.username), res.message)
+  );
+});
+
+/** Buy a shop-exclusive outfit with gems, and wear it straight away. */
+api.post('/skin/buy', async (c) => {
+  const me = who();
+  if (!me) return unauthorised(c);
+  const body = (await c.req.json().catch(() => null)) as BuySkinRequest | null;
+  if (typeof body?.skinId !== 'string')
+    return c.json<ErrorResponse>({ status: 'error', message: 'bad body' }, 400);
+  const profile = await loadProfile(me.userId, me.username);
+  const res = await buySkin(me.userId, profile, body.skinId);
+  // Short on gems is an answer, not a fault: the wallet comes back with it.
+  if (!res.ok) return c.json(profileJson(profile, res.message));
+  await recordSpend(
+    me.userId,
+    me.username,
+    skinSku(body.skinId),
+    'gems',
+    res.price ?? 0
+  );
+  return c.json(
+    profileJson(await loadProfile(me.userId, me.username), res.message)
+  );
+});
+
 /* ---------- war chest ---------- */
 
 api.get('/warchest', async (c) => {
@@ -1273,7 +1330,7 @@ api.post('/warchest/donate', async (c) => {
     );
   await recordSpend(me.userId, me.username, 'warchest', 'coins', amount);
   const [after, chest] = await Promise.all([
-    loadProfile(me.userId, me.username).then((p) => syncFlairs(me.userId, p)),
+    loadProfile(me.userId, me.username).then((p) => syncUnlocks(me.userId, p)),
     loadWarChest(me.userId),
   ]);
   return c.json<DonateResponse>({

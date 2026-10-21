@@ -49,6 +49,12 @@ import {
   PACKS,
   QUESTS,
   FLAIRS,
+  GEAR_SETS,
+  setPiecesOwned,
+  skinOwned,
+  skinUnlockLine,
+  skinsFor,
+  wornSkin,
   DONATION_AMOUNTS,
   WAR_CHEST_ART,
   WAR_CHEST_TIERS,
@@ -143,10 +149,17 @@ const HS_B: Record<string, readonly [number, number, number]> = {
   Archer: [124, 168, 2],
   Mage: [124, 186, 2],
 };
-const heroStand = (k: string, hi: number, on: boolean, containers: number) => {
+const heroStand = (
+  k: string,
+  hi: number,
+  on: boolean,
+  containers: number,
+  body: string
+) => {
   const [w, h, bb] = HS_B[k] ?? [126, 186, 2];
   return {
-    body: '/art/NeuraKnights/Characters/' + k + '.png',
+    // The worn outfit: every one shares its class's sprite size and sticker.
+    body,
     sticker: '/fx/hero-sticker/' + k + '.png',
     ar: w + '/' + h,
     stL: (-bb / w) * 100 + '%',
@@ -530,7 +543,21 @@ export const buildView = (app: GearLinkApp): View => {
         : affordable
           ? 'USES ' + HEART_PIECES_PER_CONTAINER + ' PIECES'
           : pieces + '/' + HEART_PIECES_PER_CONTAINER + ' PIECES',
-      ...heroStand(k, hi, on, containers),
+      // Outfits are per class and purely cosmetic, so the duel flow offers
+      // them too.
+      skinDisplay: on ? 'flex' : 'none',
+      skinCount:
+        skinsFor(k).filter((d) => skinOwned(d, st.profile.skins)).length +
+        '/' +
+        skinsFor(k).length,
+      skinRun: app.openSkins,
+      ...heroStand(
+        k,
+        hi,
+        on,
+        containers,
+        wornSkin(k, st.profile.skinWorn, st.profile.skins).img
+      ),
     };
   });
 
@@ -1117,6 +1144,7 @@ export const buildView = (app: GearLinkApp): View => {
     modalSliders: any[] = [],
     modalBar: any = null,
     modalChips: any[] = [],
+    modalSkins: any[] = [],
     modalFooter = '',
     modalClose = app.closeModal,
     modalActions = [
@@ -1402,6 +1430,63 @@ export const buildView = (app: GearLinkApp): View => {
         shadow: BTN.secondary.shadow,
       },
     ];
+  } else if (st.modal === 'skins') {
+    /* Every outfit for the selected hero, locked ones included, so the picker
+       also says what is left to earn and how. */
+    const cls = st.heroClass;
+    const worn = wornSkin(cls, st.profile.skinWorn, st.profile.skins);
+    modalTitle = cls.toUpperCase() + ' OUTFITS';
+    modalSkins = skinsFor(cls).map((d) => {
+      const owned = skinOwned(d, st.profile.skins);
+      const on = worn.id === d.id;
+      const u = d.unlock;
+      const set =
+        u.kind === 'set' ? GEAR_SETS.find((g) => g.id === u.set) : undefined;
+      const afford = u.kind === 'gems' && st.profile.gems >= u.price;
+      const btn = on
+        ? { label: 'WEARING', run: undefined, ...BTN.disabled, opacity: 1 }
+        : owned
+          ? {
+              label: 'WEAR',
+              run: app.equipSkin(d.id),
+              ...BTN.tertiary,
+              opacity: 1,
+            }
+          : u.kind === 'gems'
+            ? {
+                label: String(u.price),
+                icon: GEM_ICON,
+                run: afford ? app.buySkin(d.id) : undefined,
+                ...(afford ? BTN_GOLD : BTN.disabled),
+                opacity: afford ? 1 : 0.6,
+              }
+            : null;
+      return {
+        name: d.name,
+        img: d.img,
+        ar: (HS_B[cls] ?? [126, 186])[0] + '/' + (HS_B[cls] ?? [126, 186])[1],
+        // A locked outfit shows as a silhouette of itself: what it is, not
+        // yet who wears it.
+        filter: owned || u.kind === 'gems' ? 'none' : 'brightness(.25)',
+        bd: on ? '#3C63FF' : '#D8DCE6',
+        line: owned
+          ? d.tag
+          : set
+            ? set.name +
+              ' ' +
+              setPiecesOwned(set, st.profile.gear) +
+              '/' +
+              set.pieces.length
+            : skinUnlockLine(d),
+        lineColor: owned
+          ? '#8B7355'
+          : u.kind === 'gems'
+            ? '#B8860B'
+            : '#4B6A85',
+        btn,
+      };
+    });
+    modalFooter = 'Outfits change the look, never the stats.';
   }
 
   const endBs = bs || {
@@ -3421,7 +3506,13 @@ export const buildView = (app: GearLinkApp): View => {
     isEnd: st.phase === 'end',
     heroCards,
     heroScene: heroScene(st.locationId),
-    gearHero: heroStand(st.heroClass, 0, true, 0),
+    gearHero: heroStand(
+      st.heroClass,
+      0,
+      true,
+      0,
+      wornSkin(st.heroClass, st.profile.skinWorn, st.profile.skins).img
+    ),
     gearCards,
     tabs,
     slots,
@@ -3532,6 +3623,7 @@ export const buildView = (app: GearLinkApp): View => {
     modalSliders,
     modalBar,
     modalChips,
+    modalSkins,
     modalFooter,
     resetVolumes: app.resetVolumes,
     openPause: app.openPause,

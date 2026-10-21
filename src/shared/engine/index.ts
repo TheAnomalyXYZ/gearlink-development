@@ -16,6 +16,7 @@ export * from './run.js';
 export * from './types.js';
 export * from './season.js';
 export * from './flair.js';
+export * from './skin.js';
 export * from './warchest.js';
 export * from './solo.js';
 export * from './upgrade.js';

@@ -103,6 +103,9 @@ export const api = {
   prizeSeen: () => call<ProfileResponse>('/duel/prize/seen', {}),
   equipFlair: (flairId: string | null) =>
     call<ProfileResponse>('/flair/equip', { flairId }),
+  equipSkin: (skinId: string) =>
+    call<ProfileResponse>('/skin/equip', { skinId }),
+  buySkin: (skinId: string) => call<ProfileResponse>('/skin/buy', { skinId }),
   warChest: () => call<WarChestResponse>('/warchest'),
   donate: (amount: number) =>
     call<DonateResponse>('/warchest/donate', { amount }),

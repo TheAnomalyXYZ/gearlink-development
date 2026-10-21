@@ -61,6 +61,7 @@ import {
   enemyDisplayFor,
   fallDistances,
   flairById,
+  skinById,
   foeLoadout,
   gearLevelOf,
   hasAnyMove,
@@ -472,12 +473,18 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     if (message) this.clearShopMsgSoon();
   };
 
-  /** Toast any flair this profile unlocked that the one on screen had not. */
+  /** Toast any flair or outfit this profile unlocked that the one on screen
+   *  had not. */
   private noteFlairs(next: Profile): void {
     const had = new Set(this.state.profile.flairs);
     for (const id of next.flairs) {
       const def = had.has(id) ? null : flairById(id);
       if (def) safeToast(showToast, 'Flair unlocked: ' + def.text + '!');
+    }
+    const hadSkins = new Set(this.state.profile.skins);
+    for (const id of next.skins) {
+      const def = hadSkins.has(id) ? null : skinById(id);
+      if (def) safeToast(showToast, 'Outfit unlocked: ' + def.name + '!');
     }
   }
 
@@ -1079,6 +1086,35 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         this.flairBusy = false;
       });
   };
+  /* ---------- outfits ---------- */
+
+  /** The picker always dresses the hero currently selected. */
+  openSkins = (): void => this.setState({ modal: 'skins' });
+
+  private skinBusy = false;
+  /** Wear an owned outfit, or buy a shop exclusive (which then wears it). */
+  equipSkin = (skinId: string) => (): void =>
+    this.skinCall(api.equipSkin, skinId);
+  buySkin = (skinId: string) => (): void => this.skinCall(api.buySkin, skinId);
+  private skinCall(
+    call: (skinId: string) => Promise<{ profile: Profile; message?: string }>,
+    skinId: string
+  ): void {
+    if (this.skinBusy) return;
+    this.skinBusy = true;
+    void call(skinId)
+      .then((r) => {
+        // A bought outfit is toasted by adopt's unlock note already.
+        const gained = r.profile.skins.length > this.state.profile.skins.length;
+        this.adopt(r.profile);
+        if (r.message && !gained) safeToast(showToast, r.message);
+      })
+      .catch(this.fail)
+      .finally(() => {
+        this.skinBusy = false;
+      });
+  }
+
   /* ---------- war chest ---------- */
 
   openWarChestFromMenu = (): void => this.openWarChest();

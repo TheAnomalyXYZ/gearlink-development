@@ -45,6 +45,8 @@ export const profile: Profile = {
   soloTitle: null,
   flairs: ['apprentice'],
   flair: 'apprentice',
+  skins: [],
+  skinWorn: {},
   donated: 300,
   level: 3,
   xp: 40,
