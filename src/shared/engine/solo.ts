@@ -15,7 +15,8 @@
  * The top ten take a TITLE: a subreddit flair only that week's top players can
  * wear, held for the following week and then gone unless it is defended. The
  * crown has to out-pay a week of daily logins, or the login calendar is the
- * better use of the week, so the titles pay packs and a few gems.
+ * better use of the week, so the titles pay real packs - but never gems,
+ * which stay a quest and shop currency.
  *
  * Below the titles, every player who qualifies still banks something, by how
  * far up the ladder they finished - so a mid-table week is worth finishing
@@ -67,7 +68,6 @@ export const SOLO_TIERS: SoloTier[] = [
     color: '#FFC24B',
     rewards: [
       { kind: 'coins', amount: 600 },
-      { kind: 'gems', amount: 20 },
       { kind: 'pack', packId: 'silver' },
     ],
   },
@@ -80,7 +80,6 @@ export const SOLO_TIERS: SoloTier[] = [
     color: '#C9D4E8',
     rewards: [
       { kind: 'coins', amount: 400 },
-      { kind: 'gems', amount: 10 },
       { kind: 'pack', packId: 'bronze' },
     ],
   },

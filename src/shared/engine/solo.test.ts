@@ -72,13 +72,12 @@ void test('a better tier always pays more coins', () => {
     assert.ok(coins(i - 1) > coins(i), SOLO_TIERS[i - 1]!.id);
 });
 
-void test('gems stay a title prize, and a small one', () => {
+void test('weekly prizes never pay gems', () => {
   for (const t of SOLO_TIERS)
-    for (const r of t.rewards)
-      if (r.kind === 'gems') {
-        assert.ok(isSoloTitle(t), t.id + ' pays gems without a title');
-        assert.ok(r.amount <= 20, t.id + ' pays too many gems');
-      }
+    assert.ok(
+      t.rewards.every((r) => r.kind !== 'gems'),
+      t.id + ' pays gems'
+    );
 });
 
 void test('the next tier up is the closest one that pays better', () => {

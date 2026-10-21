@@ -16,14 +16,14 @@ The board resets every **Monday at 00:00 UTC**, the same time as duel leagues an
 
 At the reset, everyone who played **3 or more battles** in the week gets a prize based on where they finished. The top 10 also take a **title**: a subreddit flair only they can wear, for the week after. When that week ends the flair comes off, unless you earn it again.
 
-| Finish   | Title flair     | Prize                             | Needs                  |
-| -------- | --------------- | --------------------------------- | ---------------------- |
-| #1       | Weekly Champion | 600 coins + 20 gems + Silver Pack | 3+ players on the week |
-| #2-3     | Weekly Top 3    | 400 coins + 10 gems + Bronze Pack | 6+ players             |
-| #4-10    | Weekly Top 10   | 250 coins + Base Pack             | 15+ players            |
-| Top 25%  | -               | 150 coins                         | 8+ players             |
-| Top 50%  | -               | 100 coins                         | 4+ players             |
-| Everyone | -               | 60 coins                          | -                      |
+| Finish   | Title flair     | Prize                   | Needs                  |
+| -------- | --------------- | ----------------------- | ---------------------- |
+| #1       | Weekly Champion | 600 coins + Silver Pack | 3+ players on the week |
+| #2-3     | Weekly Top 3    | 400 coins + Bronze Pack | 6+ players             |
+| #4-10    | Weekly Top 10   | 250 coins + Base Pack   | 15+ players            |
+| Top 25%  | -               | 150 coins               | 8+ players             |
+| Top 50%  | -               | 100 coins               | 4+ players             |
+| Everyone | -               | 60 coins                | -                      |
 
 - You get the best prize your finish qualifies for. If the week is too small for a tier, you drop to the next one down.
 - Prizes land in your bag the first time you open the game after the reset. A notice tells you where you finished, and **WEAR IT** puts the title flair on straight away.
