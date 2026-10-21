@@ -286,7 +286,7 @@ export const loadProfile = async (
       fields['gems'] = String(gems);
       fields['packs'] = JSON.stringify(packs);
       fields['soloPrize'] = JSON.stringify(soloPrize);
-      if (w === week - 1) {
+      if (w === week - 1 && placed.tier.flairId) {
         soloTitle = { tier: placed.tier.id, week: w, rank: placed.rank };
         fields['soloTitle'] = JSON.stringify(soloTitle);
       }

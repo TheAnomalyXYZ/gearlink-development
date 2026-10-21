@@ -3,7 +3,7 @@ import type { Hearts } from './engine/hearts.js';
 import type { PulledCard } from './engine/economy.js';
 import type { DuelFoe } from './engine/duel.js';
 import type { SeasonPrize } from './engine/season.js';
-import type { SoloPrize, SoloTitle } from './engine/solo.js';
+import type { SoloPrize, SoloTierId, SoloTitle } from './engine/solo.js';
 import type { QuestPeriod, QuestReward } from './engine/quests.js';
 import type { XpResult } from './engine/level.js';
 import type { StreakView } from './engine/streak.js';
@@ -112,6 +112,29 @@ export type SoloBoard = {
   entries: SoloEntry[];
   /** The viewer's own row, even when it is below the shown rows. */
   you: SoloEntry | null;
+  /** The rows either side of the viewer's, wherever they sit. */
+  above: SoloEntry | null;
+  below: SoloEntry | null;
+  /** The next tier up from the viewer's place, and what reaching it takes. */
+  chase: SoloChase | null;
+};
+
+/** A tier the viewer can still climb into: the rank that earns it and the
+ *  points whoever holds that rank has now. */
+export type SoloChase = { tier: SoloTierId; rank: number; points: number };
+
+/** Who passed the viewer on this week's ladder since they last played or
+ *  looked - the reason to come back and take the place again. */
+export type SoloAlert = {
+  week: number;
+  /** Newest first, at most three. */
+  passers: string[];
+  /** Everyone who passed, for "and 4 others". */
+  count: number;
+  rank: number | null;
+  players: number;
+  /** Whoever now sits directly above, and the points to pass them. */
+  above: { username: string; gap: number } | null;
 };
 
 /** What one banked battle did to the viewer's week. */
@@ -151,6 +174,8 @@ export type InitResponse = {
   warChestPost: boolean;
   /** This week's solo leaderboard, for the floating button's badge. */
   solo: SoloBoard;
+  /** Players who passed the viewer on this week's board, if any did. */
+  soloAlert: SoloAlert | null;
   /** The daily login streak, and whether today's reward is waiting. */
   streak: StreakView;
 };

@@ -521,38 +521,40 @@ const TierCard = ({ t, i }: { t: LbTierCard; i: number }) => (
         </div>
       ) : null}
     </div>
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '6px',
-        padding: '6px 8px',
-        borderRadius: '4px',
-        background: 'rgba(0,0,0,.3)',
-      }}
-    >
+    {t.flairText ? (
       <div
         style={{
-          fontFamily: BODY,
-          fontSize: '8px',
-          color: '#9DB4D4',
-          flex: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          padding: '6px 8px',
+          borderRadius: '4px',
+          background: 'rgba(0,0,0,.3)',
         }}
       >
-        u/you
+        <div
+          style={{
+            fontFamily: BODY,
+            fontSize: '8px',
+            color: '#9DB4D4',
+            flex: 'none',
+          }}
+        >
+          u/you
+        </div>
+        <FlairPill text={t.flairText} bg={t.flairBg} />
+        <div
+          style={{
+            marginLeft: 'auto',
+            fontFamily: BODY,
+            fontSize: '7px',
+            color: '#7F93B8',
+          }}
+        >
+          1 WEEK
+        </div>
       </div>
-      <FlairPill text={t.flairText} bg={t.flairBg} />
-      <div
-        style={{
-          marginLeft: 'auto',
-          fontFamily: BODY,
-          fontSize: '7px',
-          color: '#7F93B8',
-        }}
-      >
-        1 WEEK
-      </div>
-    </div>
+    ) : null}
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
       {t.rewards.map((r, k) => (
         <RewardChip key={k} r={r} />
@@ -955,6 +957,113 @@ export const LeaderboardFab = ({
         }}
       >
         {lb.fabRank ? hashSafe(lb.fabRank) : 'RANK'}
+      </div>
+      {lb.fabAlert ? (
+        <div
+          style={{
+            position: 'absolute',
+            top: '-2px',
+            right: '-2px',
+            width: '18px',
+            height: '18px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: '2px solid #000',
+            borderRadius: '50%',
+            background: '#FF5A4E',
+            fontFamily: PIXEL,
+            fontSize: '11px',
+            lineHeight: '1',
+            color: '#FFFFFF',
+          }}
+        >
+          !
+        </div>
+      ) : null}
+    </div>
+  ) : null;
+
+/** "u/foo passed you!" above the floating button: the nudge to come back and
+ *  take the place again. Tapping it opens the board. */
+export const SoloAlertBanner = ({
+  lb,
+  stop,
+}: {
+  lb: LbView;
+  stop: (e: { stopPropagation: () => void }) => void;
+}) =>
+  lb.alertShow ? (
+    <div
+      onClick={lb.openSoloAlert}
+      role="button"
+      className="gl-lb-in"
+      style={{
+        position: 'absolute',
+        right: '14px',
+        bottom: '172px',
+        zIndex: '13',
+        width: '220px',
+        maxWidth: 'calc(100% - 28px)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        boxSizing: 'border-box',
+        padding: '8px 8px 8px 10px',
+        border: '2px solid #000',
+        borderRadius: '8px 2px 8px 2px',
+        background: 'linear-gradient(135deg, #5A2440 0%, #1D2956 70%)',
+        boxShadow: '0 0 0 2px #FF5A4E inset, 0 4px 0 0 rgba(0,0,0,.45)',
+        cursor: 'pointer',
+      }}
+    >
+      <TrophyIcon size={24} />
+      <div style={{ flex: '1', minWidth: '0' }}>
+        <div
+          style={{
+            fontFamily: BODY,
+            fontSize: '9px',
+            lineHeight: '1.4',
+            color: '#FFFFFF',
+            overflowWrap: 'anywhere',
+          }}
+        >
+          {lb.alertTitle}
+        </div>
+        <div
+          style={{
+            marginTop: '3px',
+            fontFamily: PIXEL,
+            fontSize: '10px',
+            color: '#FCE370',
+          }}
+        >
+          {hashSafe(lb.alertSub)}
+        </div>
+      </div>
+      <div
+        onClick={(e) => {
+          stop(e);
+          lb.dismissSoloAlert();
+        }}
+        role="button"
+        aria-label="Dismiss"
+        style={{
+          flex: 'none',
+          width: '22px',
+          height: '22px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          border: '1px solid #000',
+          borderRadius: '4px',
+          background: 'rgba(0,0,0,.35)',
+          fontFamily: PIXEL,
+          fontSize: '11px',
+          color: '#9DB4D4',
+        }}
+      >
+        X
       </div>
     </div>
   ) : null;

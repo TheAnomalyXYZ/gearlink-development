@@ -24,6 +24,7 @@ import type {
   DailyBattle,
   LeaderboardEntry,
   Profile,
+  SoloAlert,
   SoloBoard,
   SoloRunResult,
   ProfileResponse,
@@ -110,6 +111,9 @@ export type AppState = {
   boardTab: BoardTab;
   /** What the last banked battle did to the weekly leaderboard. */
   runSolo: SoloRunResult | null;
+  /** Players who passed this one on the weekly board since they last
+   *  fought or looked. */
+  soloAlert: SoloAlert | null;
 
   phase: Phase;
   heroClass: HeroClass;
@@ -391,6 +395,7 @@ export const INITIAL_STATE: AppState = {
   soloBoards: null,
   boardTab: 'week',
   runSolo: null,
+  soloAlert: null,
   phase: 'splash',
   heroClass: 'Hero',
   tab: 'attack',

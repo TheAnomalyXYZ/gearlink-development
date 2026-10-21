@@ -14,8 +14,10 @@ import {
   COIN_ICON,
   GEM_ICON,
   HERO_PERKS,
+  SOLO_FINAL_MS,
   SOLO_MIN_RUNS,
   SOLO_TIERS,
+  isSoloTitle,
   packById,
   rewardLabel,
   soloTierById,
@@ -76,7 +78,16 @@ export type LbView = {
   lbTitleHeld: string;
   closeBoard: () => void;
 
+  /** "u/foo passed you" over the map, until it is tapped or dismissed. */
+  alertShow: boolean;
+  alertTitle: string;
+  alertSub: string;
+  openSoloAlert: () => void;
+  dismissSoloAlert: () => void;
+
   fabShow: boolean;
+  /** Someone passed the player since they last looked. */
+  fabAlert: boolean;
   fabRank: string;
   fabGlow: boolean;
   fabTitleColor: string;
@@ -121,7 +132,9 @@ export const timeLeft = (ms: number): string => {
 };
 
 const soloRow = (e: SoloEntry, players: number, final: boolean): LbRow => {
-  const tier = final ? soloTierFor(e.rank, players, e.runs) : null;
+  const earned = final ? soloTierFor(e.rank, players, e.runs) : null;
+  // Every finish pays now; the board only badges the titles, and your own.
+  const tier = isSoloTitle(earned) || e.isYou ? earned : null;
   return {
     key: 's' + e.rank + e.username,
     rank: e.rank,
@@ -157,8 +170,9 @@ const dailyRow = (e: LeaderboardEntry): LbRow => ({
   tierColor: '',
 });
 
-/** What the viewer needs to do next on this week's board. */
-const youNote = (board: SoloBoard): string => {
+/** What the viewer needs to do next on this week's board. In the final hours
+ *  it also says how close the player below is. */
+const youNote = (board: SoloBoard, now: number): string => {
   const you = board.you;
   if (!you) return 'Fight battles anywhere on the map to get on the board.';
   if (you.runs < SOLO_MIN_RUNS) {
@@ -167,39 +181,69 @@ const youNote = (board: SoloBoard): string => {
       n +
       ' more ' +
       (n === 1 ? 'battle' : 'battles') +
-      ' to qualify for a title.'
+      ' to qualify for a prize.'
     );
   }
-  if (you.rank === 1) return 'You hold the crown. Defend it until the reset.';
-  const above = board.entries.find((e) => e.rank === you.rank - 1);
+  const guard =
+    board.endsAt - now < SOLO_FINAL_MS && board.below
+      ? ' u/' +
+        board.below.username +
+        ' is ' +
+        fmt(Math.max(0, you.points - board.below.points)) +
+        ' pts behind you.'
+      : '';
+  if (you.rank === 1)
+    return 'You hold the crown.' + (guard || ' Defend it until the reset.');
   const live = soloTierFor(you.rank, board.players, you.runs);
-  const gap = above ? above.points - you.points + 1 : 0;
-  if (live)
-    return (
-      'On course for ' +
-      live.name +
-      '.' +
-      (above ? ' ' + fmt(gap) + ' pts to pass #' + above.rank + '.' : '')
-    );
-  return above
-    ? fmt(gap) +
-        ' pts to pass #' +
-        above.rank +
-        '. Beat a location best to climb.'
-    : 'Beat a location best to climb.';
+  const chase = board.chase;
+  const chaseTier = chase ? soloTierById(chase.tier) : null;
+  const up =
+    chase && chaseTier && chase.rank < you.rank
+      ? fmt(chase.points - you.points + 1) +
+        ' pts to reach ' +
+        chaseTier.name +
+        '.'
+      : board.above
+        ? fmt(board.above.points - you.points + 1) +
+          ' pts to pass #' +
+          board.above.rank +
+          '.'
+        : 'Beat a location best to climb.';
+  return (live ? 'On course for ' + live.name + '. ' : '') + up + guard;
 };
+
+/** "#1", "#2-3" for the titles; the share of the ladder for the bands. */
+const tierRanks = (t: SoloTier): string => {
+  if (t.cut.kind === 'share')
+    return t.cut.pct >= 1 ? 'ALL' : Math.round(t.cut.pct * 100) + '%';
+  let from = 1;
+  for (const p of SOLO_TIERS.slice(0, SOLO_TIERS.indexOf(t)))
+    if (p.cut.kind === 'rank') from = p.cut.rank + 1;
+  return from === t.cut.rank ? '#' + from : '#' + from + '-' + t.cut.rank;
+};
+
+const tierNote = (t: SoloTier): string =>
+  t.cut.kind === 'share' && t.cut.pct >= 1
+    ? 'Everyone who plays ' + SOLO_MIN_RUNS + '+ battles'
+    : t.cut.kind === 'share'
+      ? 'Top ' +
+        Math.round(t.cut.pct * 100) +
+        '% of the ladder. Needs ' +
+        t.minPlayers +
+        '+ players'
+      : 'Needs ' + t.minPlayers + '+ players on the week';
 
 const tierCard = (t: SoloTier, heldTier: string | null): LbTierCard => {
   const flair = weeklyFlairFor(t.id);
   return {
     id: t.id,
-    ranks: t.maxRank === 1 ? '#1' : t.maxRank === 3 ? '#2-3' : '#4-10',
+    ranks: tierRanks(t),
     name: t.name,
     color: t.color,
     flairText: flair?.text ?? '',
     flairBg: flair?.backgroundColor ?? t.color,
     rewards: rewardsOf(t.rewards),
-    note: 'Needs ' + t.minPlayers + '+ players on the week',
+    note: tierNote(t),
     held: heldTier === t.id,
   };
 };
@@ -224,14 +268,17 @@ export const leaderboardView = (st: AppState, app: GearLinkApp): LbView => {
   if (tab === 'week') {
     if (!current) loading = true;
     else {
-      sub = 'RESETS IN ' + timeLeft(current.endsAt - now);
+      sub =
+        (current.endsAt - now < SOLO_FINAL_MS ? 'FINAL HOURS - ' : '') +
+        'RESETS IN ' +
+        timeLeft(current.endsAt - now);
       players =
         fmt(current.players) + (current.players === 1 ? ' PLAYER' : ' PLAYERS');
       rows = current.entries.map((e) => soloRow(e, current.players, false));
       youRow = current.you
         ? soloRow(current.you, current.players, false)
         : null;
-      note = youNote(current);
+      note = youNote(current, now);
       empty = 'No one has scored this week yet. The first battle takes #1.';
     }
   } else if (tab === 'last') {
@@ -295,6 +342,39 @@ export const leaderboardView = (st: AppState, app: GearLinkApp): LbView => {
     current?.you && myRank > 0
       ? soloTierFor(myRank, current.players, current.you.runs)
       : null;
+  const liveTitle = isSoloTitle(liveTier) ? liveTier : null;
+
+  const fabShow = st.ready && st.phase === 'home' && !st.modal;
+  const prizeShow =
+    !!prize &&
+    !!prizeTier &&
+    st.ready &&
+    !st.profile.duelPrize &&
+    st.phase !== 'duel' &&
+    st.phase !== 'battle';
+  const alert = st.soloAlert;
+  const alertTitle = alert
+    ? alert.count === 1
+      ? 'u/' + alert.passers[0] + ' passed you!'
+      : 'u/' +
+        alert.passers[0] +
+        ' and ' +
+        (alert.count - 1) +
+        (alert.count === 2 ? ' other' : ' others') +
+        ' passed you!'
+    : '';
+  const alertSub = !alert
+    ? ''
+    : alert.above && alert.rank !== null
+      ? 'NOW #' +
+        alert.rank +
+        ' - ' +
+        fmt(alert.above.gap) +
+        ' PTS TO RETAKE #' +
+        (alert.rank - 1)
+      : alert.rank !== null
+        ? 'NOW #' + alert.rank
+        : 'TAP TO SEE THE BOARD';
 
   return {
     lbOpen: st.modal === 'board',
@@ -317,26 +397,35 @@ export const leaderboardView = (st: AppState, app: GearLinkApp): LbView => {
     lbRules: [
       'Your weekly points are your best score at every location, added up.',
       'Deeper locations and higher ascensions score more. Replaying a fight only counts what it beats your best by.',
-      'Play ' + SOLO_MIN_RUNS + '+ battles in the week to place for a title.',
+      'Play ' + SOLO_MIN_RUNS + '+ battles in the week to place for a prize.',
       'Titles go to the top 10 at the Monday reset (00:00 UTC) and are worn for the week after. Defend yours to keep it.',
+      'Everyone else who places still gets paid: the top 25%, the top 50%, and every finisher.',
+      'If someone passes you, you will hear about it the next time you open the game.',
     ],
     lbTitleHeld: titleTier ? 'YOU HOLD ' + titleTier.name + ' THIS WEEK' : '',
     closeBoard: app.closeModal,
 
-    fabShow: st.ready && st.phase === 'home' && !st.modal,
+    alertShow:
+      !!alert &&
+      fabShow &&
+      !st.wmFocused &&
+      !st.streakOpen &&
+      !prizeShow &&
+      !st.profile.duelPrize,
+    alertTitle,
+    alertSub,
+    openSoloAlert: app.openSoloAlert,
+    dismissSoloAlert: app.dismissSoloAlert,
+
+    fabShow,
+    fabAlert: !!alert,
     fabRank: myRank > 0 ? '#' + myRank : '',
-    fabGlow: !!titleTier || !!liveTier,
-    fabTitleColor: titleTier?.color ?? liveTier?.color ?? '#FCE370',
+    fabGlow: !!titleTier || !!liveTitle,
+    fabTitleColor: titleTier?.color ?? liveTitle?.color ?? '#FCE370',
     fabT: st.wmFocused ? 'translate3d(180%,0,0)' : 'translate3d(0,0,0)',
     openBoard: app.openBoard,
 
-    soloPrizeShow:
-      !!prize &&
-      !!prizeTier &&
-      st.ready &&
-      !st.profile.duelPrize &&
-      st.phase !== 'duel' &&
-      st.phase !== 'battle',
+    soloPrizeShow: prizeShow,
     soloPrizeTier: prizeTier?.name ?? '',
     soloPrizeColor: prizeTier?.color ?? '#FCE370',
     soloPrizeRank: prize ? '#' + prize.rank : '',

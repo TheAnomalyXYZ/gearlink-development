@@ -23,6 +23,7 @@ import { StreakNotice, StreakStrip } from './DailyStreak.js';
 import {
   LeaderboardFab,
   LeaderboardSheet,
+  SoloAlertBanner,
   SoloPrizeNotice,
 } from './Leaderboard.js';
 import { GENERAL_GEAR } from '../splash-style.js';
@@ -2358,6 +2359,7 @@ export const Screen = ({ v }: { v: View }) => (
                 </div>
               </div>
 
+              <SoloAlertBanner lb={v.lb} stop={v.stop} />
               <LeaderboardFab
                 lb={v.lb}
                 transform={v.lb.fabT}

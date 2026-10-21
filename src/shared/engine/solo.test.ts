@@ -8,8 +8,12 @@ import {
   weeklyFlairFor,
 } from './flair.js';
 import {
+  SOLO_ALERT_FANOUT,
   SOLO_MIN_RUNS,
   SOLO_TIERS,
+  isSoloTitle,
+  nextSoloTier,
+  passedRanks,
   soloGain,
   soloPoints,
   soloTierFor,
@@ -38,19 +42,76 @@ void test('tiers need a placing, enough runs and a big enough ladder', () => {
   assert.equal(soloTierFor(1, 100, runs)?.id, 'champion');
   assert.equal(soloTierFor(3, 100, runs)?.id, 'podium');
   assert.equal(soloTierFor(10, 100, runs)?.id, 'top10');
-  assert.equal(soloTierFor(11, 100, runs), null);
-  // A small week pays only the crown.
+  assert.equal(soloTierFor(11, 100, runs)?.id, 'top25');
+  assert.equal(soloTierFor(25, 100, runs)?.id, 'top25');
+  assert.equal(soloTierFor(26, 100, runs)?.id, 'top50');
+  assert.equal(soloTierFor(51, 100, runs)?.id, 'finisher');
+  assert.equal(soloTierFor(100, 100, runs)?.id, 'finisher');
+  // A small week pays only the crown as a title; the rest fall to the bands.
   assert.equal(soloTierFor(1, 3, runs)?.id, 'champion');
-  assert.equal(soloTierFor(2, 3, runs), null);
-  assert.equal(soloTierFor(5, 14, runs), null);
+  assert.equal(soloTierFor(2, 3, runs)?.id, 'finisher');
+  assert.equal(soloTierFor(5, 14, runs)?.id, 'top50');
 });
 
-void test('weekly prizes never pay gems', () => {
-  for (const t of SOLO_TIERS)
-    assert.ok(
-      t.rewards.every((r) => r.kind !== 'gems'),
-      t.id + ' pays gems'
+void test('every qualified finish pays, and only titles crown', () => {
+  for (let rank = 1; rank <= 40; rank++)
+    assert.ok(soloTierFor(rank, 40, SOLO_MIN_RUNS), '#' + rank + ' pays');
+  assert.deepEqual(
+    SOLO_TIERS.filter(isSoloTitle).map((t) => t.id),
+    ['champion', 'podium', 'top10']
+  );
+});
+
+void test('a better tier always pays more coins', () => {
+  const coins = (i: number) =>
+    SOLO_TIERS[i]!.rewards.reduce(
+      (n, r) => n + (r.kind === 'coins' ? r.amount : 0),
+      0
     );
+  for (let i = 1; i < SOLO_TIERS.length; i++)
+    assert.ok(coins(i - 1) > coins(i), SOLO_TIERS[i - 1]!.id);
+});
+
+void test('gems stay a title prize, and a small one', () => {
+  for (const t of SOLO_TIERS)
+    for (const r of t.rewards)
+      if (r.kind === 'gems') {
+        assert.ok(isSoloTitle(t), t.id + ' pays gems without a title');
+        assert.ok(r.amount <= 20, t.id + ' pays too many gems');
+      }
+});
+
+void test('the next tier up is the closest one that pays better', () => {
+  const runs = SOLO_MIN_RUNS;
+  assert.equal(nextSoloTier(1, 100, runs), null);
+  assert.deepEqual(
+    [nextSoloTier(2, 100, runs)?.tier.id, nextSoloTier(2, 100, runs)?.rank],
+    ['champion', 1]
+  );
+  assert.equal(nextSoloTier(11, 100, runs)?.tier.id, 'top10');
+  assert.equal(nextSoloTier(60, 100, runs)?.rank, 50);
+  // Short of battles, the chase is qualifying for what the rank already fits.
+  assert.equal(nextSoloTier(60, 100, runs - 1)?.tier.id, 'finisher');
+  assert.equal(nextSoloTier(2, 100, runs - 1)?.tier.id, 'podium');
+  // Closed tiers are skipped: the podium needs six players.
+  assert.equal(nextSoloTier(2, 5, runs)?.tier.id, 'champion');
+  assert.equal(nextSoloTier(0, 100, runs), null);
+});
+
+void test('a run tells the players it passed, closest first', () => {
+  assert.deepEqual(passedRanks(8, 5, 20), { from: 6, to: 8 });
+  assert.equal(passedRanks(5, 5, 20), null);
+  // A first score passes everyone below it, up to the fan-out.
+  assert.deepEqual(passedRanks(null, 3, 5), { from: 4, to: 5 });
+  assert.deepEqual(passedRanks(null, 1, 50), {
+    from: 2,
+    to: 1 + SOLO_ALERT_FANOUT,
+  });
+  assert.deepEqual(passedRanks(40, 2, 50), {
+    from: 3,
+    to: 2 + SOLO_ALERT_FANOUT,
+  });
+  assert.equal(passedRanks(null, 1, 1), null);
 });
 
 void test('weeks line up with the Monday duel reset', () => {
@@ -69,7 +130,7 @@ void test('a title is worn only the week after it was earned', () => {
   assert.equal(titleIsLive(null, 11), false);
 });
 
-void test('every tier has a weekly flair that is never banked', () => {
+void test('every title has a weekly flair that is never banked', () => {
   const all = {
     progress: 99,
     ascension: 99,
@@ -78,7 +139,7 @@ void test('every tier has a weekly flair that is never banked', () => {
     trophies: 1e9,
     donated: 1e9,
   };
-  for (const t of SOLO_TIERS) {
+  for (const t of SOLO_TIERS.filter(isSoloTitle)) {
     const f = weeklyFlairFor(t.id);
     assert.ok(f, t.id + ' has no flair');
     assert.equal(f.id, t.flairId);

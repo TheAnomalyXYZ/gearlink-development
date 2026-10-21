@@ -67,6 +67,7 @@ export const api = {
   leaderboard: () => call<LeaderboardResponse>('/leaderboard'),
   solo: () => call<SoloBoardsResponse>('/solo'),
   soloPrizeSeen: () => call<ProfileResponse>('/solo/prize/seen', {}),
+  soloAlertSeen: () => call<{ ok: boolean }>('/solo/alert/seen', {}),
   submitRun: (run: SubmitRunRequest) => call<SubmitRunResponse>('/run', run),
   buyPack: (packId: string) => call<ProfileResponse>('/shop/pack', { packId }),
   applyHeart: (req: ApplyHeartRequest) =>

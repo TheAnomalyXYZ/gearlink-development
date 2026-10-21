@@ -61,7 +61,13 @@ import {
 import { claimDailyStreak, loadStreak } from '../core/streak.js';
 import { coinBundleSku, packSku } from '../../shared/admin.js';
 import { getLeaderboard, recordScore } from '../core/leaderboard.js';
-import { getSoloBoard, recordSoloRun, soloWeekNow } from '../core/solo.js';
+import {
+  dismissSoloAlert,
+  getSoloAlert,
+  getSoloBoard,
+  recordSoloRun,
+  soloWeekNow,
+} from '../core/solo.js';
 import {
   advanceRefreshCursor,
   claimRefresh,
@@ -152,6 +158,7 @@ api.get('/init', async (c) => {
     isModerator,
     chestWeek,
     solo,
+    soloAlert,
     streak,
   ] = await Promise.all([
     // Boot also catches up flair unlocks: one added to the catalogue since
@@ -165,6 +172,8 @@ api.get('/init', async (c) => {
     readWarChestWeek(me.postId).catch(() => null),
     // A short board: init only needs the viewer's row and the top few.
     getSoloBoard(soloWeekNow(), me.userId, 10),
+    // A failed read only means no "you were passed" notice this visit.
+    getSoloAlert(soloWeekNow(), me.userId).catch(() => null),
     loadStreak(me.userId),
   ]);
   return c.json<InitResponse>({
@@ -177,6 +186,7 @@ api.get('/init', async (c) => {
     isModerator,
     warChestPost: chestWeek !== null,
     solo,
+    soloAlert,
     streak,
   });
 });
@@ -200,6 +210,14 @@ api.post('/solo/prize/seen', async (c) => {
   if (!me) return unauthorised(c);
   await dismissSoloPrize(me.userId);
   return c.json(profileJson(await loadProfile(me.userId, me.username)));
+});
+
+/** The "you were passed" notice has been read. */
+api.post('/solo/alert/seen', async (c) => {
+  const me = who();
+  if (!me) return unauthorised(c);
+  await dismissSoloAlert(me.userId);
+  return c.json({ ok: true });
 });
 
 api.get('/leaderboard', async (c) => {

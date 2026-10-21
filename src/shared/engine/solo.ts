@@ -12,10 +12,14 @@
  *   - Grinding does not: only a location's BEST counts, so replaying the same
  *     fight only moves the ladder by however much it beat that best.
  *
- * Prizes are deliberately thin - a few coins, at most one low pack, and no gems
- * - so a weekly crown is a bragging right rather than a second economy. The
- * real prize is a TITLE: a subreddit flair only that week's top players can
- * wear, held for the following week and then gone unless it is defended.
+ * The top ten take a TITLE: a subreddit flair only that week's top players can
+ * wear, held for the following week and then gone unless it is defended. The
+ * crown has to out-pay a week of daily logins, or the login calendar is the
+ * better use of the week, so the titles pay packs and a few gems.
+ *
+ * Below the titles, every player who qualifies still banks something, by how
+ * far up the ladder they finished - so a mid-table week is worth finishing
+ * and a rank lost midweek is worth taking back.
  */
 import type { QuestReward } from './quests.js';
 import { rewardLabel } from './quests.js';
@@ -29,19 +33,25 @@ export const SOLO_MIN_RUNS = 3;
 /** How many rows the board shows. Everyone else still sees their own rank. */
 export const SOLO_BOARD_SIZE = 50;
 
-export type SoloTierId = 'champion' | 'podium' | 'top10';
+export type SoloTierId =
+  'champion' | 'podium' | 'top10' | 'top25' | 'top50' | 'finisher';
+
+/** Where a tier stops: a fixed place for the titles, a share of the ladder
+ *  for the bands below them. */
+export type SoloCut =
+  { kind: 'rank'; rank: number } | { kind: 'share'; pct: number };
 
 export type SoloTier = {
   id: SoloTierId;
-  /** How the title reads in the board, e.g. "CHAMPION". */
+  /** How the tier reads in the board, e.g. "CHAMPION". */
   name: string;
-  /** The lowest rank that still earns this tier. */
-  maxRank: number;
+  cut: SoloCut;
   /** Players the ladder needs before this tier pays at all - on a five-player
    *  week, "top ten" is everyone, and that is not a title. */
   minPlayers: number;
-  /** The weekly flair this tier lets its holders wear. */
-  flairId: string;
+  /** The weekly flair this tier lets its holders wear. Null for the bands
+   *  below the titles, which pay but do not crown. */
+  flairId: string | null;
   color: string;
   rewards: QuestReward[];
 };
@@ -51,37 +61,79 @@ export const SOLO_TIERS: SoloTier[] = [
   {
     id: 'champion',
     name: 'CHAMPION',
-    maxRank: 1,
+    cut: { kind: 'rank', rank: 1 },
     minPlayers: 3,
     flairId: 'weekly-champion',
     color: '#FFC24B',
     rewards: [
-      { kind: 'coins', amount: 300 },
-      { kind: 'pack', packId: 'bronze' },
+      { kind: 'coins', amount: 600 },
+      { kind: 'gems', amount: 20 },
+      { kind: 'pack', packId: 'silver' },
     ],
   },
   {
     id: 'podium',
     name: 'TOP 3',
-    maxRank: 3,
+    cut: { kind: 'rank', rank: 3 },
     minPlayers: 6,
     flairId: 'weekly-podium',
     color: '#C9D4E8',
     rewards: [
-      { kind: 'coins', amount: 200 },
-      { kind: 'pack', packId: 'base' },
+      { kind: 'coins', amount: 400 },
+      { kind: 'gems', amount: 10 },
+      { kind: 'pack', packId: 'bronze' },
     ],
   },
   {
     id: 'top10',
     name: 'TOP 10',
-    maxRank: 10,
+    cut: { kind: 'rank', rank: 10 },
     minPlayers: 15,
     flairId: 'weekly-top10',
     color: '#E09A5A',
-    rewards: [{ kind: 'coins', amount: 120 }],
+    rewards: [
+      { kind: 'coins', amount: 250 },
+      { kind: 'pack', packId: 'base' },
+    ],
+  },
+  {
+    id: 'top25',
+    name: 'TOP 25%',
+    cut: { kind: 'share', pct: 0.25 },
+    minPlayers: 8,
+    flairId: null,
+    color: '#7FD3FF',
+    rewards: [{ kind: 'coins', amount: 150 }],
+  },
+  {
+    id: 'top50',
+    name: 'TOP 50%',
+    cut: { kind: 'share', pct: 0.5 },
+    minPlayers: 4,
+    flairId: null,
+    color: '#9DB4D4',
+    rewards: [{ kind: 'coins', amount: 100 }],
+  },
+  {
+    id: 'finisher',
+    name: 'FINISHER',
+    cut: { kind: 'share', pct: 1 },
+    minPlayers: 1,
+    flairId: null,
+    color: '#7F93B8',
+    rewards: [{ kind: 'coins', amount: 60 }],
   },
 ];
+
+/** The lowest rank that still earns a tier on a ladder this size. */
+export const soloTierCut = (tier: SoloTier, players: number): number =>
+  tier.cut.kind === 'rank'
+    ? tier.cut.rank
+    : Math.max(1, Math.ceil(players * tier.cut.pct));
+
+/** The tiers that crown: their holders wear a flair for the week after. */
+export const isSoloTitle = (tier: SoloTier | null): boolean =>
+  !!tier && tier.flairId !== null;
 
 export const soloTierById = (id: string): SoloTier | null =>
   SOLO_TIERS.find((t) => t.id === id) ?? null;
@@ -94,8 +146,55 @@ export const soloTierFor = (
 ): SoloTier | null => {
   if (rank === null || rank < 1 || runs < SOLO_MIN_RUNS) return null;
   return (
-    SOLO_TIERS.find((t) => rank <= t.maxRank && players >= t.minPlayers) ?? null
+    SOLO_TIERS.find(
+      (t) => players >= t.minPlayers && rank <= soloTierCut(t, players)
+    ) ?? null
   );
+};
+
+/** The next tier up from where a player stands - the closest one that pays
+ *  better and is open on a ladder this size - and the rank that earns it.
+ *  Null at the top. A player still short of SOLO_MIN_RUNS chases the tier
+ *  their rank would already earn, since only the battles are missing. */
+export const nextSoloTier = (
+  rank: number,
+  players: number,
+  runs: number
+): { tier: SoloTier; rank: number } | null => {
+  if (rank < 1) return null;
+  const now = soloTierFor(rank, players, runs);
+  const better = SOLO_TIERS.slice(0, now ? SOLO_TIERS.indexOf(now) : undefined)
+    .filter((t) => players >= t.minPlayers)
+    .map((t) => ({ tier: t, rank: soloTierCut(t, players) }));
+  if (runs < SOLO_MIN_RUNS) {
+    const fits = better.filter((b) => rank <= b.rank);
+    if (fits.length) return fits[0]!;
+  }
+  const ahead = better.filter((b) => b.rank < rank);
+  return ahead.length ? ahead[ahead.length - 1]! : null;
+};
+
+/** The last stretch of the week, when the board warns who is about to lose
+ *  a place. */
+export const SOLO_FINAL_MS = 48 * 3_600_000;
+
+/** Players one run tells it passed them, closest first. Anyone further down
+ *  the ladder learns from the board itself. */
+export const SOLO_ALERT_FANOUT = 5;
+
+/**
+ * The ranks, as the ladder reads after a run, of the players that run just
+ * passed: everyone between where the runner now sits and where they sat
+ * before - or the bottom of the ladder, for a first score. Capped at
+ * SOLO_ALERT_FANOUT from the top. Null when the run passed nobody.
+ */
+export const passedRanks = (
+  before: number | null,
+  after: number,
+  players: number
+): { from: number; to: number } | null => {
+  const last = Math.min(before ?? players, players, after + SOLO_ALERT_FANOUT);
+  return after < 1 || last <= after ? null : { from: after + 1, to: last };
 };
 
 /** Weekly points: every location's best this week, added up. */

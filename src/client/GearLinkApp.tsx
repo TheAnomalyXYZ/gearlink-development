@@ -400,6 +400,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
           profile: res.profile,
           leaderboard: res.leaderboard,
           solo: res.solo,
+          soloAlert: res.soloAlert,
           streak: res.streak,
           picked: ownedLoadout(s.heroClass, res.profile.gear),
           challenger: res.challenger,
@@ -1029,6 +1030,15 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       .then((r) => this.adopt(r.profile))
       .catch(() => undefined);
   };
+  /** The "you were passed" banner: tapping it opens the board to see who. */
+  openSoloAlert = (): void => {
+    this.dismissSoloAlert();
+    this.openBoard();
+  };
+  dismissSoloAlert = (): void => {
+    this.setState({ soloAlert: null });
+    void api.soloAlertSeen().catch(() => undefined);
+  };
   /** WEAR IT on the prize notice: put the new title flair on straight away. */
   wearSoloTitle = (): void => {
     const id = this.state.profile.soloTitle
@@ -1319,6 +1329,8 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         leaderboard: res.leaderboard,
         solo: res.soloBoard,
         runSolo: res.solo,
+        // The server cleared it: fighting again answers being passed.
+        soloAlert: null,
         coinsEarned: res.coinsEarned,
         chestBonusPct: res.chestBonusPct,
         runWon: res.won,
