@@ -12,6 +12,13 @@
  *   solo:{week}:passed:{userId} hash, passerId -> PassNote JSON, cleared
  *                               when the player fights again or reads it
  *
+ * And the same points again, per group (shared/engine/division.ts):
+ *
+ *   solo:{week}:seat:{div}      counter, seats taken in a division this week
+ *   solo:{week}:join:{userId}   counter, 1 once the player has been seated
+ *   solo:{week}:groupof         hash, userId -> "{div}:{n}"
+ *   solo:{week}:grp:{div}:{n}   sorted set, userId -> weekly points
+ *
  * The rules - what points are, who places - live in shared/engine/solo.ts.
  */
 import { redis } from '@devvit/web/server';
@@ -20,8 +27,16 @@ import type {
   SoloBoard,
   SoloChase,
   SoloEntry,
+  SoloGroupBoard,
   SoloRunResult,
 } from '../../shared/api.js';
+import {
+  DIVISIONS,
+  GROUP_SIZE,
+  divisionIndex,
+  groupZones,
+} from '../../shared/engine/division.js';
+import type { DivisionId } from '../../shared/engine/division.js';
 import { duelWeekOf } from '../../shared/engine/league.js';
 import {
   SOLO_BOARD_SIZE,
@@ -40,6 +55,22 @@ const metaKey = (week: number) => `solo:${week}:meta`;
 const bestKey = (week: number, userId: string) => `solo:${week}:best:${userId}`;
 const passedKey = (week: number, userId: string) =>
   `solo:${week}:passed:${userId}`;
+const seatKey = (week: number, div: DivisionId) => `solo:${week}:seat:${div}`;
+const joinKey = (week: number, userId: string) => `solo:${week}:join:${userId}`;
+const groupOfKey = (week: number) => `solo:${week}:groupof`;
+const grpKey = (week: number, ref: string) => `solo:${week}:grp:${ref}`;
+
+/** "gold:3" - a division and a group number within it, from 0. */
+const parseRef = (
+  ref: string | null | undefined
+): { div: DivisionId; n: number } | null => {
+  const [div, n] = (ref ?? '').split(':');
+  const d = DIVISIONS.find((x) => x.id === div);
+  const num = Number(n);
+  return d && n && Number.isInteger(num) && num >= 0
+    ? { div: d.id, n: num }
+    : null;
+};
 
 /** Long enough to settle a player who comes back weeks later, short enough
  *  not to pile up. */
@@ -103,6 +134,8 @@ export const recordSoloRun = async (
     chain: number;
     locationId: string;
     score: number;
+    /** The player's division, which seats them on their first run. */
+    division: DivisionId;
   }
 ): Promise<SoloRunResult> => {
   const week = soloWeekNow();
@@ -123,24 +156,74 @@ export const recordSoloRun = async (
     runs: (meta.runs ?? 0) + 1,
   };
   await redis.hSet(metaKey(week), { [userId]: JSON.stringify(next) });
-  // Where the run started from, to tell whoever it climbs past.
-  const before = gained > 0 ? await standing(week, userId) : null;
-  if (points > 0)
+  const ref = await joinGroup(week, userId, run.division);
+  const gk = ref ? grpKey(week, ref) : null;
+  // Where the run started in its group, to tell whoever it climbs past.
+  const before = gk && gained > 0 ? await standingIn(gk, userId) : null;
+  if (points > 0) {
     await redis.zAdd(lbKey(week), { member: userId, score: points });
+    if (gk) await redis.zAdd(gk, { member: userId, score: points });
+  }
   await redis.expire(metaKey(week), KEEP_S);
   await redis.expire(lbKey(week), KEEP_S);
+  if (gk) await redis.expire(gk, KEEP_S);
 
-  const { rank, players } = await standing(week, userId);
-  if (before && rank !== null)
-    await notifyPassed(week, userId, run.username, before.rank, rank, players);
+  const [{ rank, players }, inGroup] = await Promise.all([
+    standing(week, userId),
+    gk ? standingIn(gk, userId) : Promise.resolve(null),
+  ]);
+  if (gk && before && inGroup?.rank)
+    await notifyPassed(
+      week,
+      gk,
+      userId,
+      run.username,
+      before.rank,
+      inGroup.rank,
+      inGroup.players
+    );
   // Fighting again is the answer to being passed; the notice has done its job.
   await redis.del(passedKey(week, userId));
-  return { week, points, gained, rank, players };
+  return {
+    week,
+    points,
+    gained,
+    rank,
+    players,
+    groupRank: inGroup?.rank ?? null,
+    groupSize: inGroup?.players ?? 0,
+  };
+};
+
+/**
+ * The player's group this week, seating them in the first open one of their
+ * division on their first run. Seats are handed out by a counter, so groups
+ * fill one after another in the order players arrive. Null only for a run
+ * that raced the one doing the seating; the next run finds the seat.
+ */
+const joinGroup = async (
+  week: number,
+  userId: string,
+  div: DivisionId
+): Promise<string | null> => {
+  const have = await redis.hGet(groupOfKey(week), userId);
+  if (have) return have;
+  const first = (await redis.incrBy(joinKey(week, userId), 1)) === 1;
+  await redis.expire(joinKey(week, userId), KEEP_S);
+  // Lost the race: the winner may have written the seat by now.
+  if (!first) return (await redis.hGet(groupOfKey(week), userId)) ?? null;
+  const seat = await redis.incrBy(seatKey(week, div), 1);
+  const ref = div + ':' + Math.floor((seat - 1) / GROUP_SIZE);
+  await redis.hSet(groupOfKey(week), { [userId]: ref });
+  await redis.expire(seatKey(week, div), KEEP_S);
+  await redis.expire(groupOfKey(week), KEEP_S);
+  return ref;
 };
 
 /** Leave a note on each player a run just climbed past, for their next visit. */
 const notifyPassed = async (
   week: number,
+  key: string,
   userId: string,
   username: string,
   before: number | null,
@@ -149,7 +232,7 @@ const notifyPassed = async (
 ): Promise<void> => {
   const span = passedRanks(before, after, players);
   if (!span) return;
-  const rows = await redis.zRange(lbKey(week), span.from - 1, span.to - 1, {
+  const rows = await redis.zRange(key, span.from - 1, span.to - 1, {
     by: 'rank',
     reverse: true,
   });
@@ -164,7 +247,8 @@ const notifyPassed = async (
   );
 };
 
-/** Who passed a player this week since they last fought or looked. */
+/** Who passed a player in their group this week since they last fought or
+ *  looked. Ranks are the group's. */
 export const getSoloAlert = async (
   week: number,
   userId: string
@@ -174,15 +258,18 @@ export const getSoloAlert = async (
     .filter((n): n is PassNote => n !== null)
     .sort((a, b) => b.at - a.at);
   if (!notes.length) return null;
-  const { rank, players } = await standing(week, userId);
+  const ref = await redis.hGet(groupOfKey(week), userId);
+  if (!ref) return null;
+  const gk = grpKey(week, ref);
+  const { rank, players } = await standingIn(gk, userId);
   let above: SoloAlert['above'] = null;
   if (rank !== null && rank > 1) {
     const [rows, mine] = await Promise.all([
-      redis.zRange(lbKey(week), rank - 2, rank - 2, {
+      redis.zRange(gk, rank - 2, rank - 2, {
         by: 'rank',
         reverse: true,
       }),
-      redis.zScore(lbKey(week), userId),
+      redis.zScore(gk, userId),
     ]);
     const row = rows[0];
     if (row)
@@ -208,18 +295,22 @@ export const dismissSoloAlert = async (userId: string): Promise<void> => {
   await redis.del(passedKey(soloWeekNow(), userId));
 };
 
-/** A player's 1-based rank in a week, highest first, and the ladder's size. */
-const standing = async (
-  week: number,
+/** A player's 1-based rank on a ladder, highest first, and its size. */
+const standingIn = async (
+  key: string,
   userId: string
 ): Promise<{ rank: number | null; players: number }> => {
   const [low, players] = await Promise.all([
-    redis.zRank(lbKey(week), userId),
-    redis.zCard(lbKey(week)),
+    redis.zRank(key, userId),
+    redis.zCard(key),
   ]);
   // zRank counts from the bottom; the ladder reads highest-first.
   return { rank: low === undefined ? null : players - low, players };
 };
+
+/** A player's 1-based rank in a week, subreddit-wide. */
+const standing = (week: number, userId: string) =>
+  standingIn(lbKey(week), userId);
 
 const entryOf = (
   rank: number,
@@ -368,8 +459,69 @@ export const titleHolders = async (
   rows.forEach((r, i) => {
     const m = parseMeta(metas[i]);
     const tier = soloTierFor(i + 1, players, m.runs ?? 0);
-    if (tier?.flairId && m.username)
+    if (tier && m.username)
       out.push({ userId: r.member, username: m.username, tier });
   });
   return out;
+};
+
+/** A player's group this week: the whole table, best first. Null until their
+ *  first run seats them. */
+export const getGroupBoard = async (
+  week: number,
+  viewerId: string
+): Promise<SoloGroupBoard | null> => {
+  const ref = await redis.hGet(groupOfKey(week), viewerId);
+  const at = parseRef(ref);
+  if (!ref || !at) return null;
+  const gk = grpKey(week, ref);
+  const rows = await redis.zRange(gk, 0, -1, { by: 'rank', reverse: true });
+  const metas = rows.length
+    ? await redis.hMGet(
+        metaKey(week),
+        rows.map((r) => r.member)
+      )
+    : [];
+  const entries = rows.map((r, i) =>
+    entryOf(i + 1, r.member, r.score, metas[i], viewerId)
+  );
+  let you = entries.find((e) => e.isYou) ?? null;
+  // Seated but not scored yet: still their group, with their battles counted.
+  if (!you) {
+    const raw = await redis.hGet(metaKey(week), viewerId);
+    if (raw) you = entryOf(0, viewerId, 0, raw, viewerId);
+  }
+  const size = entries.length;
+  const zones = groupZones(size, divisionIndex(at.div));
+  return {
+    week,
+    div: at.div,
+    group: at.n + 1,
+    endsAt: soloWeekStart(week + 1),
+    size,
+    entries,
+    you,
+    promote: zones.promote,
+    demote: zones.demote,
+  };
+};
+
+/** Where a player finished in their group, for the reset. Null for a week
+ *  they never fought in. */
+export const groupStanding = async (
+  week: number,
+  userId: string
+): Promise<{
+  div: DivisionId;
+  rank: number | null;
+  size: number;
+  runs: number;
+} | null> => {
+  const at = parseRef(await redis.hGet(groupOfKey(week), userId));
+  if (!at) return null;
+  const [{ rank, players }, raw] = await Promise.all([
+    standingIn(grpKey(week, at.div + ':' + at.n), userId),
+    redis.hGet(metaKey(week), userId),
+  ]);
+  return { div: at.div, rank, size: players, runs: parseMeta(raw).runs ?? 0 };
 };

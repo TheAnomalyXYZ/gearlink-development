@@ -63,6 +63,7 @@ import { coinBundleSku, packSku } from '../../shared/admin.js';
 import { getLeaderboard, recordScore } from '../core/leaderboard.js';
 import {
   dismissSoloAlert,
+  getGroupBoard,
   getSoloAlert,
   getSoloBoard,
   recordSoloRun,
@@ -158,6 +159,7 @@ api.get('/init', async (c) => {
     isModerator,
     chestWeek,
     solo,
+    soloGroup,
     soloAlert,
     streak,
   ] = await Promise.all([
@@ -172,6 +174,7 @@ api.get('/init', async (c) => {
     readWarChestWeek(me.postId).catch(() => null),
     // A short board: init only needs the viewer's row and the top few.
     getSoloBoard(soloWeekNow(), me.userId, 10),
+    getGroupBoard(soloWeekNow(), me.userId).catch(() => null),
     // A failed read only means no "you were passed" notice this visit.
     getSoloAlert(soloWeekNow(), me.userId).catch(() => null),
     loadStreak(me.userId),
@@ -186,6 +189,7 @@ api.get('/init', async (c) => {
     isModerator,
     warChestPost: chestWeek !== null,
     solo,
+    soloGroup,
     soloAlert,
     streak,
   });
@@ -197,11 +201,12 @@ api.get('/solo', async (c) => {
   const me = who();
   if (!me) return unauthorised(c);
   const week = soloWeekNow();
-  const [current, last] = await Promise.all([
+  const [current, last, group] = await Promise.all([
     getSoloBoard(week, me.userId),
     getSoloBoard(week - 1, me.userId),
+    getGroupBoard(week, me.userId),
   ]);
-  return c.json<SoloBoardsResponse>({ type: 'solo', current, last });
+  return c.json<SoloBoardsResponse>({ type: 'solo', current, last, group });
 });
 
 /** Last week's leaderboard prize was paid at the reset; this clears its notice. */
@@ -417,12 +422,14 @@ api.post('/run', async (c) => {
     chain: state.maxChain,
     locationId: locId,
     score,
+    division: profile.soloDiv,
   });
 
-  const [after, leaderboard, soloBoard] = await Promise.all([
+  const [after, leaderboard, soloBoard, soloGroup] = await Promise.all([
     loadProfile(me.userId, me.username).then((p) => syncFlairs(me.userId, p)),
     getLeaderboard(me.postId, me.userId),
     getSoloBoard(solo.week, me.userId, 10),
+    getGroupBoard(solo.week, me.userId),
   ]);
 
   return c.json<SubmitRunResponse>({
@@ -444,6 +451,7 @@ api.post('/run', async (c) => {
     leaderboard,
     solo,
     soloBoard,
+    soloGroup,
   });
 });
 

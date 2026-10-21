@@ -26,6 +26,7 @@ import type {
   Profile,
   SoloAlert,
   SoloBoard,
+  SoloGroupBoard,
   SoloRunResult,
   ProfileResponse,
   QuestBoard,
@@ -95,7 +96,7 @@ export type InvTab = 'packs' | 'gear';
 /** Bag > Gear filter chips: everything, only owned, or one effect kind. */
 export type GearFilter = 'all' | 'owned' | 'attack' | 'block' | 'effect';
 export type QuestTab = 'daily' | 'weekly';
-export type BoardTab = 'week' | 'last' | 'today' | 'rewards';
+export type BoardTab = 'group' | 'week' | 'last' | 'today' | 'rewards';
 
 export type AppState = {
   ready: boolean;
@@ -104,10 +105,13 @@ export type AppState = {
   leaderboard: LeaderboardEntry[];
   /** This week's solo leaderboard, short form - the floating button's badge. */
   solo: SoloBoard | null;
+  /** The player's group this week; null until their first run seats them. */
+  soloGroup: SoloGroupBoard | null;
   /** Both weeks in full, once the leaderboard sheet has fetched them. */
   soloBoards: { current: SoloBoard; last: SoloBoard } | null;
-  /** Which page the leaderboard sheet shows. 'today' is the Daily Battle
-   *  post's own ladder, offered only on one; 'rewards' is the title table. */
+  /** Which page the leaderboard sheet shows. 'group' is the player's own
+   *  division group, 'week' the whole subreddit. 'today' is the Daily Battle
+   *  post's own ladder, offered only on one; 'rewards' is the prize table. */
   boardTab: BoardTab;
   /** What the last banked battle did to the weekly leaderboard. */
   runSolo: SoloRunResult | null;
@@ -310,6 +314,7 @@ export const EMPTY_PROFILE: Profile = {
   duelWeekDuels: 0,
   duelPrize: null,
   soloPrize: null,
+  soloDiv: 'bronze',
   soloTitle: null,
   flairs: [],
   flair: null,
@@ -392,8 +397,9 @@ export const INITIAL_STATE: AppState = {
   profile: EMPTY_PROFILE,
   leaderboard: [],
   solo: null,
+  soloGroup: null,
   soloBoards: null,
-  boardTab: 'week',
+  boardTab: 'group',
   runSolo: null,
   soloAlert: null,
   phase: 'splash',

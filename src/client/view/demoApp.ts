@@ -41,6 +41,7 @@ export const profile: Profile = {
   duelWeekDuels: 1,
   duelPrize: null,
   soloPrize: null,
+  soloDiv: 'bronze',
   soloTitle: null,
   flairs: ['apprentice'],
   flair: 'apprentice',

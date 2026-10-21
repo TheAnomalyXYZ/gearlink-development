@@ -307,6 +307,46 @@ const Seat = ({ row, place }: { row: LbRow | null; place: number }) => {
   );
 };
 
+/** A division's name as a small coloured chip. */
+const DivisionChip = ({ name, color }: { name: string; color: string }) =>
+  name ? (
+    <div
+      style={{
+        flex: 'none',
+        padding: '2px 5px',
+        border: '2px solid #000',
+        borderRadius: '4px',
+        background: color,
+        fontFamily: PIXEL,
+        fontSize: '9px',
+        lineHeight: '1',
+        color: '#000',
+      }}
+    >
+      {name}
+    </div>
+  ) : null;
+
+/** The promotion or drop line across a group's table. */
+const ZoneLine = ({ label, up }: { label: string; up: boolean }) => (
+  <div
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px',
+      margin: '4px 0',
+      fontFamily: PIXEL,
+      fontSize: '9px',
+      letterSpacing: '.08em',
+      color: up ? '#AEE45D' : '#FF5A4E',
+    }}
+  >
+    <div style={{ flex: '1', height: '2px', background: 'currentColor' }} />
+    {(up ? '^ ' : 'v ') + label}
+    <div style={{ flex: '1', height: '2px', background: 'currentColor' }} />
+  </div>
+);
+
 const Row = ({ r, i }: { r: LbRow; i: number }) => (
   <div
     className="gl-lb-row"
@@ -318,6 +358,9 @@ const Row = ({ r, i }: { r: LbRow; i: number }) => (
       padding: '6px 8px',
       boxSizing: 'border-box',
       border: `2px solid ${r.isYou ? '#AEE45D' : '#000000'}`,
+      borderLeft: r.zone
+        ? `5px solid ${r.zone === 'up' ? '#AEE45D' : '#FF5A4E'}`
+        : undefined,
       borderRadius: '8px 2px 8px 2px',
       background: r.isYou
         ? 'linear-gradient(90deg, rgba(174,228,93,.22), rgba(29,41,86,.95) 60%)'
@@ -563,6 +606,12 @@ const TierCard = ({ t, i }: { t: LbTierCard; i: number }) => (
   </div>
 );
 
+const SectionTitle = ({ text }: { text: string }) => (
+  <div style={{ marginTop: '4px', ...stroked('13px', '#FCE370', 3) }}>
+    {text}
+  </div>
+);
+
 const Rewards = ({ lb }: { lb: LbView }) => (
   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
     {lb.lbTitleHeld ? (
@@ -585,6 +634,55 @@ const Rewards = ({ lb }: { lb: LbView }) => (
         {lb.lbTitleHeld}
       </div>
     ) : null}
+    <SectionTitle text="YOUR GROUP PAYS" />
+    {lb.lbBands.map((t, i) => (
+      <TierCard key={t.id} t={t} i={i} />
+    ))}
+    <SectionTitle text="DIVISIONS" />
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+      {lb.lbDivs.map((d) => (
+        <div
+          key={d.id}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            minHeight: '34px',
+            padding: '4px 8px',
+            border: `2px solid ${d.current ? d.color : '#000'}`,
+            borderRadius: '8px 2px 8px 2px',
+            background: '#1D2956',
+          }}
+        >
+          <DivisionChip name={d.name} color={d.color} />
+          {d.current ? (
+            <div style={{ fontFamily: PIXEL, fontSize: '9px', color: d.color }}>
+              YOU
+            </div>
+          ) : null}
+          <div
+            style={{
+              marginLeft: 'auto',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+            }}
+          >
+            {d.bonus.length ? (
+              <div
+                style={{ fontFamily: BODY, fontSize: '7px', color: '#7F93B8' }}
+              >
+                FIRST TIME
+              </div>
+            ) : null}
+            {d.bonus.map((r, k) => (
+              <RewardChip key={k} r={r} />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+    <SectionTitle text="SUBREDDIT TITLES" />
     {lb.lbTiers.map((t, i) => (
       <TierCard key={t.id} t={t} i={i} />
     ))}
@@ -697,7 +795,10 @@ export const LeaderboardSheet = ({
             <TrophyIcon size={30} />
           </div>
           <div style={{ flex: '1', minWidth: '0' }}>
-            <div style={stroked('22px', '#FFF2B0', 5)}>LEADERBOARD</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={stroked('22px', '#FFF2B0', 5)}>LEADERBOARD</div>
+              <DivisionChip name={lb.lbBadge} color={lb.lbBadgeColor} />
+            </div>
             <div
               style={{
                 marginTop: '5px',
@@ -837,7 +938,19 @@ export const LeaderboardSheet = ({
                 style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}
               >
                 {lb.lbRows.map((r, i) => (
-                  <Row key={r.key} r={r} i={i} />
+                  <Fragment key={r.key}>
+                    {/* Drawn below the podium only: a zone that ends inside it is
+                        told in the note instead. */}
+                    {lb.lbZoneUpLabel &&
+                    lb.lbZoneUp >= 3 &&
+                    r.rank === lb.lbZoneUp + 1 ? (
+                      <ZoneLine label={lb.lbZoneUpLabel} up />
+                    ) : null}
+                    {lb.lbZoneDown && r.rank === lb.lbZoneDown ? (
+                      <ZoneLine label={lb.lbZoneDownLabel} up={false} />
+                    ) : null}
+                    <Row r={r} i={i} />
+                  </Fragment>
                 ))}
               </div>
             </>
@@ -1155,9 +1268,24 @@ export const SoloPrizeNotice = ({
             textAlign: 'center',
           }}
         >
-          You finished {hashSafe(lb.soloPrizeRank)} last week. Your prize is
-          already in your bag.
+          {hashSafe(lb.soloPrizeLine)}
         </div>
+        {lb.soloPrizeDiv ? (
+          <div
+            style={{
+              position: 'relative',
+              padding: '4px 10px',
+              border: '2px solid #000',
+              borderRadius: '6px 2px 6px 2px',
+              background: lb.soloPrizeDivColor,
+              fontFamily: PIXEL,
+              fontSize: '13px',
+              color: '#000',
+            }}
+          >
+            {lb.soloPrizeDiv}
+          </div>
+        ) : null}
         {lb.soloPrizeFlair ? (
           <div
             style={{

@@ -17,9 +17,20 @@ import {
 import { settlePrize } from '../../shared/engine/season.js';
 import type { SeasonPrize } from '../../shared/engine/season.js';
 import { removeFromPool } from './duelpool.js';
-import { finalStanding } from './solo.js';
+import { finalStanding, groupStanding } from './solo.js';
 import { soloTierById, titleIsLive } from '../../shared/engine/solo.js';
 import type { SoloPrize, SoloTitle } from '../../shared/engine/solo.js';
+import {
+  bandRewards,
+  divisionAt,
+  divisionIndex,
+  groupBandById,
+  groupBandFor,
+  groupOutcome,
+  stepDivision,
+} from '../../shared/engine/division.js';
+import type { DivState, GroupResult } from '../../shared/engine/division.js';
+import type { QuestReward } from '../../shared/engine/quests.js';
 import { weeklyFlairFor } from '../../shared/engine/flair.js';
 import { MAP_LENGTH, MAX_ASCENSION } from '../../shared/engine/campaign.js';
 import { normaliseHearts } from '../../shared/engine/hearts.js';
@@ -155,17 +166,35 @@ const parsePrize = (raw: string | undefined): SeasonPrize | null => {
   }
 };
 
+const parseGroupResult = (g: unknown): GroupResult | null => {
+  if (!g || typeof g !== 'object') return null;
+  const r = Object.fromEntries(Object.entries(g));
+  if (r.outcome !== 'promote' && r.outcome !== 'hold' && r.outcome !== 'demote')
+    return null;
+  return {
+    div: divisionAt(divisionIndex(r.div)).id,
+    rank: Number(r.rank) || 0,
+    size: Number(r.size) || 0,
+    band: groupBandById(String(r.band))?.id ?? null,
+    outcome: r.outcome,
+    to: divisionAt(divisionIndex(r.to)).id,
+  };
+};
+
 const parseSoloPrize = (raw: string | undefined): SoloPrize | null => {
   if (!raw) return null;
   try {
     const p = JSON.parse(raw) as Partial<SoloPrize>;
-    if (typeof p.week !== 'number' || !soloTierById(String(p.tier)))
-      return null;
+    if (typeof p.week !== 'number') return null;
+    const tier = soloTierById(String(p.tier))?.id ?? null;
+    const group = parseGroupResult(p.group);
+    if (!tier && !group) return null;
     return {
       week: p.week,
       rank: Number(p.rank) || 0,
-      tier: p.tier!,
+      tier,
       rewards: Array.isArray(p.rewards) ? p.rewards : [],
+      group,
     };
   } catch {
     return null;
@@ -259,38 +288,78 @@ export const loadProfile = async (
 
   /* The solo leaderboard settles the same lazy way: the first read in a new
      week looks up where the player finished every week since the last one it
-     checked, pays each placing once, and hands out last week's title. */
+     checked - subreddit-wide for a title, in their group for the division
+     and its prize - pays each week once, and hands out last week's title. */
   let soloPrize = parseSoloPrize(h['soloPrize']);
   let soloTitle = parseSoloTitle(h['soloTitle']);
+  let divs: DivState = {
+    div: divisionIndex(h['soloDiv']),
+    idle: Math.max(0, num(h['soloDivIdle'], 0)),
+    best: Math.max(0, num(h['soloDivBest'], 0)),
+  };
   if (h['soloSettled'] !== String(week - 1)) {
     const fields: Record<string, string> = { soloSettled: String(week - 1) };
-    const from = Math.max(
-      num(h['soloSettled'], week - 2) + 1,
-      week - SOLO_LOOKBACK
-    );
+    const settled = num(h['soloSettled'], week - 2);
+    const from = Math.max(settled + 1, week - SOLO_LOOKBACK);
+    // Weeks too old to read back were not played in any ladder still kept.
+    for (let w = settled + 1; w < from; w++)
+      divs = stepDivision(divs, null).next;
     for (let w = from; w <= week - 1; w++) {
-      const placed = await finalStanding(w, userId).catch(() => null);
-      if (!placed || !(await claimSoloWeek(userId, w))) continue;
-      for (const r of placed.tier.rewards) {
+      const [placed, grp] = await Promise.all([
+        finalStanding(w, userId).catch(() => null),
+        groupStanding(w, userId).catch(() => null),
+      ]);
+      // The division the week was played in, as seated.
+      const div = grp ? divisionIndex(grp.div) : divs.div;
+      const outcome = grp
+        ? groupOutcome(grp.rank, grp.size, grp.runs, div)
+        : null;
+      const stepped = stepDivision({ ...divs, div }, outcome);
+      divs = stepped.next;
+      const band = grp ? groupBandFor(grp.rank, grp.size, grp.runs) : null;
+      const rewards: QuestReward[] = [
+        ...(placed?.tier.rewards ?? []),
+        ...(band ? bandRewards(band, div) : []),
+        ...stepped.bonus,
+      ];
+      // A quiet week - seated, held, nothing earned - needs no notice.
+      if (!rewards.length && outcome !== 'promote' && outcome !== 'demote')
+        continue;
+      if (!(await claimSoloWeek(userId, w))) continue;
+      for (const r of rewards) {
         if (r.kind === 'coins') coins += r.amount;
         else if (r.kind === 'gems') gems += r.amount;
         else packs = { ...packs, [r.packId]: (packs[r.packId] ?? 0) + 1 };
       }
       soloPrize = {
         week: w,
-        rank: placed.rank,
-        tier: placed.tier.id,
-        rewards: placed.tier.rewards,
+        rank: placed?.rank ?? 0,
+        tier: placed?.tier.id ?? null,
+        rewards,
+        group:
+          grp && outcome
+            ? {
+                div: grp.div,
+                rank: grp.rank ?? 0,
+                size: grp.size,
+                band: band?.id ?? null,
+                outcome,
+                to: divisionAt(divs.div).id,
+              }
+            : null,
       };
       fields['coins'] = String(coins);
       fields['gems'] = String(gems);
       fields['packs'] = JSON.stringify(packs);
       fields['soloPrize'] = JSON.stringify(soloPrize);
-      if (w === week - 1 && placed.tier.flairId) {
+      if (w === week - 1 && placed) {
         soloTitle = { tier: placed.tier.id, week: w, rank: placed.rank };
         fields['soloTitle'] = JSON.stringify(soloTitle);
       }
     }
+    fields['soloDiv'] = divisionAt(divs.div).id;
+    fields['soloDivIdle'] = String(divs.idle);
+    fields['soloDivBest'] = String(divs.best);
     await redis.hSet(profileKey(userId), fields);
   }
   if (!titleIsLive(soloTitle, week)) soloTitle = null;
@@ -318,6 +387,7 @@ export const loadProfile = async (
     duelWeekDuels: duels,
     duelPrize: prize,
     soloPrize,
+    soloDiv: divisionAt(divs.div).id,
     soloTitle,
     // Banked unlocks, plus the weekly title flair while it is held.
     flairs: [

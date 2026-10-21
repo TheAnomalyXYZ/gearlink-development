@@ -400,6 +400,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
           profile: res.profile,
           leaderboard: res.leaderboard,
           solo: res.solo,
+          soloGroup: res.soloGroup,
           soloAlert: res.soloAlert,
           streak: res.streak,
           picked: ownedLoadout(s.heroClass, res.profile.gear),
@@ -1015,6 +1016,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       this.setState((s) => ({
         soloBoards: { current: res.current, last: res.last },
         solo: res.current,
+        soloGroup: res.group,
         leaderboard: today ? today.leaderboard : s.leaderboard,
       }));
     } catch {
@@ -1328,6 +1330,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         profile: res.profile,
         leaderboard: res.leaderboard,
         solo: res.soloBoard,
+        soloGroup: res.soloGroup,
         runSolo: res.solo,
         // The server cleared it: fighting again answers being passed.
         soloAlert: null,

@@ -12,18 +12,19 @@
  *   - Grinding does not: only a location's BEST counts, so replaying the same
  *     fight only moves the ladder by however much it beat that best.
  *
- * The top ten take a TITLE: a subreddit flair only that week's top players can
- * wear, held for the following week and then gone unless it is defended. The
- * crown has to out-pay a week of daily logins, or the login calendar is the
- * better use of the week, so the titles pay real packs - but never gems,
- * which stay a quest and shop currency.
+ * The same points are ranked twice. Subreddit-wide, the top ten take a TITLE:
+ * a subreddit flair only that week's top players can wear, held for the
+ * following week and then gone unless it is defended. The crown has to
+ * out-pay a week of daily logins, or the login calendar is the better use of
+ * the week, so the titles pay real packs - but never gems, which stay a quest
+ * and shop currency.
  *
- * Below the titles, every player who qualifies still banks something, by how
- * far up the ladder they finished - so a mid-table week is worth finishing
- * and a rank lost midweek is worth taking back.
+ * Everyone also plays inside a small GROUP of their own division, where the
+ * week's prize and the promotion or drop are decided - see division.ts.
  */
 import type { QuestReward } from './quests.js';
 import { rewardLabel } from './quests.js';
+import type { GroupResult } from './division.js';
 
 const DAY_MS = 86_400_000;
 
@@ -34,25 +35,71 @@ export const SOLO_MIN_RUNS = 3;
 /** How many rows the board shows. Everyone else still sees their own rank. */
 export const SOLO_BOARD_SIZE = 50;
 
-export type SoloTierId =
-  'champion' | 'podium' | 'top10' | 'top25' | 'top50' | 'finisher';
-
-/** Where a tier stops: a fixed place for the titles, a share of the ladder
- *  for the bands below them. */
+/** Where a tier stops: a fixed place, or a share of the ladder. */
 export type SoloCut =
   { kind: 'rank'; rank: number } | { kind: 'share'; pct: number };
 
-export type SoloTier = {
-  id: SoloTierId;
-  /** How the tier reads in the board, e.g. "CHAMPION". */
-  name: string;
+/** A prize tier on some ladder: the titles on the subreddit's, the bands on a
+ *  group's. */
+export type CutTier = {
   cut: SoloCut;
   /** Players the ladder needs before this tier pays at all - on a five-player
    *  week, "top ten" is everyone, and that is not a title. */
   minPlayers: number;
-  /** The weekly flair this tier lets its holders wear. Null for the bands
-   *  below the titles, which pay but do not crown. */
-  flairId: string | null;
+};
+
+/** The lowest rank that still earns a tier on a ladder this size. */
+export const tierCut = (tier: CutTier, players: number): number =>
+  tier.cut.kind === 'rank'
+    ? tier.cut.rank
+    : Math.max(1, Math.ceil(players * tier.cut.pct));
+
+/** The tier a final standing earns from a best-first list, or null. */
+export const tierFor = <T extends CutTier>(
+  tiers: T[],
+  rank: number | null,
+  players: number,
+  runs: number
+): T | null => {
+  if (rank === null || rank < 1 || runs < SOLO_MIN_RUNS) return null;
+  return (
+    tiers.find((t) => players >= t.minPlayers && rank <= tierCut(t, players)) ??
+    null
+  );
+};
+
+/** The next tier up from where a player stands - the closest one that pays
+ *  better and is open on a ladder this size - and the rank that earns it.
+ *  Null at the top. A player still short of SOLO_MIN_RUNS chases the tier
+ *  their rank would already earn, since only the battles are missing. */
+export const nextTier = <T extends CutTier>(
+  tiers: T[],
+  rank: number,
+  players: number,
+  runs: number
+): { tier: T; rank: number } | null => {
+  if (rank < 1) return null;
+  const now = tierFor(tiers, rank, players, runs);
+  const better = tiers
+    .slice(0, now ? tiers.indexOf(now) : undefined)
+    .filter((t) => players >= t.minPlayers)
+    .map((t) => ({ tier: t, rank: tierCut(t, players) }));
+  if (runs < SOLO_MIN_RUNS) {
+    const fits = better.filter((b) => rank <= b.rank);
+    if (fits.length) return fits[0]!;
+  }
+  const ahead = better.filter((b) => b.rank < rank);
+  return ahead.length ? ahead[ahead.length - 1]! : null;
+};
+
+export type SoloTierId = 'champion' | 'podium' | 'top10';
+
+export type SoloTier = CutTier & {
+  id: SoloTierId;
+  /** How the title reads in the board, e.g. "CHAMPION". */
+  name: string;
+  /** The weekly flair this tier lets its holders wear. */
+  flairId: string;
   color: string;
   rewards: QuestReward[];
 };
@@ -95,83 +142,25 @@ export const SOLO_TIERS: SoloTier[] = [
       { kind: 'pack', packId: 'base' },
     ],
   },
-  {
-    id: 'top25',
-    name: 'TOP 25%',
-    cut: { kind: 'share', pct: 0.25 },
-    minPlayers: 8,
-    flairId: null,
-    color: '#7FD3FF',
-    rewards: [{ kind: 'coins', amount: 150 }],
-  },
-  {
-    id: 'top50',
-    name: 'TOP 50%',
-    cut: { kind: 'share', pct: 0.5 },
-    minPlayers: 4,
-    flairId: null,
-    color: '#9DB4D4',
-    rewards: [{ kind: 'coins', amount: 100 }],
-  },
-  {
-    id: 'finisher',
-    name: 'FINISHER',
-    cut: { kind: 'share', pct: 1 },
-    minPlayers: 1,
-    flairId: null,
-    color: '#7F93B8',
-    rewards: [{ kind: 'coins', amount: 60 }],
-  },
 ];
-
-/** The lowest rank that still earns a tier on a ladder this size. */
-export const soloTierCut = (tier: SoloTier, players: number): number =>
-  tier.cut.kind === 'rank'
-    ? tier.cut.rank
-    : Math.max(1, Math.ceil(players * tier.cut.pct));
-
-/** The tiers that crown: their holders wear a flair for the week after. */
-export const isSoloTitle = (tier: SoloTier | null): boolean =>
-  !!tier && tier.flairId !== null;
 
 export const soloTierById = (id: string): SoloTier | null =>
   SOLO_TIERS.find((t) => t.id === id) ?? null;
 
-/** The tier a final standing earns, or null for none. */
+/** The title a final subreddit-wide standing earns, or null for none. */
 export const soloTierFor = (
   rank: number | null,
   players: number,
   runs: number
-): SoloTier | null => {
-  if (rank === null || rank < 1 || runs < SOLO_MIN_RUNS) return null;
-  return (
-    SOLO_TIERS.find(
-      (t) => players >= t.minPlayers && rank <= soloTierCut(t, players)
-    ) ?? null
-  );
-};
+): SoloTier | null => tierFor(SOLO_TIERS, rank, players, runs);
 
-/** The next tier up from where a player stands - the closest one that pays
- *  better and is open on a ladder this size - and the rank that earns it.
- *  Null at the top. A player still short of SOLO_MIN_RUNS chases the tier
- *  their rank would already earn, since only the battles are missing. */
+/** The next title up from a subreddit-wide standing. */
 export const nextSoloTier = (
   rank: number,
   players: number,
   runs: number
-): { tier: SoloTier; rank: number } | null => {
-  if (rank < 1) return null;
-  const now = soloTierFor(rank, players, runs);
-  const better = SOLO_TIERS.slice(0, now ? SOLO_TIERS.indexOf(now) : undefined)
-    .filter((t) => players >= t.minPlayers)
-    .map((t) => ({ tier: t, rank: soloTierCut(t, players) }));
-  if (runs < SOLO_MIN_RUNS) {
-    const fits = better.filter((b) => rank <= b.rank);
-    if (fits.length) return fits[0]!;
-  }
-  const ahead = better.filter((b) => b.rank < rank);
-  return ahead.length ? ahead[ahead.length - 1]! : null;
-};
+): { tier: SoloTier; rank: number } | null =>
+  nextTier(SOLO_TIERS, rank, players, runs);
 
 /** The last stretch of the week, when the board warns who is about to lose
  *  a place. */
@@ -224,9 +213,15 @@ export type SoloTitle = { tier: SoloTierId; week: number; rank: number };
 /** Last week's placing, already paid, until its notice is dismissed. */
 export type SoloPrize = {
   week: number;
+  /** Where the week finished subreddit-wide; 0 for off the ladder. */
   rank: number;
-  tier: SoloTierId;
+  /** The title that finish earned, if any. */
+  tier: SoloTierId | null;
+  /** Everything the week paid: the title, the group finish, and any
+   *  first-time promotion bonus. */
   rewards: QuestReward[];
+  /** How the week went in the player's group, if they played in one. */
+  group: GroupResult | null;
 };
 
 /** "+300 coins, BRONZE PACK" - one line for a tier's bundle. */

@@ -4,6 +4,7 @@ import type { PulledCard } from './engine/economy.js';
 import type { DuelFoe } from './engine/duel.js';
 import type { SeasonPrize } from './engine/season.js';
 import type { SoloPrize, SoloTierId, SoloTitle } from './engine/solo.js';
+import type { DivisionId } from './engine/division.js';
 import type { QuestPeriod, QuestReward } from './engine/quests.js';
 import type { XpResult } from './engine/level.js';
 import type { StreakView } from './engine/streak.js';
@@ -53,6 +54,8 @@ export type Profile = {
   /** Last week's leaderboard prize, already paid, until the notice is
    *  dismissed. */
   soloPrize: SoloPrize | null;
+  /** The weekly division this player plays their group in. */
+  soloDiv: DivisionId;
   /** The leaderboard title this player holds this week, or null. Its flair is
    *  in `flairs` for exactly as long as this is set. */
   soloTitle: SoloTitle | null;
@@ -123,8 +126,8 @@ export type SoloBoard = {
  *  points whoever holds that rank has now. */
 export type SoloChase = { tier: SoloTierId; rank: number; points: number };
 
-/** Who passed the viewer on this week's ladder since they last played or
- *  looked - the reason to come back and take the place again. */
+/** Who passed the viewer in their group since they last played or looked -
+ *  the reason to come back and take the place again. Ranks are the group's. */
 export type SoloAlert = {
   week: number;
   /** Newest first, at most three. */
@@ -145,12 +148,34 @@ export type SoloRunResult = {
   gained: number;
   rank: number | null;
   players: number;
+  /** The same, in the player's group. */
+  groupRank: number | null;
+  groupSize: number;
+};
+
+/** A player's group this week, in full. */
+export type SoloGroupBoard = {
+  week: number;
+  div: DivisionId;
+  /** 1-based within the division, for "GROUP 3". */
+  group: number;
+  endsAt: number;
+  /** Players in the group who have scored. */
+  size: number;
+  entries: SoloEntry[];
+  you: SoloEntry | null;
+  /** The last rank that promotes and the first rank that drops; 0 for a
+   *  zone the group does not have. */
+  promote: number;
+  demote: number;
 };
 
 export type SoloBoardsResponse = {
   type: 'solo';
   current: SoloBoard;
   last: SoloBoard;
+  /** Null until the viewer's first run this week seats them. */
+  group: SoloGroupBoard | null;
 };
 
 /** A Daily Battle post's fight: its number, the location it is fought at,
@@ -174,7 +199,9 @@ export type InitResponse = {
   warChestPost: boolean;
   /** This week's solo leaderboard, for the floating button's badge. */
   solo: SoloBoard;
-  /** Players who passed the viewer on this week's board, if any did. */
+  /** The viewer's group this week, if they are seated in one. */
+  soloGroup: SoloGroupBoard | null;
+  /** Players who passed the viewer in their group, if any did. */
   soloAlert: SoloAlert | null;
   /** The daily login streak, and whether today's reward is waiting. */
   streak: StreakView;
@@ -230,6 +257,7 @@ export type SubmitRunResponse = {
   /** What the battle did on the weekly solo leaderboard. */
   solo: SoloRunResult;
   soloBoard: SoloBoard;
+  soloGroup: SoloGroupBoard | null;
 };
 
 /** Spend three pieces on one more container for this class. */
