@@ -10,6 +10,7 @@ export * from './league.js';
 export * from './monsters.js';
 export * from './quests.js';
 export * from './replay.js';
+export * from './revive.js';
 export * from './rng.js';
 export * from './run.js';
 export * from './types.js';

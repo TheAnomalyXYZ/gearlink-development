@@ -354,6 +354,13 @@ export class Run {
     return e.strength;
   }
 
+  /** CONTINUE: back on your feet at full HP against the same monster, its
+   *  charge reset so the first beat is yours. The board, the wave and the
+   *  score so far stand. Draws nothing off the RNG stream. */
+  revive(bs: RunState): RunState {
+    return { ...bs, playerHp: this.maxHp(), block: 0, meter: 0 };
+  }
+
   /** One turn. `move` is either a drawn link of >= MIN_LINK cells, or a single
    *  cell holding a bomb. Returns null for an illegal move, which is how the
    *  server rejects a forged submission. */

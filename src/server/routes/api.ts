@@ -25,6 +25,7 @@ import type {
   Profile,
   ProfileResponse,
   QuestsResponse,
+  ReviveRunRequest,
   SoloBoardsResponse,
   StreakClaimResponse,
   SubmitRunRequest,
@@ -86,6 +87,12 @@ import {
 } from '../core/post.js';
 import { readDailyBattle, readPoster } from '../core/daily.js';
 import {
+  clearPaidRevives,
+  notePaidRevive,
+  paidRevives,
+  releasePaidRevive,
+} from '../core/revive.js';
+import {
   claimQuest,
   loadQuestBoard,
   recordQuestEvents,
@@ -117,6 +124,7 @@ import {
   donationIsLegal,
   duelRefreshCost,
   verifyRun,
+  reviveCost,
   applyXp,
   xpLines,
   GEAR_BY_ID,
@@ -325,6 +333,16 @@ api.post('/run', async (c) => {
       { status: 'error', message: 'run rejected: ' + replay.reason },
       400
     );
+  // Every CONTINUE the transcript spends has to have been bought already.
+  if (
+    replay.revives > 0 &&
+    replay.revives > (await paidRevives(me.userId, body.seed))
+  )
+    return c.json<ErrorResponse>(
+      { status: 'error', message: 'run rejected: unpaid revive' },
+      400
+    );
+  await clearPaidRevives(me.userId, body.seed);
 
   const { score, state, won, waveCount } = replay;
   // The subreddit's war chest pays every battle a share more while it is full.
@@ -453,6 +471,48 @@ api.post('/run', async (c) => {
     soloBoard,
     soloGroup,
   });
+});
+
+/**
+ * CONTINUE: buy one more revive for the battle in progress. The coins come off
+ * here; the revive itself is a move in the transcript, which the run's
+ * submission may only spend as many times as this has been paid.
+ */
+api.post('/run/revive', async (c) => {
+  const me = who();
+  if (!me) return unauthorised(c);
+  const body = (await c.req
+    .json()
+    .catch(() => null)) as ReviveRunRequest | null;
+  const seed = body?.seed;
+  if (
+    typeof seed !== 'number' ||
+    !Number.isInteger(seed) ||
+    seed < 0 ||
+    seed > 0xffffffff
+  )
+    return c.json<ErrorResponse>({ status: 'error', message: 'bad body' }, 400);
+
+  const n = await notePaidRevive(me.userId, seed);
+  const cost = reviveCost(n - 1);
+  const profile = await loadProfile(me.userId, me.username);
+  if (cost === null || profile.coins < cost) {
+    await releasePaidRevive(me.userId, seed);
+    return c.json<ErrorResponse>(
+      {
+        status: 'error',
+        message:
+          cost === null
+            ? 'No more continues this battle.'
+            : 'Not enough coins to continue (' + cost + ' coins).',
+      },
+      400
+    );
+  }
+  await saveProfile(me.userId, { coins: profile.coins - cost });
+  await recordSpend(me.userId, me.username, 'revive', 'coins', cost);
+  const after = await loadProfile(me.userId, me.username);
+  return c.json<ProfileResponse>(profileJson(after, 'Back on your feet.'));
 });
 
 /**

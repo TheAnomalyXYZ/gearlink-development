@@ -130,6 +130,10 @@ export type AppState = {
   /** The war chest bonus the last banked battle was paid at, in percent. */
   chestBonusPct: number;
   endReason: 'dead' | 'stuck' | 'ended' | 'won' | null;
+  /** The CONTINUE offer on the frozen board after a death: what the next
+   *  revive costs, how many this battle has had, and whether one is being
+   *  paid for. Null when no offer is up. */
+  revive: { cost: number; used: number; paying: boolean } | null;
 
   /** The map node the next run is for. Chosen on the map, kept through the
    *  hero and gear steps, and sent with the transcript. */
@@ -346,6 +350,7 @@ export const BOARD_FX_RESET = {
 export const BATTLE_RESET = {
   ...BOARD_FX_RESET,
   endReason: null,
+  revive: null,
   hitWho: null,
   arming: [],
   detonating: [],

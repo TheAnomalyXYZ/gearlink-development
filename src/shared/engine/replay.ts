@@ -17,6 +17,7 @@ import { CELLS, MIN_LINK } from './constants.js';
 import { MAX_HEART_CONTAINERS } from './hearts.js';
 import { loadoutIsLegal } from './gear.js';
 import { GEAR_MAX_LEVEL } from './upgrade.js';
+import { REVIVE_COSTS, isReviveMove } from './revive.js';
 import { Run, battleScore, scoreOf } from './run.js';
 import type { HeroClass, RunState } from './types.js';
 
@@ -57,6 +58,9 @@ export type ReplayResult =
       won: boolean;
       /** How many waves the battle was planned for. */
       waveCount: number;
+      /** How many CONTINUEs the transcript spent. The caller checks this
+       *  against what was paid for. */
+      revives: number;
     }
   | { ok: false; reason: string };
 
@@ -94,6 +98,7 @@ export const verifyRun = (sub: RunSubmission): ReplayResult => {
   if (sub.moves.length > MAX_RUN_MOVES)
     return { ok: false, reason: 'too many moves' };
   for (const m of sub.moves) {
+    if (Array.isArray(m) && isReviveMove(m)) continue;
     if (!isCellList(m)) return { ok: false, reason: 'malformed move' };
     if (m.length !== 1 && m.length < MIN_LINK)
       return { ok: false, reason: 'short link' };
@@ -110,10 +115,22 @@ export const verifyRun = (sub: RunSubmission): ReplayResult => {
   });
   let state = run.start();
   let ended: 'dead' | 'stuck' | 'ended' | 'won' = 'ended';
+  let revives = 0;
 
   for (let i = 0; i < sub.moves.length; i++) {
+    const move = sub.moves[i]!;
+    // A revive only ever follows a death, and only so many per battle.
+    if (isReviveMove(move)) {
+      if (ended !== 'dead') return { ok: false, reason: 'revive while alive' };
+      if (revives >= REVIVE_COSTS.length)
+        return { ok: false, reason: 'too many revives' };
+      revives++;
+      state = run.revive(state);
+      ended = 'ended';
+      continue;
+    }
     if (ended !== 'ended') return { ok: false, reason: 'move after run ended' };
-    const out = run.step(state, sub.moves[i]!);
+    const out = run.step(state, move);
     // An illegal move means the client is not replaying the board this engine
     // produced - that is the whole signal, so the run is rejected outright.
     if (!out) return { ok: false, reason: 'illegal move at ' + i };
@@ -132,5 +149,6 @@ export const verifyRun = (sub: RunSubmission): ReplayResult => {
     ended,
     won: ended === 'won',
     waveCount: run.waveCount,
+    revives,
   };
 };

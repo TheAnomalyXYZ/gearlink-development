@@ -116,6 +116,7 @@ import * as fx from '../fx/fx.js';
 import { syncPackStage } from '../fx/packStage.js';
 import * as fxs from '../fx/screens.js';
 import * as gearUp from '../fx/gearUpgrade.js';
+import { reviveUi } from './reviveView.js';
 import {
   DUEL_SETUP_PHASE,
   FTUE_COPY,
@@ -3524,6 +3525,7 @@ export const buildView = (app: GearLinkApp): View => {
     modalOpen: !!st.modal && st.modal !== 'board',
     lb: leaderboardView(st, app),
     streak: streakUi(st, app),
+    revive: reviveUi(st, app),
     modalTitle,
     modalRows,
     modalActions,

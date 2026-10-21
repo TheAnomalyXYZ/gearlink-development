@@ -226,6 +226,11 @@ export type SubmitRunRequest = {
   levels: number[];
 };
 
+/** CONTINUE: pay for one more revive in the battle with this seed. */
+export type ReviveRunRequest = {
+  seed: number;
+};
+
 export type SubmitRunResponse = {
   type: 'run';
   /** The score the server's replay produced, scaled by map depth and ascension. */

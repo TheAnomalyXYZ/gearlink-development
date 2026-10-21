@@ -23,6 +23,7 @@ import type {
   OpenPackResponse,
   ProfileResponse,
   QuestsResponse,
+  ReviveRunRequest,
   StreakClaimResponse,
   SubmitRunRequest,
   SubmitRunResponse,
@@ -69,6 +70,8 @@ export const api = {
   soloPrizeSeen: () => call<ProfileResponse>('/solo/prize/seen', {}),
   soloAlertSeen: () => call<{ ok: boolean }>('/solo/alert/seen', {}),
   submitRun: (run: SubmitRunRequest) => call<SubmitRunResponse>('/run', run),
+  reviveRun: (req: ReviveRunRequest) =>
+    call<ProfileResponse>('/run/revive', req),
   buyPack: (packId: string) => call<ProfileResponse>('/shop/pack', { packId }),
   applyHeart: (req: ApplyHeartRequest) =>
     call<ProfileResponse>('/hearts/apply', req),

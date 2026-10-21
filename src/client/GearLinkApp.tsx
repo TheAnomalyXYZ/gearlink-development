@@ -75,7 +75,11 @@ import {
   mulberry32,
   orbTypeOf,
   ownedLoadout,
+  isReviveMove,
   resolveLoadout,
+  REVIVE_MOVE,
+  reviveCost,
+  revivesIn,
   scoreOf,
   upgradeBlock,
 } from '../shared/engine/index.js';
@@ -1409,13 +1413,25 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         let bs = this.adoptRun(spec);
         const ok: number[][] = [];
         for (const m of v.moves) {
+          if (isReviveMove(m) && this.run) {
+            bs = this.run.revive(bs);
+            ok.push(m);
+            continue;
+          }
           const out = this.run?.step(bs, m);
           if (!out) break;
           bs = out.bs;
           ok.push(m);
         }
         this.moves = ok;
-        this.setState({ ...BATTLE_RESET, phase: 'battle', bs, ftueStep: null });
+        this.setState(
+          { ...BATTLE_RESET, phase: 'battle', bs, ftueStep: null },
+          () => {
+            // Left on the CONTINUE offer: put it back up, or end the battle
+            // if there is nothing left to offer.
+            if (bs.playerHp <= 0 && !this.offerRevive()) this.endBattle('dead');
+          }
+        );
       }
     );
     return true;
@@ -1968,26 +1984,9 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
    *  hand the board back. */
   private finishTurn(out: StepResult): void {
     const stuck = !out.over && !out.battleWon && !hasAnyMove(out.bs.board);
+    if (out.over && this.offerRevive()) return;
     if (out.battleWon || out.over || stuck) {
-      audio.play(out.battleWon ? 'victory' : 'defeat');
-      const reason = out.battleWon ? 'won' : out.over ? 'dead' : 'stuck';
-      clearLiveRun();
-      // The board stays up, frozen, for the kill and the title stamp; the
-      // victory sequence moves to the end state once its panel covers it.
-      this.runDone = new Promise((r) => (this.runDoneResolve = r));
-      this.setState({
-        endReason: reason,
-        busy: true,
-        hitWho: null,
-        pops: [],
-        strikePops: [],
-        combo: null,
-        kick: false,
-        swing: null,
-      });
-      void this.submitRun();
-      if (!victory.start(this, { reason, locationName: this.locationName() }))
-        this.enterEnd();
+      this.endBattle(out.battleWon ? 'won' : out.over ? 'dead' : 'stuck');
       return;
     }
     if (out.waveCleared) {
@@ -2024,6 +2023,91 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
       pHpShown: null,
     });
   }
+
+  /** End the battle on the frozen board: the title stamp plays over it, the
+   *  transcript goes to the server, and the victory sequence moves to the end
+   *  state once its panel covers it. */
+  private endBattle(reason: 'won' | 'dead' | 'stuck'): void {
+    audio.play(reason === 'won' ? 'victory' : 'defeat');
+    clearLiveRun();
+    this.runDone = new Promise((r) => (this.runDoneResolve = r));
+    this.setState({
+      endReason: reason,
+      revive: null,
+      busy: true,
+      hitWho: null,
+      pops: [],
+      strikePops: [],
+      combo: null,
+      kick: false,
+      swing: null,
+    });
+    void this.submitRun();
+    if (!victory.start(this, { reason, locationName: this.locationName() }))
+      this.enterEnd();
+  }
+
+  /* ---------- continue ---------- */
+
+  /** A death with revives left puts the CONTINUE offer over the frozen board
+   *  instead of ending the battle. The post's inline battle has no room for
+   *  it, so there a death ends the battle as before. */
+  private offerRevive(): boolean {
+    if (this.postMode) return false;
+    const used = revivesIn(this.moves);
+    const cost = reviveCost(used);
+    if (cost === null) return false;
+    audio.play('hurt');
+    this.setState({
+      revive: { cost, used, paying: false },
+      busy: true,
+      hitWho: null,
+      pops: [],
+      strikePops: [],
+      combo: null,
+      kick: false,
+      swing: null,
+    });
+    return true;
+  }
+
+  /** CONTINUE: the server takes the coins, then the revive goes into the
+   *  transcript and the hero stands back up against the same monster. */
+  acceptRevive = async (): Promise<void> => {
+    const offer = this.state.revive;
+    const spec = this.runSpec;
+    if (!offer || offer.paying || !spec || !this.run) return;
+    if (this.state.profile.coins < offer.cost) {
+      safeToast(showToast, 'Not enough coins to continue.');
+      return;
+    }
+    this.setState({ revive: { ...offer, paying: true } });
+    try {
+      const res = await api.reviveRun({ seed: spec.seed });
+      const bs = this.state.bs;
+      if (!bs || !this.run) return;
+      this.moves.push(REVIVE_MOVE.slice());
+      this.keepLiveRun();
+      audio.play('heal');
+      this.setState({
+        profile: res.profile,
+        bs: this.run.revive(bs),
+        revive: null,
+        busy: false,
+        pHpShown: null,
+        lastSwing: null,
+      });
+    } catch (e) {
+      this.setState({ revive: { ...offer, paying: false } });
+      this.fail(e);
+    }
+  };
+
+  /** GIVE UP: the death stands and the battle ends as it would have. */
+  declineRevive = (): void => {
+    if (!this.state.revive || this.state.revive.paying) return;
+    this.endBattle('dead');
+  };
 
   /* ---------- duel ---------- */
 

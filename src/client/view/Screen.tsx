@@ -20,6 +20,7 @@ import type { PostView } from './postLayout.js';
 import { MenuIcon, SpeakerIcon, VolumeSlider } from './SettingsControls.js';
 import { WorldMap } from './WorldMap.js';
 import { StreakNotice, StreakStrip } from './DailyStreak.js';
+import { ReviveOffer } from './ReviveOffer.js';
 import {
   LeaderboardFab,
   LeaderboardSheet,
@@ -10927,6 +10928,7 @@ export const Screen = ({ v }: { v: View }) => (
           </div>
         </div>
 
+        <ReviveOffer rv={v.revive} stop={v.stop} />
         <StreakNotice sk={v.streak} stop={v.stop} />
         <SoloPrizeNotice lb={v.lb} stop={v.stop} />
       </div>
