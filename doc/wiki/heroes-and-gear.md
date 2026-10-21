@@ -12,6 +12,8 @@ Your hero's perk lasts the whole run.
 
 Every hero starts with **40 HP**. You can raise that permanently with [heart containers](campaign.md#heart-containers).
 
+Each hero can also wear [outfits](outfits.md). They change the look only, never the stats.
+
 ## Loadout rules
 
 - Equip **exactly five** pieces.
