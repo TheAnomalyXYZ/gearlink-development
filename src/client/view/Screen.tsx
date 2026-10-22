@@ -1569,10 +1569,9 @@ const Bullet = ({
   </div>
 );
 
-/* The in-game splash's decoration: the title split into letters so each can
-   drop in, six pieces of gear orbiting the icon, sparks in the sky and motes
-   rising off the bottom. Positions and delays are fixed so it reads the same
-   every time. */
+/* The in-game splash's decoration: six pieces of gear orbiting the logo,
+   sparks in the sky and motes rising off the bottom. Positions and delays
+   are fixed so it reads the same every time. */
 /* Sparkles round an Epic or Legendary piece in the Bag > Gear card info. */
 const GEAR_SPARKS = [
   { left: '20%', top: '22%', size: '10px', delay: '0s' },
@@ -1581,7 +1580,6 @@ const GEAR_SPARKS = [
   { left: '14%', top: '66%', size: '7px', delay: '1.8s' },
 ];
 
-const SPLASH_TITLE = 'GEARLINK'.split('');
 const SPLASH_ORBIT = GENERAL_GEAR.slice(0, 6).map((src, i) => {
   const a = (i / 6) * Math.PI * 2 - Math.PI / 2;
   return {
@@ -1731,44 +1729,13 @@ export const Screen = ({ v }: { v: View }) => (
                 ))}
               </div>
               <div className="gls-icon-in" style={{ position: 'relative' }}>
-                <div
+                <img
+                  src={v.gearlinkIcon}
+                  alt="GEARLINK"
                   className="gls-icon"
-                  style={{
-                    width: '112px',
-                    height: '116px',
-                    backgroundImage: `url(${v.gearlinkIcon})`,
-                    backgroundSize: 'contain',
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'center',
-                  }}
-                ></div>
+                  style={{ display: 'block', width: '140px', height: '155px' }}
+                />
               </div>
-            </div>
-            <div
-              aria-label="GEARLINK"
-              style={{
-                fontFamily: 'VolterTitle,Volter,monospace',
-                fontSize: 'clamp(32px,7vw,52px)',
-                color: '#FFF2B0',
-                textAlign: 'center',
-                letterSpacing: '.04em',
-                WebkitTextStroke: '4px #141D2E',
-                paintOrder: 'stroke fill',
-                textShadow: '0 5px 0 #141D2E, 0 0 22px rgba(255,180,60,.5)',
-              }}
-            >
-              {SPLASH_TITLE.map((c, i) => (
-                <span
-                  key={i}
-                  aria-hidden="true"
-                  className="gls-letter"
-                  style={{
-                    animationDelay: `${0.35 + i * 0.06}s,${1.1 + i * 0.12}s,${1.5 + i * 0.08}s`,
-                  }}
-                >
-                  {c}
-                </span>
-              ))}
             </div>
             <div
               className="gls-rise"

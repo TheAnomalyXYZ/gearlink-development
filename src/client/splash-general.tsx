@@ -57,11 +57,7 @@ const SPARKS: { at: CSSProperties; size: number; delay: number }[] = [
 const MOTE_TINT = ['#FFD34E', '#5CC45A', '#FFD34E', '#E8453C', '#8C7CFF'];
 
 const TITLE = 'GEARLINK';
-
-const STROKE: CSSProperties = {
-  WebkitTextStroke: '4px #000',
-  paintOrder: 'stroke fill',
-};
+const LOGO = '/logo.png';
 
 /**
  * One hero, standing. The sprite is a full-body figure on a transparent
@@ -168,31 +164,15 @@ export const General = ({ cta }: { cta?: ReactNode }) => (
       />
     ))}
 
-    {/* Title: each letter drops in on its own, then the word waves gently
-        and a glint runs along it. */}
+    {/* The logo pops in and bobs gently. */}
     <div className="relative z-10 flex shrink-0 flex-col items-center leading-none">
-      <div
-        aria-label={TITLE}
-        style={{
-          fontFamily: PIXEL,
-          fontSize: 'clamp(26px,8vw,42px)',
-          color: '#FFE16A',
-          ...STROKE,
-          textShadow: '0 5px 0 #000, 0 0 22px rgba(255,180,60,.55)',
-        }}
-      >
-        {TITLE.split('').map((c, i) => (
-          <span
-            key={i}
-            aria-hidden="true"
-            className="glk-letter"
-            style={{
-              animationDelay: `${i * 0.06}s,${0.8 + i * 0.12}s,${1.2 + i * 0.08}s`,
-            }}
-          >
-            {c}
-          </span>
-        ))}
+      <div className="glk-pop">
+        <img
+          src={LOGO}
+          alt={TITLE}
+          className="glk-bob block h-[clamp(64px,18vh,112px)] w-auto"
+          style={{ filter: 'drop-shadow(0 0 18px rgba(255,180,60,.5))' }}
+        />
       </div>
       <div
         className="glk-sway relative -mt-0.5 overflow-hidden px-2.5 py-0.5"

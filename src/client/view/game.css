@@ -1402,27 +1402,6 @@ a:hover {
     transform: translateY(0) scale(1);
   }
 }
-@keyframes glsWave {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-4px);
-  }
-}
-@keyframes glsGlint {
-  0%,
-  78%,
-  100% {
-    color: #fff2b0;
-    filter: none;
-  }
-  86% {
-    color: #ffffff;
-    filter: drop-shadow(0 0 10px #fff6c8);
-  }
-}
 @keyframes glsRise {
   0% {
     opacity: 0;
@@ -1611,13 +1590,6 @@ a:hover {
     drop-shadow(0 6px 0 rgba(0, 0, 0, 0.35));
   animation: glsBob 3.4s ease-in-out 0.8s infinite;
 }
-.gls-letter {
-  display: inline-block;
-  animation:
-    glsDrop 0.55s cubic-bezier(0.2, 1.5, 0.4, 1) both,
-    glsWave 2.6s ease-in-out infinite,
-    glsGlint 3.2s linear infinite;
-}
 .gls-rise {
   animation: glsRise 0.5s ease-out both;
 }
@@ -1702,7 +1674,6 @@ a:hover {
   .gls-orbit-gear,
   .gls-icon-in,
   .gls-icon,
-  .gls-letter,
   .gls-rise,
   .gls-sheen,
   .gls-halo,
