@@ -726,31 +726,22 @@ export const Daily = ({
       {/* The day's foe, small: the puzzle's target rather than its subject.
           Its health drops each time the board's link lands. */}
       <div className="glk-rise glk-d1 relative z-10 flex w-full max-w-[400px] shrink-0 items-center gap-2 [@media(max-height:380px)]:hidden">
-        <div
-          className="relative flex shrink-0 items-end justify-center overflow-hidden"
-          style={{
-            width: 'clamp(40px,11vh,60px)',
-            height: 'clamp(40px,11vh,60px)',
-            borderRadius: '8px 2px 8px 2px',
-            border: `2px solid ${ended ? '#6F7C94' : accent}`,
-            background: `radial-gradient(80% 70% at 50% 85%,${accent}55,rgba(6,10,22,.9) 75%)`,
-          }}
-        >
-          {broken ? null : (
-            <img
-              src={poster.foeArt}
-              alt={poster.foe}
-              onError={() => setBroken(true)}
-              className={`${ended ? '' : 'glb-hit'} h-[88%] w-[88%] object-contain object-bottom`}
-              style={{
-                imageRendering: 'pixelated',
-                filter: ended
-                  ? 'grayscale(1) brightness(.55)'
-                  : 'drop-shadow(0 3px 3px rgba(0,0,0,.7))',
-              }}
-            />
-          )}
-        </div>
+        {broken ? null : (
+          <img
+            src={poster.foeArt}
+            alt={poster.foe}
+            onError={() => setBroken(true)}
+            className={`${ended ? '' : 'glb-hit'} shrink-0 object-contain object-bottom`}
+            style={{
+              width: 'clamp(40px,11vh,60px)',
+              height: 'clamp(40px,11vh,60px)',
+              imageRendering: 'pixelated',
+              filter: ended
+                ? 'grayscale(1) brightness(.55)'
+                : 'drop-shadow(0 3px 3px rgba(0,0,0,.7))',
+            }}
+          />
+        )}
         <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
           <div className="flex w-full items-baseline justify-between gap-2">
             <span
