@@ -76,7 +76,6 @@ import {
   toNextLeague,
   LOCATIONS,
   MAP_ART,
-  MAP_LENGTH,
   mapPinUrlFor,
   getGearImageUrl,
   isJunk,
@@ -3220,18 +3219,8 @@ export const buildView = (app: GearLinkApp): View => {
     /* The ascension badge is the only place the run's difficulty tier is
        stated, so it shows even at zero rather than appearing from nowhere on
        the first King kill. */
-    ascensionLabel:
-      st.profile.ascension > 0
-        ? 'ASCENSION ' + st.profile.ascension
-        : 'FIRST CLIMB',
-    ascensionColor: st.profile.ascension > 0 ? '#FFC24B' : '#9DB4D4',
-    // A dim suffix on the climb chip: the map itself shows what is taken.
-    mapProgress: Math.min(st.profile.progress, MAP_LENGTH) + '/' + MAP_LENGTH,
-    mapProgressTitle:
-      Math.min(st.profile.progress, MAP_LENGTH) +
-      ' of ' +
-      MAP_LENGTH +
-      ' locations taken',
+    ascensionLabel: 'A' + st.profile.ascension,
+    ascensionColor: st.profile.ascension > 0 ? '#FFF2B0' : '#9DB4D4',
     ...levelStrip(st.profile),
     mapPins: LOCATIONS.map((loc, i) => {
       const cleared = i < st.profile.progress;

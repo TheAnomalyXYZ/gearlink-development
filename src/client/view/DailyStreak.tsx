@@ -412,3 +412,55 @@ export const StreakStrip = ({ sk }: { sk: StreakUi }) =>
       </div>
     </div>
   ) : null;
+
+/** The home HUD's chip beside the level bar: the streak count always in view,
+ *  and a ringing CLAIM! with an alert dot whenever today's reward is waiting. */
+export const StreakChip = ({ sk }: { sk: StreakUi }) =>
+  sk.ready ? (
+    <div
+      onClick={sk.open}
+      role="button"
+      aria-label="Daily streak"
+      className={sk.claimable ? 'gl-streak-today' : undefined}
+      style={{
+        position: 'relative',
+        flexShrink: '0',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '4px',
+        height: '26px',
+        cursor: 'pointer',
+      }}
+    >
+      <div className={sk.count > 0 ? 'gl-streak-flame' : undefined}>
+        <Flame size={14} lit={sk.count > 0 || sk.claimable} />
+      </div>
+      <span style={stroked('13px', '#FFF2B0', 3)}>{sk.count}</span>
+      {sk.claimable ? (
+        <span
+          style={{
+            ...stroked('11px', '#FCE370', 3),
+            display: 'inline-block',
+            animation: 'glClaimBounce 2s ease-in-out infinite',
+          }}
+        >
+          CLAIM!
+        </span>
+      ) : null}
+      {sk.claimable ? (
+        <div
+          style={{
+            position: 'absolute',
+            top: '-1px',
+            right: '-9px',
+            width: '10px',
+            height: '10px',
+            boxSizing: 'border-box',
+            border: '2px solid #000',
+            borderRadius: '50%',
+            background: '#FF5A4E',
+          }}
+        />
+      ) : null}
+    </div>
+  ) : null;

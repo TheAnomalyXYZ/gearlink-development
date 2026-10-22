@@ -19,7 +19,8 @@ import type { View } from './buildView.js';
 import type { PostView } from './postLayout.js';
 import { MenuIcon, SpeakerIcon, VolumeSlider } from './SettingsControls.js';
 import { WorldMap } from './WorldMap.js';
-import { StreakNotice, StreakStrip } from './DailyStreak.js';
+import { AscensionIcon } from './AscensionIcon.js';
+import { StreakChip, StreakNotice, StreakStrip } from './DailyStreak.js';
 import { ReviveOffer } from './ReviveOffer.js';
 import {
   LeaderboardFab,
@@ -1904,7 +1905,7 @@ export const Screen = ({ v }: { v: View }) => (
               >
                 {/* The status column takes whatever the right-hand cluster
                     leaves and never less than its own content, so the menu
-                    button can't squeeze or crop the climb label. */}
+                    button can't squeeze or crop the level row. */}
                 <div
                   style={{
                     flex: '1 0 auto',
@@ -1915,39 +1916,6 @@ export const Screen = ({ v }: { v: View }) => (
                     pointerEvents: 'auto',
                   }}
                 >
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      height: '18px',
-                      padding: '0 6px',
-                      border: '1px solid #3A4C74',
-                      borderRadius: '4px',
-                      background: 'rgba(20,29,46,.85)',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontFamily: 'VolterTitle,Volter,monospace',
-                        fontSize: '10px',
-                        color: v.ascensionColor,
-                      }}
-                    >
-                      {v.ascensionLabel}
-                    </span>
-                    <span
-                      title={v.mapProgressTitle}
-                      style={{
-                        fontSize: '8px',
-                        letterSpacing: '.06em',
-                        color: '#6F86A8',
-                      }}
-                    >
-                      {v.mapProgress}
-                    </span>
-                  </div>
                   <div
                     style={{
                       display: 'flex',
@@ -2040,6 +2008,41 @@ export const Screen = ({ v }: { v: View }) => (
                       >
                         ×{v.lvBooks}
                       </span>
+                    </div>
+                    {/* Ascension and streak share the level row, set apart
+                        from the level bar's own cluster. */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        marginLeft: '8px',
+                      }}
+                    >
+                      <div
+                        title="Ascension"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          height: '26px',
+                        }}
+                      >
+                        <AscensionIcon size={13} color={v.ascensionColor} />
+                        <span
+                          style={{
+                            fontFamily: 'VolterTitle,Volter,monospace',
+                            fontSize: '13px',
+                            lineHeight: '1',
+                            color: v.ascensionColor,
+                            WebkitTextStroke: '3px #000000',
+                            paintOrder: 'stroke fill',
+                          }}
+                        >
+                          {v.ascensionLabel}
+                        </span>
+                      </div>
+                      <StreakChip sk={v.streak} />
                     </div>
                   </div>
                 </div>
