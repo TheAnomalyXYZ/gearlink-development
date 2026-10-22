@@ -22,6 +22,7 @@ import { WorldMap } from './WorldMap.js';
 import { AscensionIcon } from './AscensionIcon.js';
 import { StreakChip, StreakNotice, StreakStrip } from './DailyStreak.js';
 import { ReviveOffer } from './ReviveOffer.js';
+import { SkinTiles } from './SkinTiles.js';
 import {
   LeaderboardFab,
   LeaderboardSheet,
@@ -2341,14 +2342,100 @@ export const Screen = ({ v }: { v: View }) => (
                 transform={v.lb.fabT}
                 transition={v.wmChromeTr}
               />
+              {/* The knights page's way in: the hero you fight as, in the
+                  outfit they wear, parked over the map's bottom-left corner. */}
+              <div
+                data-fx="knights"
+                onClick={v.heroChip.run}
+                role="button"
+                aria-label="Knights and outfits"
+                style={{
+                  position: 'absolute',
+                  left: '12px',
+                  bottom: '116px',
+                  zIndex: '13',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '4px 10px 4px 4px',
+                  border: '2px solid #000000',
+                  borderRadius: '8px 2px 8px 2px',
+                  background: 'rgba(29,41,86,.92)',
+                  boxShadow: '0 3px 0 rgba(0,0,0,.35)',
+                  cursor: 'pointer',
+                  transform: v.wmChipT,
+                  transition: v.wmChromeTr,
+                }}
+              >
+                <div
+                  style={{
+                    width: '44px',
+                    height: '44px',
+                    flexShrink: '0',
+                    overflow: 'hidden',
+                    border: '2px solid #4B6A85',
+                    borderRadius: '4px',
+                    background: '#304A69',
+                  }}
+                >
+                  <img
+                    src={v.heroChip.img}
+                    alt=""
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      aspectRatio: v.heroChip.ar,
+                      imageRendering: 'pixelated',
+                    }}
+                  />
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '3px',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontFamily: 'VolterTitle,Volter,monospace',
+                      fontSize: '13px',
+                      lineHeight: '1',
+                      color: '#FFFFFF',
+                    }}
+                  >
+                    {v.heroChip.name}
+                  </span>
+                  <span
+                    style={{
+                      fontFamily: 'VolterTitle,Volter,monospace',
+                      fontSize: '11px',
+                      lineHeight: '1',
+                      color: '#FF8A94',
+                    }}
+                  >
+                    {v.heroChip.hp}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: '9px',
+                      lineHeight: '1',
+                      color: '#FFF2B0',
+                      letterSpacing: '.06em',
+                    }}
+                  >
+                    KNIGHTS ›
+                  </span>
+                </div>
+              </div>
             </div>
           </>
         ) : null}
 
-        {v.isHeroStep ? (
+        {v.isHeroStep || v.isKnights ? (
           <>
             <div
-              data-screen-label="Pick your hero"
+              data-screen-label={v.heroScreenLabel}
               style={{
                 position: 'relative',
                 flex: '1',
@@ -2466,7 +2553,7 @@ export const Screen = ({ v }: { v: View }) => (
                     >
                       <HeroStand
                         h={h}
-                        height="min(30cqh,40cqw)"
+                        height={v.heroStandH}
                         rays="rgba(255,242,176,.4)"
                       />
                       <div
@@ -2635,6 +2722,61 @@ export const Screen = ({ v }: { v: View }) => (
                   </div>
                 </div>
               ))}
+
+              {v.isKnights ? (
+                <div
+                  style={{
+                    position: 'relative',
+                    zIndex: '4',
+                    flex: '0 1 auto',
+                    minHeight: '0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    margin: '10px 12px 0',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontFamily: 'VolterTitle,Volter,monospace',
+                        fontSize: '14px',
+                        color: '#FFF2B0',
+                        WebkitTextStroke: '4px #000000',
+                        paintOrder: 'stroke fill',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {v.knightsSkinsTitle}
+                    </span>
+                    <span style={{ fontSize: '11px', color: '#9DB4D4' }}>
+                      {v.knightsSkinsCount}
+                    </span>
+                    <div
+                      style={{
+                        flex: '1',
+                        height: '1px',
+                        background: '#485E9C',
+                      }}
+                    ></div>
+                  </div>
+                  <div
+                    style={{
+                      minHeight: '0',
+                      overflowY: 'auto',
+                      paddingBottom: '2px',
+                    }}
+                  >
+                    <SkinTiles skins={v.knightsSkins} cols={3} />
+                  </div>
+                </div>
+              ) : null}
 
               <div
                 style={{
@@ -4987,6 +5129,26 @@ export const Screen = ({ v }: { v: View }) => (
                     </div>
                   </Fragment>
                 ))}
+              </div>
+
+              <div
+                style={{
+                  display: v.outfitPaneDisplay,
+                  flexDirection: 'column',
+                  gap: '8px',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: '9px',
+                    color: '#CBD9EC',
+                    lineHeight: '1.6',
+                  }}
+                >
+                  Shop exclusive outfits, bought with gems and worn straight
+                  away. Every other outfit is earned on the knights page.
+                </div>
+                <SkinTiles skins={v.shopSkins || []} cols={3} />
               </div>
 
               <div
@@ -10185,94 +10347,7 @@ export const Screen = ({ v }: { v: View }) => (
                     </Fragment>
                   ))}
                   {v.modalSkins && v.modalSkins.length ? (
-                    <div
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                        gap: '8px',
-                      }}
-                    >
-                      {v.modalSkins.map((k: any, kI: number) => (
-                        <div
-                          key={kI}
-                          style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            gap: '6px',
-                            padding: '8px 6px',
-                            background: '#FFFFFF',
-                            border: `2px solid ${k.bd}`,
-                            borderRadius: '6px 2px 6px 2px',
-                          }}
-                        >
-                          <img
-                            src={k.img}
-                            alt={k.name}
-                            style={{
-                              height: '96px',
-                              aspectRatio: k.ar,
-                              imageRendering: 'pixelated',
-                              filter: k.filter,
-                            }}
-                          />
-                          <div
-                            style={{
-                              fontFamily: PIXEL,
-                              fontSize: '11px',
-                              color: '#1D2956',
-                              textAlign: 'center',
-                            }}
-                          >
-                            {k.name}
-                          </div>
-                          <div
-                            style={{
-                              minHeight: '26px',
-                              fontSize: '9px',
-                              lineHeight: '1.4',
-                              color: k.lineColor,
-                              textAlign: 'center',
-                              textWrap: 'balance',
-                            }}
-                          >
-                            {k.line}
-                          </div>
-                          {k.btn ? (
-                            <div
-                              onClick={k.btn.run}
-                              style={{
-                                alignSelf: 'stretch',
-                                cursor: k.btn.run ? 'pointer' : 'default',
-                                opacity: k.btn.opacity,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '4px',
-                                minHeight: '32px',
-                                border: '3px solid #000000',
-                                borderRadius: '8px 2px 8px 2px',
-                                background: k.btn.bg,
-                                boxShadow: k.btn.shadow,
-                                color: '#000000',
-                                fontFamily: PIXEL,
-                                fontSize: '11px',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {k.btn.icon ? (
-                                <img
-                                  src={k.btn.icon}
-                                  alt=""
-                                  style={{ width: '14px', height: '14px' }}
-                                />
-                              ) : null}
-                              {k.btn.label}
-                            </div>
-                          ) : null}
-                        </div>
-                      ))}
-                    </div>
+                    <SkinTiles skins={v.modalSkins} />
                   ) : null}
                   {v.modalChips && v.modalChips.length ? (
                     <div style={{ display: 'flex', gap: '6px' }}>

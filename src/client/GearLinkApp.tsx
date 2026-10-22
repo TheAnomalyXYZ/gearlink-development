@@ -1090,6 +1090,10 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
 
   /** The picker always dresses the hero currently selected. */
   openSkins = (): void => this.setState({ modal: 'skins' });
+  /** The knights page: every hero and every outfit, reachable from the map
+   *  without walking into a run first. */
+  goKnights = (): void =>
+    this.setState({ phase: 'knights', homeMenu: false, modal: null });
 
   private skinBusy = false;
   /** Wear an owned outfit, or buy a shop exclusive (which then wears it). */

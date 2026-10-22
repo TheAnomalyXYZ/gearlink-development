@@ -90,6 +90,8 @@ void test('every screen renders', () => {
     profile: { ...profile, ascension: 0, progress: 0 },
   });
   renders('hero picker', { phase: 'hero' });
+  renders('knights', { phase: 'knights' });
+  renders('knights as archer', { phase: 'knights', heroClass: 'Archer' });
   renders('gear picker', {
     phase: 'gear',
     lastGear: defaultLoadout('Hero')[0],
@@ -112,6 +114,7 @@ void test('every screen renders', () => {
   renders('shop', { phase: 'shop' });
   renders('shop coins tab', { phase: 'shop', shopTab: 'coins' });
   renders('shop gems tab', { phase: 'shop', shopTab: 'gems' });
+  renders('shop outfits tab', { phase: 'shop', shopTab: 'outfits' });
   renders('quests', { phase: 'quests' });
   renders('quests weekly tab', { phase: 'quests', questTab: 'weekly' });
   renders('quests loading', { phase: 'quests', quests: null });
@@ -439,4 +442,28 @@ void test('the quest tab carries an alert dot only while something is claimable'
       profile: { ...profile, packs: {} },
     }).includes(dot)
   );
+});
+
+void test('the knights page lays out outfits and the shop sells the exclusives', () => {
+  const knights = buildView(fakeApp({ phase: 'knights', heroClass: 'Mage' }));
+  assert.equal(knights.isKnights, true);
+  assert.equal(knights.heroStepTitle, 'KNIGHTS');
+  assert.ok(knights.knightsSkins.length > 1);
+  assert.equal(knights.heroStepActions.length, 1);
+  // The page shows outfits in full, so the plate's picker button stands down.
+  assert.ok(
+    knights.heroCards.every(
+      (h: { skinDisplay: string }) => h.skinDisplay === 'none'
+    )
+  );
+
+  const shop = buildView(fakeApp({ phase: 'shop', shopTab: 'outfits' }));
+  assert.equal(shop.outfitPaneDisplay, 'flex');
+  assert.equal(shop.packPaneDisplay, 'none');
+  assert.ok(shop.shopSkins.length >= 3);
+  // Every exclusive names the hero it dresses, since the tab mixes classes.
+  assert.ok(shop.shopSkins.every((k: { sub: string }) => k.sub.length > 0));
+
+  const home = buildView(fakeApp({ phase: 'home' }));
+  assert.equal(typeof home.heroChip.run, 'function');
 });

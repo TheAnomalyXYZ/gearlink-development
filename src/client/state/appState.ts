@@ -48,6 +48,7 @@ export type Phase =
   | 'shop'
   | 'quests'
   | 'inventory'
+  | 'knights'
   | 'opening'
   | 'duelOptIn'
   | 'duelLobby'
@@ -91,7 +92,7 @@ export type DuelOutcome = {
   ranked: boolean;
 };
 export type GearTab = 'attack' | 'block' | 'effect';
-export type ShopTab = 'packs' | 'coins' | 'gems';
+export type ShopTab = 'packs' | 'outfits' | 'coins' | 'gems';
 export type InvTab = 'packs' | 'gear';
 /** Bag > Gear filter chips: everything, only owned, or one effect kind. */
 export type GearFilter = 'all' | 'owned' | 'attack' | 'block' | 'effect';

@@ -281,6 +281,7 @@ export const demoApp = (over: Record<string, unknown>): GearLinkApp => {
     goStep: curried,
     pickLocation: curried,
     goMap: noop,
+    goKnights: noop,
     replayDaily: noop,
     endAction: noop,
     startDuel: curried,

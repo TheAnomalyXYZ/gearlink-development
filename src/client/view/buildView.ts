@@ -8,7 +8,7 @@
  */
 import type { GearLinkApp } from '../GearLinkApp.js';
 import type { QuestReward } from '../../shared/engine/quests.js';
-import type { Gear } from '../../shared/engine/index.js';
+import type { Gear, SkinDef } from '../../shared/engine/index.js';
 import type { AppState, GearFilter } from '../state/appState.js';
 import type { WarChest } from '../../shared/api.js';
 import type { FxEvent } from '../fx/screens.js';
@@ -51,6 +51,7 @@ import {
   FLAIRS,
   GEAR_SETS,
   setPiecesOwned,
+  SKINS,
   skinOwned,
   skinUnlockLine,
   skinsFor,
@@ -543,8 +544,8 @@ export const buildView = (app: GearLinkApp): View => {
           ? 'USES ' + HEART_PIECES_PER_CONTAINER + ' PIECES'
           : pieces + '/' + HEART_PIECES_PER_CONTAINER + ' PIECES',
       // Outfits are per class and purely cosmetic, so the duel flow offers
-      // them too.
-      skinDisplay: on ? 'flex' : 'none',
+      // them too. The knights page lays them out in full instead.
+      skinDisplay: on && st.phase !== 'knights' ? 'flex' : 'none',
       skinCount:
         skinsFor(k).filter((d) => skinOwned(d, st.profile.skins)).length +
         '/' +
@@ -1138,6 +1139,60 @@ export const buildView = (app: GearLinkApp): View => {
     };
   }
 
+  /** One outfit card: its sprite, how it is earned, and the button that wears
+   *  or buys it. Shared by the outfit picker, the knights page and the shop,
+   *  so the three can never disagree on what a tap does. `sub` names the class
+   *  for lists that mix heroes. */
+  const skinTile = (d: SkinDef, sub = '') => {
+    const cls = d.cls;
+    const worn = wornSkin(cls, st.profile.skinWorn, st.profile.skins);
+    const owned = skinOwned(d, st.profile.skins);
+    const on = worn.id === d.id;
+    const u = d.unlock;
+    const set =
+      u.kind === 'set' ? GEAR_SETS.find((g) => g.id === u.set) : undefined;
+    const afford = u.kind === 'gems' && st.profile.gems >= u.price;
+    const btn = on
+      ? { label: 'WEARING', run: undefined, ...BTN.disabled, opacity: 1 }
+      : owned
+        ? {
+            label: 'WEAR',
+            run: app.equipSkin(d.id),
+            ...BTN.tertiary,
+            opacity: 1,
+          }
+        : u.kind === 'gems'
+          ? {
+              label: String(u.price),
+              icon: GEM_ICON,
+              run: afford ? app.buySkin(d.id) : undefined,
+              ...(afford ? BTN_GOLD : BTN.disabled),
+              opacity: afford ? 1 : 0.6,
+            }
+          : null;
+    return {
+      name: d.name,
+      sub,
+      img: d.img,
+      ar: (HS_B[cls] ?? [126, 186])[0] + '/' + (HS_B[cls] ?? [126, 186])[1],
+      // A locked outfit shows as a silhouette of itself: what it is, not
+      // yet who wears it.
+      filter: owned || u.kind === 'gems' ? 'none' : 'brightness(.25)',
+      bd: on ? '#3C63FF' : '#D8DCE6',
+      line: owned
+        ? d.tag
+        : set
+          ? set.name +
+            ' ' +
+            setPiecesOwned(set, st.profile.gear) +
+            '/' +
+            set.pieces.length
+          : skinUnlockLine(d),
+      lineColor: owned ? '#8B7355' : u.kind === 'gems' ? '#B8860B' : '#4B6A85',
+      btn,
+    };
+  };
+
   let modalTitle = '',
     modalRows: any[] = [],
     modalSliders: any[] = [],
@@ -1433,58 +1488,8 @@ export const buildView = (app: GearLinkApp): View => {
     /* Every outfit for the selected hero, locked ones included, so the picker
        also says what is left to earn and how. */
     const cls = st.heroClass;
-    const worn = wornSkin(cls, st.profile.skinWorn, st.profile.skins);
     modalTitle = cls.toUpperCase() + ' OUTFITS';
-    modalSkins = skinsFor(cls).map((d) => {
-      const owned = skinOwned(d, st.profile.skins);
-      const on = worn.id === d.id;
-      const u = d.unlock;
-      const set =
-        u.kind === 'set' ? GEAR_SETS.find((g) => g.id === u.set) : undefined;
-      const afford = u.kind === 'gems' && st.profile.gems >= u.price;
-      const btn = on
-        ? { label: 'WEARING', run: undefined, ...BTN.disabled, opacity: 1 }
-        : owned
-          ? {
-              label: 'WEAR',
-              run: app.equipSkin(d.id),
-              ...BTN.tertiary,
-              opacity: 1,
-            }
-          : u.kind === 'gems'
-            ? {
-                label: String(u.price),
-                icon: GEM_ICON,
-                run: afford ? app.buySkin(d.id) : undefined,
-                ...(afford ? BTN_GOLD : BTN.disabled),
-                opacity: afford ? 1 : 0.6,
-              }
-            : null;
-      return {
-        name: d.name,
-        img: d.img,
-        ar: (HS_B[cls] ?? [126, 186])[0] + '/' + (HS_B[cls] ?? [126, 186])[1],
-        // A locked outfit shows as a silhouette of itself: what it is, not
-        // yet who wears it.
-        filter: owned || u.kind === 'gems' ? 'none' : 'brightness(.25)',
-        bd: on ? '#3C63FF' : '#D8DCE6',
-        line: owned
-          ? d.tag
-          : set
-            ? set.name +
-              ' ' +
-              setPiecesOwned(set, st.profile.gear) +
-              '/' +
-              set.pieces.length
-            : skinUnlockLine(d),
-        lineColor: owned
-          ? '#8B7355'
-          : u.kind === 'gems'
-            ? '#B8860B'
-            : '#4B6A85',
-        btn,
-      };
-    });
+    modalSkins = skinsFor(cls).map((d) => skinTile(d));
     modalFooter = 'Outfits change the look, never the stats.';
   }
 
@@ -2554,10 +2559,17 @@ export const buildView = (app: GearLinkApp): View => {
       return {
         shopTabs: [
           mk('packs', 'PACKS'),
+          mk('outfits', 'OUTFITS'),
           mk('coins', 'COINS', COIN_ICON),
           mk('gems', 'GEMS', GEM_ICON),
         ],
         packPaneDisplay: tab === 'packs' ? 'flex' : 'none',
+        outfitPaneDisplay: tab === 'outfits' ? 'flex' : 'none',
+        // Shop exclusives are only ever bought, so this is where they are
+        // sold - the knights page offers the same ones per hero.
+        shopSkins: SKINS.filter((d) => d.unlock.kind === 'gems').map((d) =>
+          skinTile(d, d.cls.toUpperCase())
+        ),
         coinPaneDisplay: tab === 'coins' ? 'flex' : 'none',
         gemPaneDisplay: tab === 'gems' ? 'flex' : 'none',
         coinBundles: COIN_BUNDLES.map((b) => {
@@ -3327,33 +3339,80 @@ export const buildView = (app: GearLinkApp): View => {
       ' times).',
     isHeroStep: st.phase === 'hero',
     isGearStep: st.phase === 'gear',
+    /* The knights page is the hero step's scene off the run path: the same
+       line-up and plate, the outfits laid out under it, and only a way back. */
+    isKnights: st.phase === 'knights',
+    heroScreenLabel: st.phase === 'knights' ? 'Knights' : 'Pick your hero',
+    heroStandH:
+      st.phase === 'knights' ? 'min(22cqh,32cqw)' : 'min(30cqh,40cqw)',
+    knightsSkinsTitle: st.heroClass.toUpperCase() + ' OUTFITS',
+    knightsSkinsCount:
+      skinsFor(st.heroClass).filter((d) => skinOwned(d, st.profile.skins))
+        .length +
+      '/' +
+      skinsFor(st.heroClass).length,
+    knightsSkins:
+      st.phase === 'knights'
+        ? skinsFor(st.heroClass).map((d) => skinTile(d))
+        : [],
+    /* The map's way into the knights page: who you fight as, in what. */
+    heroChip: (() => {
+      const cls = st.heroClass;
+      const [w, h] = HS_B[cls] ?? [126, 186];
+      return {
+        img: wornSkin(cls, st.profile.skinWorn, st.profile.skins).img,
+        ar: w + '/' + h,
+        name: cls.toUpperCase(),
+        hp: 'HP ' + maxHpFor(heartsFor(st.profile.hearts, cls)),
+        run: app.goKnights,
+      };
+    })(),
+    wmChipT: st.wmFocused ? 'translate3d(-140%,0,0)' : 'translate3d(0,0,0)',
     /* The hero and gear screens serve both flows, so their footers name the
        flow they are in - a duel build that ended in "ENTER THE ARENA" would
        read as starting a run. */
     isDuelFlow: st.flow === 'duel',
-    heroStepTitle: st.flow === 'duel' ? 'PICK YOUR DUELLIST' : 'PICK YOUR HERO',
+    heroStepTitle:
+      st.phase === 'knights'
+        ? 'KNIGHTS'
+        : st.flow === 'duel'
+          ? 'PICK YOUR DUELLIST'
+          : 'PICK YOUR HERO',
     startLabel: st.flow === 'duel' ? 'SAVE THIS FIVE' : 'ENTER THE ARENA',
     startRun: st.flow === 'duel' ? app.goDuelOptIn : app.startRun,
-    heroStepActions: [
-      {
-        label: st.flow === 'duel' ? 'CANCEL' : 'MAP',
-        run: st.flow === 'duel' ? app.leaveDuelSetup : app.goMap,
-        h: '46px',
-        size: '13px',
-        flex: '0 0 34%',
-        bg: BTN.secondary.bg,
-        shadow: BTN.secondary.shadow,
-      },
-      {
-        label: 'NEXT',
-        run: app.goStep('gear'),
-        h: '46px',
-        size: '15px',
-        flex: '1 1 auto',
-        bg: BTN.primary.bg,
-        shadow: BTN.primary.shadow,
-      },
-    ],
+    heroStepActions:
+      st.phase === 'knights'
+        ? [
+            {
+              label: 'MAP',
+              run: app.goMap,
+              h: '46px',
+              size: '15px',
+              flex: '1 1 auto',
+              bg: BTN.secondary.bg,
+              shadow: BTN.secondary.shadow,
+            },
+          ]
+        : [
+            {
+              label: st.flow === 'duel' ? 'CANCEL' : 'MAP',
+              run: st.flow === 'duel' ? app.leaveDuelSetup : app.goMap,
+              h: '46px',
+              size: '13px',
+              flex: '0 0 34%',
+              bg: BTN.secondary.bg,
+              shadow: BTN.secondary.shadow,
+            },
+            {
+              label: 'NEXT',
+              run: app.goStep('gear'),
+              h: '46px',
+              size: '15px',
+              flex: '1 1 auto',
+              bg: BTN.primary.bg,
+              shadow: BTN.primary.shadow,
+            },
+          ],
     gearStepActions: [{ label: 'BACK', run: app.goStep('hero') }],
     heroImg: perk.img,
     heroName: st.heroClass.toUpperCase(),
