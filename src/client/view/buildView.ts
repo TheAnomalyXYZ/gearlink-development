@@ -1175,10 +1175,24 @@ export const buildView = (app: GearLinkApp): View => {
       sub,
       img: d.img,
       ar: (HS_B[cls] ?? [126, 186])[0] + '/' + (HS_B[cls] ?? [126, 186])[1],
-      // A locked outfit shows as a silhouette of itself: what it is, not
-      // yet who wears it.
-      filter: owned || u.kind === 'gems' ? 'none' : 'brightness(.25)',
-      bd: on ? '#3C63FF' : '#D8DCE6',
+      // A locked outfit shows as a rim-lit silhouette of itself: what it is,
+      // not yet who wears it.
+      filter:
+        owned || u.kind === 'gems'
+          ? 'drop-shadow(0 3px 0 rgba(0,0,0,.45))'
+          : 'brightness(0) drop-shadow(0 0 1px #8A9BBF) drop-shadow(0 0 1px #8A9BBF)',
+      // The stage behind the sprite: gold for the one worn, violet for a shop
+      // exclusive, a cool wash for the rest, and no light at all while locked.
+      glow: on
+        ? 'rgba(255,226,112,.55)'
+        : u.kind === 'gems'
+          ? 'rgba(181,120,255,.45)'
+          : owned
+            ? 'rgba(143,227,255,.28)'
+            : 'rgba(0,0,0,0)',
+      bd: on ? '#FCE370' : u.kind === 'gems' && !owned ? '#B578FF' : '#3A4C74',
+      badge: u.kind === 'gems' && !owned ? 'EXCLUSIVE' : '',
+      badgeBg: '#B578FF',
       line: owned
         ? d.tag
         : set
@@ -1188,7 +1202,7 @@ export const buildView = (app: GearLinkApp): View => {
             '/' +
             set.pieces.length
           : skinUnlockLine(d),
-      lineColor: owned ? '#8B7355' : u.kind === 'gems' ? '#B8860B' : '#4B6A85',
+      lineColor: owned ? '#9DB4D4' : u.kind === 'gems' ? '#FFC24B' : '#8A9BBF',
       btn,
     };
   };
