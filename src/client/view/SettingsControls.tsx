@@ -232,6 +232,13 @@ export const MenuIcon = ({
         fill={color}
       />
     </svg>
+  ) : kind === 'expand' ? (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M21 11V3H13L16.29 6.29L6.29 16.29L3 13V21H11L7.71 17.71L17.71 7.71L21 11Z"
+        fill={color}
+      />
+    </svg>
   ) : kind === 'settings' ? (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
       <path

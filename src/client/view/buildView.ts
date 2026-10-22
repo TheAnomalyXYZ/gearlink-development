@@ -3179,6 +3179,19 @@ export const buildView = (app: GearLinkApp): View => {
     homeMenuDisplay: st.homeMenu ? 'flex' : 'none',
     homeMenuOpen: st.homeMenu,
     homeMenuItems: [
+      // The post's map: past its intro, the full game is a menu row away.
+      ...(app.postMode && app.postIntroDone
+        ? [
+            {
+              label: 'EXPANDED MODE',
+              icon: 'expand',
+              run: (e: ReactMouseEvent) => {
+                app.toggleHomeMenu();
+                app.openFullGame(e.nativeEvent);
+              },
+            },
+          ]
+        : []),
       { label: 'HOW TO PLAY', icon: 'how', run: app.openHowFromMenu },
       { label: 'WAR CHEST', icon: 'chest', run: app.openWarChestFromMenu },
       { label: 'FLAIR', icon: 'flair', run: app.openFlairFromMenu },
@@ -3500,9 +3513,6 @@ export const buildView = (app: GearLinkApp): View => {
     })(),
     isBattle: st.phase === 'battle',
     ...postVm(app, st, battle),
-    // The post's map: past its intro, the full game is a button away.
-    postMapExpand: app.postMode && app.postIntroDone,
-    postExpandMap: (e: ReactMouseEvent) => app.openFullGame(e.nativeEvent),
     isEnd: st.phase === 'end',
     heroCards,
     heroScene: heroScene(st.locationId),

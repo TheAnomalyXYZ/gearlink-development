@@ -1882,34 +1882,6 @@ export const Screen = ({ v }: { v: View }) => (
                 />
               </div>
 
-              {v.postMapExpand ? (
-                <div
-                  onClick={v.postExpandMap}
-                  style={{
-                    position: 'absolute',
-                    right: '10px',
-                    bottom: '112px',
-                    zIndex: '13',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    height: '30px',
-                    padding: '0 10px',
-                    border: '2px solid #000000',
-                    borderRadius: '6px 2px 6px 2px',
-                    background: '#B5C0FF',
-                    boxShadow: 'inset 0 -3px 0 #7E84E6,inset 0 2px 0 #FFFFFF',
-                    fontFamily: 'VolterTitle,Volter,monospace',
-                    fontSize: '12px',
-                    color: '#000000',
-                    whiteSpace: 'nowrap',
-                    cursor: 'pointer',
-                  }}
-                >
-                  ⤢ OPEN IN EXPANDED MODE
-                </div>
-              ) : null}
-
               {/* Top HUD, floating over the map rather than pushing it down. */}
               <div
                 style={{

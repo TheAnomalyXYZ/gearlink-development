@@ -988,8 +988,9 @@ export const LeaderboardSheet = ({
     </div>
   ) : null;
 
-/** The map's floating way in, Neura Knights style: round, bottom right, above
- *  the nav bar. Glows while the player holds a title or is on course for one. */
+/** The map's floating way in: a bare trophy with its label, top right under
+ *  the menu button. Pulses while the player holds a title or is on course for
+ *  one. */
 export const LeaderboardFab = ({
   lb,
   transform,
@@ -1008,96 +1009,89 @@ export const LeaderboardFab = ({
       className="gl-lb-fab"
       style={{
         position: 'absolute',
-        right: '14px',
-        bottom: '100px',
+        right: '8px',
+        top: '50px',
         zIndex: '13',
-        width: '58px',
-        height: '58px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '3px',
         cursor: 'pointer',
         transform,
         transition,
       }}
     >
-      {lb.fabGlow ? (
-        <div
-          className="gl-lb-ring"
-          style={{
-            position: 'absolute',
-            inset: '-4px',
-            borderRadius: '50%',
-            border: `3px solid ${lb.fabTitleColor}`,
-            pointerEvents: 'none',
-          }}
-        />
-      ) : null}
       <div
         className="gl-lb-fab-face"
-        style={{
-          position: 'absolute',
-          inset: '0',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxSizing: 'border-box',
-          border: '3px solid #000000',
-          borderRadius: '50%',
-          background:
-            'radial-gradient(circle at 35% 30%, #5B7BFF 0%, #2B3A9A 55%, #1D2956 100%)',
-          boxShadow:
-            '0 -4px 0 0 rgba(0,0,0,.35) inset, 0 3px 0 0 rgba(255,255,255,.35) inset, 0 4px 0 0 rgba(0,0,0,.45)',
-        }}
+        style={{ position: 'relative', width: '30px', height: '30px' }}
       >
-        <TrophyIcon size={32} />
-      </div>
-      <div
-        style={{
-          position: 'absolute',
-          left: '50%',
-          bottom: '-9px',
-          transform: 'translateX(-50%)',
-          minWidth: '30px',
-          padding: '2px 5px',
-          boxSizing: 'border-box',
-          border: '2px solid #000',
-          borderRadius: '4px',
-          background: lb.fabRank ? '#FCE370' : '#B5C0FF',
-          textAlign: 'center',
-          whiteSpace: 'nowrap',
-          fontFamily: PIXEL,
-          fontSize: '10px',
-          lineHeight: '1',
-          color: '#000',
-        }}
-      >
-        {lb.fabRank ? hashSafe(lb.fabRank) : 'RANK'}
-      </div>
-      {lb.fabAlert ? (
+        {lb.fabGlow ? (
+          <div
+            className="gl-lb-ring"
+            style={{
+              position: 'absolute',
+              inset: '-3px',
+              borderRadius: '50%',
+              border: `2px solid ${lb.fabTitleColor}`,
+              pointerEvents: 'none',
+            }}
+          />
+        ) : null}
         <div
           style={{
             position: 'absolute',
-            top: '-2px',
-            right: '-2px',
-            width: '18px',
-            height: '18px',
+            inset: '0',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            border: '2px solid #000',
-            borderRadius: '50%',
-            background: '#FF5A4E',
-            fontFamily: PIXEL,
-            fontSize: '11px',
-            lineHeight: '1',
-            color: '#FFFFFF',
+            filter: 'drop-shadow(0 2px 0 rgba(0,0,0,.45))',
           }}
         >
-          !
+          <TrophyIcon size={26} />
         </div>
-      ) : null}
+        {lb.fabRank ? (
+          <div
+            style={{
+              position: 'absolute',
+              right: '-8px',
+              bottom: '-2px',
+              padding: '1px 3px',
+              border: '1.5px solid #000',
+              borderRadius: '3px',
+              background: '#FCE370',
+              whiteSpace: 'nowrap',
+              fontFamily: PIXEL,
+              fontSize: '8px',
+              lineHeight: '1',
+              color: '#000',
+            }}
+          >
+            {hashSafe(lb.fabRank)}
+          </div>
+        ) : null}
+        {lb.fabAlert ? (
+          <div
+            style={{
+              position: 'absolute',
+              top: '-3px',
+              right: '-5px',
+              width: '10px',
+              height: '10px',
+              boxSizing: 'border-box',
+              border: '2px solid #000',
+              borderRadius: '50%',
+              background: '#FF5A4E',
+            }}
+          />
+        ) : null}
+      </div>
+      <div style={{ ...stroked('8px', '#FFFFFF', 3), whiteSpace: 'nowrap' }}>
+        LEADERBOARD
+      </div>
     </div>
   ) : null;
 
-/** "u/foo passed you!" above the floating button: the nudge to come back and
+/** "u/foo passed you!" under the floating button: the nudge to come back and
  *  take the place again. Tapping it opens the board. */
 export const SoloAlertBanner = ({
   lb,
@@ -1114,7 +1108,7 @@ export const SoloAlertBanner = ({
       style={{
         position: 'absolute',
         right: '14px',
-        bottom: '172px',
+        top: '104px',
         zIndex: '13',
         width: '220px',
         maxWidth: 'calc(100% - 28px)',
