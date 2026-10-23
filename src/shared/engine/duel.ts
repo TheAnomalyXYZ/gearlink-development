@@ -65,6 +65,10 @@ export const FOE_LINK_MS = 800;
 export const FOE_CLEAR_MS = 460;
 export const FOE_LAND_MS = 780;
 
+/** Duels are parked as a coming-soon feature: the DUEL tab is greyed out and
+ *  every way in (bottom bar, quest GO, challenge posts) is closed. */
+export const DUEL_ENABLED = false;
+
 export const DUEL_WIN_TROPHIES = 22;
 export const DUEL_LOSS_TROPHIES = 12;
 /** Below this arena height two equal boards would both be tiny, so the duel

@@ -97,6 +97,7 @@ import {
   upgradeBlock,
   upgradeCost,
   GEAR_MAX_LEVEL,
+  DUEL_ENABLED,
 } from '../../shared/engine/index.js';
 import { DEFAULT_SNOO, GEARLINK_ICON, NAV_ICON } from './assets.js';
 import { syncVictory } from '../fx/victory.js';
@@ -3175,6 +3176,7 @@ export const buildView = (app: GearLinkApp): View => {
         img: NAV_ICON.duel,
         icon: '28px',
         active: false,
+        soon: !DUEL_ENABLED,
       },
       {
         label: 'BAG',
@@ -3197,6 +3199,8 @@ export const buildView = (app: GearLinkApp): View => {
         z: n.active ? 2 : 1,
         alertDisplay: 'alert' in n && n.alert ? 'block' : 'none',
         fx: n.label.toLowerCase(),
+        soonDisplay: 'soon' in n && n.soon ? 'block' : 'none',
+        dim: 'soon' in n && n.soon ? 'grayscale(1) brightness(.6)' : 'none',
       })
     ),
     toggleHomeMenu: app.toggleHomeMenu,

@@ -2197,7 +2197,7 @@ export const Screen = ({ v }: { v: View }) => (
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          cursor: 'pointer',
+                          cursor: n.soon ? 'default' : 'pointer',
                           marginLeft: n.nudge,
                           zIndex: n.z,
                         }}
@@ -2264,12 +2264,34 @@ export const Screen = ({ v }: { v: View }) => (
                           <div
                             style={{
                               position: 'absolute',
+                              top: '-8px',
+                              left: '50%',
+                              transform: 'translateX(-50%)',
+                              zIndex: '1',
+                              display: n.soonDisplay,
+                              padding: '2px 4px',
+                              borderRadius: '3px',
+                              background: '#1D1C24',
+                              border: '1.5px solid #5A5C70',
+                              fontFamily: 'VolterTitle,Volter,monospace',
+                              fontSize: '9px',
+                              lineHeight: '1',
+                              color: '#CBD9EC',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            SOON
+                          </div>
+                          <div
+                            style={{
+                              position: 'absolute',
                               inset: '0',
                               display: 'flex',
                               flexDirection: 'column',
                               alignItems: 'center',
                               justifyContent: 'center',
                               gap: '2px',
+                              filter: n.dim,
                             }}
                           >
                             <div

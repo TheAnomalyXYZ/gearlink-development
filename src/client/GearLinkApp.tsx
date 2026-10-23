@@ -32,6 +32,7 @@ import { OrderResultStatus, purchase } from '@devvit/payments/client';
 import {
   LOCATIONS,
   weeklyFlairFor,
+  DUEL_ENABLED,
   DUEL_FTUE_STEPS,
   DUEL_LOSS_TROPHIES,
   DUEL_THINK_MIN,
@@ -420,7 +421,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         // pre-fight build, whether or not the climb has reached it - unless
         // its day is over, when it opens like any other post.
         () => {
-          const foe = res.challenger;
+          const foe = DUEL_ENABLED ? res.challenger : null;
           if (foe) {
             if (this.duelLoadout()) this.pickFoe(foe)();
             else this.openDuelSetup(foe);
@@ -2171,6 +2172,10 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
    * five you list are what other people's lobbies will hand their bot.
    */
   goDuelLobby = (): void => {
+    if (!DUEL_ENABLED) {
+      safeToast(showToast, 'Duels are coming soon!');
+      return;
+    }
     if (!this.duelLoadout()) {
       this.enterDuelSetup();
       return;
