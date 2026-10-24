@@ -172,8 +172,13 @@ export const MiniBoard = ({
       className="relative w-full"
       style={{
         aspectRatio: `${GRID_COLS} / ${GRID_ROWS}`,
-        padding: 'clamp(4px,1.4cqw,8px)',
-        borderRadius: 12,
+        /* Its own container, so the gaps, corners and numbers inside scale
+           with the board rather than the slot round it - a board squeezed
+           by a short feed card keeps its tiles, not its padding. The padding
+           itself is a share of the board's width for the same reason. */
+        containerType: 'inline-size',
+        padding: '1.6%',
+        borderRadius: 'clamp(6px,3.5%,12px)',
         border: '2px solid #000',
         background: 'linear-gradient(180deg,#141D2E,#0B0F1E)',
         boxShadow: `0 4px 0 0 rgba(0,0,0,.45), 0 0 0 2px ${accent}55, 0 0 22px ${accent}33`,

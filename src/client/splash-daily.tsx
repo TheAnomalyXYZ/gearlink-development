@@ -127,6 +127,7 @@ export const CountdownUnit = ({
       </span>
     </div>
     <span
+      className="[@media(max-height:460px)]:hidden"
       style={{
         fontSize: 7,
         color: '#8FA3C4',
@@ -167,7 +168,7 @@ export const Countdown = ({ left }: { left: number }) => {
         boxShadow: '0 3px 0 0 rgba(0,0,0,.4)',
       }}
     >
-      <div className="flex flex-col items-start leading-tight">
+      <div className="flex flex-col items-start leading-tight [@media(max-height:460px)]:hidden">
         <span
           style={{
             fontSize: 8,
@@ -298,7 +299,7 @@ export const DailyBanner = ({
         ) : null}
       </div>
       <div
-        className="glk-rise glk-d2 relative z-20 mt-2 flex items-center gap-1.5 px-2.5"
+        className="glk-rise glk-d2 relative z-20 mt-2 flex items-center gap-1.5 px-2.5 [@media(max-height:360px)]:hidden"
         style={{
           fontFamily: PIXEL,
           fontSize: 11,
