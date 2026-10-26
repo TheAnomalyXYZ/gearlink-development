@@ -270,7 +270,12 @@ type Stopper = { stopPropagation?: () => void };
 
 const newSeed = (): number => Math.floor(Math.random() * 0xffffffff) >>> 0;
 
-export class GearLinkApp extends Component<Record<string, never>, AppState> {
+export type GearLinkProps = {
+  /** The Daily Battle post's way back to its poster once a battle is over. */
+  onDailyDone?: () => void;
+};
+
+export class GearLinkApp extends Component<GearLinkProps, AppState> {
   /** The run in flight. Holds the RNG, so it is the only thing that can advance
    *  the board - and `moves` is the transcript the server will replay. */
   private run: Run | null = null;
@@ -360,7 +365,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
 
   /** The leaving screen, caught before React swaps it, so it can play out. */
   override getSnapshotBeforeUpdate(
-    _p: Record<string, never>,
+    _p: GearLinkProps,
     prev: AppState
   ): PageSnap | null {
     const st = this.state;
@@ -370,7 +375,7 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   }
 
   override componentDidUpdate(
-    _p: Record<string, never>,
+    _p: GearLinkProps,
     _s: AppState,
     snap: PageSnap | null
   ): void {
@@ -997,6 +1002,14 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   canEnter = (id: string): boolean =>
     locationIndex(id) <= this.state.profile.progress ||
     id === this.state.daily?.locationId;
+
+  /** A Daily Battle post's battle ends on its poster, where the ladder is:
+   *  the victory screen offers this in place of the map. */
+  get dailyDone(): (() => void) | null {
+    return (
+      (this.postMode && this.isDailyRun() && this.props.onDailyDone) || null
+    );
+  }
 
   /** Whether the run on screen is this post's Daily Battle. */
   isDailyRun = (): boolean =>

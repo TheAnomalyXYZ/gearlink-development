@@ -88,41 +88,61 @@ const GiveableChest = ({
 };
 
 /**
- * A Daily Battle post. A signed-in reader plays the day's battle right in the
- * feed: PLAY swaps the poster for the game in post mode, which boots straight
- * into the fight (the full game is still a button away from there). A
- * logged-out reader, or a post whose day is over, opens the full game.
+ * A Daily Battle post. While the day is live, a signed-in reader is dropped
+ * straight into its battle - the game in post mode boots into the fight - and
+ * when the battle is over the post turns back into the poster, re-read so the
+ * ladder carries the run just played, with PLAY AGAIN on it. A logged-out
+ * reader, or a post whose day is over, gets the poster and opens the full
+ * game from it.
  */
 const PlayableDaily = ({
-  poster,
+  poster: initial,
   signedIn,
 }: {
   poster: DailyPoster;
   signedIn: boolean;
 }) => {
-  const [playing, setPlaying] = useState(false);
-  const daily = (
+  const [poster, setPoster] = useState(initial);
+  const [playing, setPlaying] = useState(
+    () => signedIn && Date.now() < initial.endsAt
+  );
+  // Bumped per battle, so PLAY AGAIN boots a fresh game.
+  const [round, setRound] = useState(0);
+
+  const done = () => {
+    setPlaying(false);
+    void api
+      .challengeCard()
+      .then((r) => {
+        if (r.poster) setPoster(r.poster);
+      })
+      .catch(() => {
+        /* the poster as it was still shows the day */
+      });
+  };
+  const play = () => {
+    setRound((n) => n + 1);
+    setPlaying(true);
+  };
+
+  if (playing)
+    return (
+      <Suspense fallback={<Booting />}>
+        <PostGame key={round} onDailyDone={done} />
+      </Suspense>
+    );
+  return (
     <Daily
       poster={poster}
       cta={
         signedIn ? (
-          <ClaimButton
-            label="PLAY TODAY'S BATTLE"
-            sparkle
-            onClick={() => setPlaying(true)}
-          />
+          <ClaimButton label="PLAY AGAIN" sparkle onClick={play} />
         ) : (
           <Enter label="PLAY TODAY'S BATTLE" sparkle />
         )
       }
       endedCta={<Enter label="PLAY" />}
     />
-  );
-  if (!playing) return daily;
-  return (
-    <Suspense fallback={daily}>
-      <PostGame />
-    </Suspense>
   );
 };
 
@@ -135,13 +155,14 @@ const PlayableDaily = ({
  * or a piece of gear looks like.
  *
  * Four answers. A CHALLENGE post gets the duellist who made it. A Daily
- * Battle post gets the day's poster - its foe, its region and the top of its
- * own ladder, and its battle plays right there in the feed. A War Chest post gets the subreddit's chest, with giving right
- * there in the feed. Every other post is the game itself: the chunk is
+ * Battle post opens straight into the day's battle, and turns into its
+ * poster - its foe, its region and the top of its own ladder - once the
+ * battle is done. A War Chest post gets the subreddit's chest, with giving
+ * right there in the feed. Every other post is the game itself: the chunk is
  * fetched only then, behind the game's own loading screen; only a logged-out
- * reader gets the general splash. Until the answer lands the card is a bare dark shell, so
- * a challenge or daily post never flashes the general splash first; if the
- * lookup fails, the general splash is drawn.
+ * reader gets the general splash. Until the answer lands the card is a bare
+ * dark shell, so a challenge or daily post never flashes the general splash
+ * first; if the lookup fails, the general splash is drawn.
  */
 export const Splash = () => {
   const [res, setRes] = useState<ChallengeResponse | null>(null);
@@ -182,8 +203,7 @@ export const Splash = () => {
   if (res.poster)
     return <PlayableDaily poster={res.poster} signedIn={!!res.viewer} />;
   // A logged-out reader has no profile to play with: they get the splash.
-  if (!res.viewer)
-    return <General cta={<Enter label="PLAY NOW" sparkle />} />;
+  if (!res.viewer) return <General cta={<Enter label="PLAY NOW" sparkle />} />;
   // Everyone else goes straight into the game, with its own loading screen
   // while the chunk lands rather than the logo and a PLAY button.
   return (

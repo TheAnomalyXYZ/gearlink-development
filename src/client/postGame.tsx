@@ -6,10 +6,10 @@ import './view/game.css';
 import './view/worldMap.css';
 
 import { setPostMode } from './postMode.js';
-import { GearLinkApp } from './GearLinkApp.js';
+import { GearLinkApp, type GearLinkProps } from './GearLinkApp.js';
 
 setPostMode(true);
 if (typeof document !== 'undefined')
   document.documentElement.setAttribute('data-post', '');
 
-export const PostGame = () => <GearLinkApp />;
+export const PostGame = (p: GearLinkProps) => <GearLinkApp {...p} />;

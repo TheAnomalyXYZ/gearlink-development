@@ -82,6 +82,9 @@ export type VictoryApp = {
   goMap: () => void;
   goHome: () => void;
   retryRun: () => void;
+  replayDaily: () => void;
+  /** Set on a Daily Battle post: back to its poster and ladder. */
+  dailyDone: (() => void) | null;
   openBooks: (ids: string[], from: 'victory') => void;
   openFullGame: (e: MouseEvent, go?: string) => void;
   afterBooks: (() => void) | null;
@@ -1270,7 +1273,15 @@ class Victory {
       list: HTMLDivElement[] = [];
     const openBooks = (): void => this.openBooks();
     const label = n > 1 ? 'OPEN ' + n + ' BOOKS' : 'OPEN BOOK';
-    if (!this.won) {
+    const daily = A.dailyDone;
+    if (daily) {
+      // A Daily Battle post: the battle ends on its ladder, not the map.
+      if (n) list.push(button(label, BTN.primary, openBooks, true, true));
+      list.push(
+        button('SEE THE LEADERBOARD', n ? BTN.quiet : BTN.primary, daily, !n)
+      );
+      list.push(button('PLAY AGAIN', BTN.home, () => A.replayDaily()));
+    } else if (!this.won) {
       list.push(button('TRY AGAIN', BTN.primary, () => A.retryRun(), true));
       list.push(button('BACK TO THE MAP', BTN.quiet, () => A.goMap()));
       if (n) list.unshift(button(label, BTN.primary, openBooks, true, true));
