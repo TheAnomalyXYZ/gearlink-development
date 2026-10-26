@@ -1101,14 +1101,17 @@ export class WorldMap extends Component<WorldMapProps, WorldMapState> {
       locked ? 'Locked' : hot ? 'Active' : 'Default'
     );
     const sticker = FX + 'map-sticker/' + L.pin + '.png';
-    // 8-frame sheets built from the repo art by tools/map-sprites.js.
+    // 8-frame sheets built from the repo art by tools/map-sprites.js. Frames
+    // step via background-position, not a translated 800% strip: inside the
+    // pitched 3D stage a composited transform could slide between frames
+    // (or sample a sliver of the next one) on mobile WebKit.
     const sheet = locked
       ? mapPinUrlFor(L.pin, 'Locked')
       : FX + 'map-anim/' + L.pin + (hot ? '_Active.png' : '_Default.png');
     const dur = 8 * L.fms;
     const frameAnim = locked
       ? 'none'
-      : 'wmFrames ' +
+      : 'wmSheet ' +
         dur +
         'ms steps(8) ' +
         (-(gi * 170) % dur) +
@@ -1275,15 +1278,11 @@ export class WorldMap extends Component<WorldMapProps, WorldMapState> {
                       <div
                         style={{
                           position: 'absolute',
-                          left: 0,
-                          top: 0,
-                          width: '800%',
-                          height: '100%',
+                          inset: 0,
                           background:
-                            'url(' + sticker + ') 0 0/100% 100% no-repeat',
+                            'url(' + sticker + ') 0 0/800% 100% no-repeat',
                           imageRendering: 'pixelated',
                           animation: frameAnim,
-                          willChange: 'transform',
                         }}
                       />
                     </div>
@@ -1302,15 +1301,15 @@ export class WorldMap extends Component<WorldMapProps, WorldMapState> {
                       <div
                         style={{
                           position: 'absolute',
-                          left: 0,
-                          top: 0,
-                          width: locked ? '100%' : '800%',
-                          height: '100%',
+                          inset: 0,
                           background:
-                            'url(' + sheet + ') 0 0/100% 100% no-repeat',
+                            'url(' +
+                            sheet +
+                            ') 0 0/' +
+                            (locked ? '100%' : '800%') +
+                            ' 100% no-repeat',
                           imageRendering: 'pixelated',
                           animation: frameAnim,
-                          willChange: 'transform',
                         }}
                       />
                     </div>
