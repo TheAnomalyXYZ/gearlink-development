@@ -9,6 +9,7 @@ import type {
   WarChestPost,
 } from '../shared/api.js';
 import { requestExpandedMode, showToast } from '@devvit/web/client';
+import { Booting } from './components/BootScreens.js';
 import { Challenge } from './splash-card.js';
 import { Chest } from './splash-chest.js';
 import { Daily } from './splash-daily.js';
@@ -136,9 +137,9 @@ const PlayableDaily = ({
  * Four answers. A CHALLENGE post gets the duellist who made it. A Daily
  * Battle post gets the day's poster - its foe, its region and the top of its
  * own ladder, and its battle plays right there in the feed. A War Chest post gets the subreddit's chest, with giving right
- * there in the feed. Every other post is a playable battle: the game chunk is
- * fetched only then, with the general splash shown while it loads and to a
- * logged-out reader. Until the answer lands the card is a bare dark shell, so
+ * there in the feed. Every other post is the game itself: the chunk is
+ * fetched only then, behind the game's own loading screen; only a logged-out
+ * reader gets the general splash. Until the answer lands the card is a bare dark shell, so
  * a challenge or daily post never flashes the general splash first; if the
  * lookup fails, the general splash is drawn.
  */
@@ -180,11 +181,13 @@ export const Splash = () => {
     return <GiveableChest initial={res.chest} signedIn={!!res.viewer} />;
   if (res.poster)
     return <PlayableDaily poster={res.poster} signedIn={!!res.viewer} />;
-  const general = <General cta={<Enter label="PLAY NOW" sparkle />} />;
   // A logged-out reader has no profile to play with: they get the splash.
-  if (!res.viewer) return general;
+  if (!res.viewer)
+    return <General cta={<Enter label="PLAY NOW" sparkle />} />;
+  // Everyone else goes straight into the game, with its own loading screen
+  // while the chunk lands rather than the logo and a PLAY button.
   return (
-    <Suspense fallback={general}>
+    <Suspense fallback={<Booting />}>
       <PostGame />
     </Suspense>
   );

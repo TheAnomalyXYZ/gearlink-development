@@ -4,10 +4,16 @@ import { CELLS, MIN_LINK } from './constants.js';
 import { areAdjacent, hasAnyMove, isSuper, orbTypeOf } from './board.js';
 import { LOCATIONS, MAP_LENGTH, MAX_ASCENSION } from './campaign.js';
 import { MONSTER_BASE_HP } from './monsters.js';
-import { defaultLoadout } from './gear.js';
+import {
+  HERO_CLASSES,
+  STARTER_GEAR,
+  defaultLoadout,
+  loadoutIsLegal,
+  starterLoadout,
+} from './gear.js';
 import { Run } from './run.js';
 import { verifyRun } from './replay.js';
-import type { RunState } from './types.js';
+import type { HeroClass, RunState } from './types.js';
 
 const anyMove = (board: number[]): number[] | null => {
   for (let i = 0; i < CELLS; i++) if (isSuper(board[i]!)) return [i];
@@ -30,11 +36,16 @@ const anyMove = (board: number[]): number[] | null => {
 };
 
 /** Plays a location out with a greedy player and reports how it ended. */
-const fight = (seed: number, locationId: string, ascension = 0) => {
-  const picked = defaultLoadout('Hero');
+const fight = (
+  seed: number,
+  locationId: string,
+  ascension = 0,
+  heroClass: HeroClass = 'Hero',
+  picked = defaultLoadout(heroClass)
+) => {
   const run = new Run({
     seed,
-    heroClass: 'Hero',
+    heroClass,
     picked,
     locationId,
     ascension,
@@ -104,6 +115,23 @@ void test('the boss wave ends the battle rather than dealing another monster', (
   assert.equal(state.enemyHp, 0);
   // The wave counter walks one past the plan, which is what "won" means.
   assert.equal(state.wave, run.waveCount + 1);
+});
+
+void test('a new account owns only the starter five, and it takes Greenwood', () => {
+  const owned = Object.keys(STARTER_GEAR()).sort();
+  assert.deepEqual(owned, HERO_CLASSES.flatMap(starterLoadout).sort());
+  for (const cls of HERO_CLASSES) {
+    const picked = starterLoadout(cls);
+    assert.ok(loadoutIsLegal(picked, cls), cls + ' starter five is illegal');
+    assert.ok(
+      !picked.some((id) => /Epic|Legendary/.test(id)),
+      cls + ' starts with top-tier gear'
+    );
+    let won = 0;
+    for (let seed = 1; seed <= 40; seed++)
+      if (fight(seed, 'forest', 0, cls, picked).won) won++;
+    assert.ok(won >= 36, cls + ' starter five took Greenwood ' + won + '/40');
+  }
 });
 
 void test('a won battle verifies, and a move made after the win does not', () => {

@@ -200,12 +200,25 @@ export const ownedLoadout = (
   return out.concat(extra).slice(0, 5);
 };
 
-/** Every new account owns each class's default five, so a run is playable
+/** A new account's five for a class: the weakest legal loadout. A class has
+ *  only one Common weapon and one Common off-hand, and a loadout needs two of
+ *  each, so the second of each is the Rare; everything better comes from
+ *  packs. */
+export const starterLoadout = (cls: HeroClass): string[] => {
+  const of = (eff: EffectKind, n: number) =>
+    GEAR.filter((g) => g.cls === cls && g.effect === eff)
+      .sort((a, b) => a.power - b.power)
+      .slice(0, n)
+      .map((g) => g.id);
+  return of('attack', 2).concat(of('block', 2), of('effect', 1));
+};
+
+/** Every new account owns each class's starter five, so a run is playable
  *  before a single pack is bought. */
 export const STARTER_GEAR = (): Record<string, number> => {
   const m: Record<string, number> = {};
   for (const cls of HERO_CLASSES)
-    for (const id of defaultLoadout(cls)) m[id] = (m[id] ?? 0) + 1;
+    for (const id of starterLoadout(cls)) m[id] = (m[id] ?? 0) + 1;
   return m;
 };
 

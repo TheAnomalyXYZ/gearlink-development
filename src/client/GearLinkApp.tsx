@@ -287,7 +287,6 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   postSizing = false;
   /** The post's own intro (straight into a battle) has been played or skipped. */
   postIntroDone = false;
-  private postAuto: ReturnType<typeof setTimeout> | null = null;
   /** The login reward has been put up once this session; after that it waits
    *  to be opened from the quests screen. */
   private streakOffered = false;
@@ -342,7 +341,10 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   /** Coach-mark targets, keyed by FTUE_TARGET's `target` names. */
   private ftueEls: Record<string, HTMLElement | null> = {};
 
-  override state: AppState = INITIAL_STATE;
+  /** The post skips the title screen: it opens on the map, ready to play. */
+  override state: AppState = this.postMode
+    ? { ...INITIAL_STATE, phase: 'home' }
+    : INITIAL_STATE;
 
   override componentDidMount(): void {
     void this.boot();
@@ -421,6 +423,9 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         // pre-fight build, whether or not the climb has reached it - unless
         // its day is over, when it opens like any other post.
         () => {
+          // The post opens on the map before the profile lands, so the
+          // coaching for that screen is only decided now.
+          this.syncFtueToPhase();
           const foe = DUEL_ENABLED ? res.challenger : null;
           if (foe) {
             if (this.duelLoadout()) this.pickFoe(foe)();
@@ -1404,17 +1409,12 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
 
   /* ---------- the inline post ---------- */
 
-  /** After boot, with no challenge, daily or chest to open: the post drops a
-   *  new player into their first battle; the full game picks up whatever the
-   *  post handed it (a battle to resume, or a location to enter). */
+  /** After boot, with no challenge, daily or chest to open: the post leaves a
+   *  new player on the map, where the coaching starts; the full game picks up
+   *  whatever the post handed it (a battle to resume, or a location to enter). */
   private routeAfterBoot(): void {
     if (this.postMode) {
       if (this.state.profile.progress > 0) this.postIntroDone = true;
-      else
-        this.postAuto = setTimeout(() => {
-          if (this.state.phase === 'home' && !this.postIntroDone)
-            this.startPost();
-        }, 15000);
       return;
     }
     const go = takeGoTo();
@@ -1484,10 +1484,21 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
     return (LOCATIONS[Math.min(p, LOCATIONS.length - 1)] ?? LOCATIONS[0]!).id;
   }
 
+  /** The post's first ENTER on the map. A player still being coached walks the
+   *  whole build - hero, then gear - so every step is taught; anyone past the
+   *  coaching goes straight in. */
+  enterPost = (id: string): void => {
+    if (this.state.profile.seenFtue) {
+      this.startPost();
+      return;
+    }
+    this.postIntroDone = true;
+    this.pickLocation(id)();
+  };
+
   /** The post's battle: straight into the furthest location as the default
    *  Hero with the gear owned. */
   startPost = (): void => {
-    if (this.postAuto) clearTimeout(this.postAuto);
     this.postIntroDone = true;
     this.setState(
       (s) => ({
@@ -1498,10 +1509,8 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         homeMenu: false,
         modal: null,
       }),
-      () => {
-        this.startRun();
-        this.setState({ ftueStep: null });
-      }
+      // startRun puts a new player's in-battle coaching up itself.
+      this.startRun
     );
   };
 
@@ -1510,7 +1519,6 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
   startDailyPost = (): void => {
     const daily = this.state.daily;
     if (!daily) return;
-    if (this.postAuto) clearTimeout(this.postAuto);
     this.postIntroDone = true;
     this.setState(
       (s) => ({
@@ -1523,10 +1531,8 @@ export class GearLinkApp extends Component<Record<string, never>, AppState> {
         homeMenu: false,
         modal: null,
       }),
-      () => {
-        this.startRun();
-        this.setState({ ftueStep: null });
-      }
+      // startRun puts a new player's in-battle coaching up itself.
+      this.startRun
     );
   };
 

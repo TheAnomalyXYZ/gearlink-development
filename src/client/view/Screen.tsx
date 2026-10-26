@@ -594,7 +594,10 @@ const PostBattle = ({ v, p }: { v: View; p: PostView }) => (
           </div>
         </div>
         <StrikeLayer v={v} />
+        {/* The post has no notch bar, so the intent pills are what the
+            waves coaching points at. */}
         <div
+          ref={v.setFtueTrack}
           style={{
             position: 'absolute',
             left: 'calc(100% + 10px)',
@@ -662,6 +665,7 @@ const PostBattle = ({ v, p }: { v: View; p: PostView }) => (
         </div>
       </div>
       <div
+        ref={v.setFtueEnemy}
         style={{
           width: p.frameWpx,
           height: '14px',

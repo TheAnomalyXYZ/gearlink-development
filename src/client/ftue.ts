@@ -80,6 +80,15 @@ export const FTUE_COPY: Record<string, { title: string; body: string }> = {
   },
 };
 
+/** The inline post's battle has no notch bar: the enemy's next move is
+ *  spelled out beside it instead, so the waves step says so. */
+export const FTUE_POST_COPY: Record<string, { title: string; body: string }> = {
+  waves: {
+    title: 'Clear the location',
+    body: 'Beside the enemy is what it does next and in how many turns - when it is about to hit, block or heal before it does. Kill it and the next wave walks in. The last wave is the elite that guards this place - put it down and the location is yours.',
+  },
+};
+
 export const FTUE_LEGEND: Record<string, { label: string; blurb: string }> = {
   attack: { label: 'ATK', blurb: 'Damages the enemy' },
   block: { label: 'BLK', blurb: "Soaks the enemy's next hit" },

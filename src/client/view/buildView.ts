@@ -127,6 +127,7 @@ import { reviveUi } from './reviveView.js';
 import {
   DUEL_SETUP_PHASE,
   FTUE_COPY,
+  FTUE_POST_COPY,
   FTUE_DOING,
   FTUE_LEGEND,
   FTUE_ORDER,
@@ -1607,7 +1608,10 @@ export const buildView = (app: GearLinkApp): View => {
             st.ftueSample.damage +
             " and the enemy's HP bar above dropped by that much. Each extra orb in a link adds a little more."
         : st.ftueStep
-          ? FTUE_COPY[st.ftueStep]!.body
+          ? (
+              (app.postMode ? FTUE_POST_COPY[st.ftueStep] : undefined) ??
+              FTUE_COPY[st.ftueStep]!
+            ).body
           : '',
     ftueLegendOpacity: st.ftueStep === 'orbs' ? 1 : 0,
     ftueLegendDisplay: st.ftueStep === 'orbs' ? 'flex' : 'none',
@@ -3321,8 +3325,8 @@ export const buildView = (app: GearLinkApp): View => {
       const open =
         i >= 0 && (i <= st.profile.progress || id === st.daily?.locationId);
       app.setState({ wmFocused: false });
-      // The post's first ENTER is its intro battle, as the default Hero.
-      if (app.postMode && !app.postIntroDone) app.startPost();
+      // The post's first ENTER is its intro battle (see enterPost).
+      if (app.postMode && !app.postIntroDone) app.enterPost(id);
       else if (open) app.pickLocation(id)();
     },
     wmFocus: (on: boolean) => {
