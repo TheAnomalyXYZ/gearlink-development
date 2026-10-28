@@ -5924,6 +5924,7 @@ export const Screen = ({ v }: { v: View }) => (
         {v.isInventory ? (
           <>
             <div
+              className="gl-bag"
               style={{
                 flex: '1',
                 minHeight: '0',
@@ -5934,6 +5935,7 @@ export const Screen = ({ v }: { v: View }) => (
                 padding: '14px',
                 gap: '10px',
                 overflow: 'hidden',
+                containerType: 'size',
               }}
             >
               <div
@@ -6085,83 +6087,85 @@ export const Screen = ({ v }: { v: View }) => (
                   gap: '8px',
                 }}
               >
-                {(v.bagPacks || []).map((p: any, pI: number) => (
-                  <Fragment key={pI}>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '9px',
-                        background: '#1D2956',
-                        border: `2px solid ${p.tint}`,
-                        borderRadius: '8px 0 8px 0',
-                        padding: '9px',
-                        animation: p.inAnim,
-                      }}
-                    >
+                <div className="gl-bag-list" style={{ gap: '8px' }}>
+                  {(v.bagPacks || []).map((p: any, pI: number) => (
+                    <Fragment key={pI}>
                       <div
                         style={{
-                          width: '42px',
-                          height: '50px',
-                          flexShrink: '0',
-                          backgroundImage: `url(${p.img})`,
-                          backgroundSize: 'contain',
-                          backgroundRepeat: 'no-repeat',
-                          backgroundPosition: 'center',
-                          imageRendering: 'pixelated',
-                          animation: 'glBob 2.4s ease-in-out infinite',
-                        }}
-                      ></div>
-                      <div
-                        style={{
-                          flex: '1',
-                          minWidth: '0',
                           display: 'flex',
-                          flexDirection: 'column',
-                          gap: '2px',
+                          alignItems: 'center',
+                          gap: '9px',
+                          background: '#1D2956',
+                          border: `2px solid ${p.tint}`,
+                          borderRadius: '8px 0 8px 0',
+                          padding: '9px',
+                          animation: p.inAnim,
                         }}
                       >
                         <div
                           style={{
-                            fontFamily: 'VolterTitle,Volter,monospace',
-                            fontSize: '14px',
-                            color: '#FFFFFF',
+                            width: '42px',
+                            height: '50px',
+                            flexShrink: '0',
+                            backgroundImage: `url(${p.img})`,
+                            backgroundSize: 'contain',
+                            backgroundRepeat: 'no-repeat',
+                            backgroundPosition: 'center',
+                            imageRendering: 'pixelated',
+                            animation: 'glBob 2.4s ease-in-out infinite',
+                          }}
+                        ></div>
+                        <div
+                          style={{
+                            flex: '1',
+                            minWidth: '0',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '2px',
                           }}
                         >
-                          {p.name}
+                          <div
+                            style={{
+                              fontFamily: 'VolterTitle,Volter,monospace',
+                              fontSize: '14px',
+                              color: '#FFFFFF',
+                            }}
+                          >
+                            {p.name}
+                          </div>
+                          <div style={{ fontSize: '9px', color: '#CBD9EC' }}>
+                            {p.count} unopened - {p.cards} gear each
+                          </div>
                         </div>
-                        <div style={{ fontSize: '9px', color: '#CBD9EC' }}>
-                          {p.count} unopened - {p.cards} gear each
+                        <div
+                          onClick={p.open}
+                          style={{
+                            cursor: 'pointer',
+                            flexShrink: '0',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            minHeight: '32px',
+                            padding: '0 12px',
+                            border: '2px solid #000000',
+                            borderRadius: '8px 2px 8px 2px',
+                            background: '#FCE270',
+                            boxShadow:
+                              '0 -3px 0 0 #FF961D inset, 0 3px 0 0 #FFF inset',
+                            color: '#000000',
+                            fontFamily: 'VolterTitle,Volter,monospace',
+                            fontSize: '16.5px',
+                            lineHeight: '1.05',
+                            textAlign: 'center',
+                            textWrap: 'balance',
+                          }}
+                        >
+                          OPEN
                         </div>
                       </div>
-                      <div
-                        onClick={p.open}
-                        style={{
-                          cursor: 'pointer',
-                          flexShrink: '0',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          minHeight: '32px',
-                          padding: '0 12px',
-                          border: '2px solid #000000',
-                          borderRadius: '8px 2px 8px 2px',
-                          background: '#FCE270',
-                          boxShadow:
-                            '0 -3px 0 0 #FF961D inset, 0 3px 0 0 #FFF inset',
-                          color: '#000000',
-                          fontFamily: 'VolterTitle,Volter,monospace',
-                          fontSize: '16.5px',
-                          lineHeight: '1.05',
-                          textAlign: 'center',
-                          textWrap: 'balance',
-                        }}
-                      >
-                        OPEN
-                      </div>
-                    </div>
-                  </Fragment>
-                ))}
+                    </Fragment>
+                  ))}
+                </div>
                 <div
                   style={{
                     display: v.noPacksDisplay,
@@ -6213,415 +6217,418 @@ export const Screen = ({ v }: { v: View }) => (
 
               <div
                 data-fx-bag
+                className="gl-bag-gear"
                 style={{
                   flex: '1',
                   minHeight: '0',
                   overflowY: 'auto',
                   overflowX: 'hidden',
                   display: v.gearPaneDisplay,
-                  flexDirection: 'column',
-                  gap: '8px',
                 }}
               >
-                <div
-                  style={{
-                    flexShrink: '0',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '7px',
-                    background: '#1D2956',
-                    border: '1px solid #304A69',
-                    borderRadius: '8px 0 8px 0',
-                    padding: '8px 9px',
-                  }}
-                >
+                <div className="gl-bag-side">
                   <div
                     style={{
+                      flexShrink: '0',
                       display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: '8px',
+                      flexDirection: 'column',
+                      gap: '7px',
+                      background: '#1D2956',
+                      border: '1px solid #304A69',
+                      borderRadius: '8px 0 8px 0',
+                      padding: '8px 9px',
                     }}
                   >
                     <div
                       style={{
-                        fontFamily: PIXEL,
-                        fontSize: '13px',
-                        color: '#FFF2B0',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '8px',
                       }}
                     >
-                      COLLECTION
+                      <div
+                        style={{
+                          fontFamily: PIXEL,
+                          fontSize: '13px',
+                          color: '#FFF2B0',
+                        }}
+                      >
+                        COLLECTION
+                      </div>
+                      <div
+                        style={{
+                          fontFamily: PIXEL,
+                          fontSize: '13px',
+                          color: '#FFFFFF',
+                        }}
+                      >
+                        {v.collectionCount}
+                      </div>
                     </div>
                     <div
-                      style={{
-                        fontFamily: PIXEL,
-                        fontSize: '13px',
-                        color: '#FFFFFF',
-                      }}
-                    >
-                      {v.collectionCount}
-                    </div>
-                  </div>
-                  <div
-                    style={{
-                      position: 'relative',
-                      height: '10px',
-                      background: '#141D2E',
-                      border: '1px solid #000000',
-                      borderRadius: '3px',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    <div
-                      className="glb-fill"
                       style={{
                         position: 'relative',
-                        width: v.collectionPct,
-                        height: '100%',
+                        height: '10px',
+                        background: '#141D2E',
+                        border: '1px solid #000000',
+                        borderRadius: '3px',
                         overflow: 'hidden',
-                        background:
-                          'linear-gradient(180deg,#FCE270 0 50%,#F4B740 50% 100%)',
                       }}
                     >
-                      <div className="glb-tile-sheen"></div>
+                      <div
+                        className="glb-fill"
+                        style={{
+                          position: 'relative',
+                          width: v.collectionPct,
+                          height: '100%',
+                          overflow: 'hidden',
+                          background:
+                            'linear-gradient(180deg,#FCE270 0 50%,#F4B740 50% 100%)',
+                        }}
+                      >
+                        <div className="glb-tile-sheen"></div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      {(v.rarityTally || []).map((r: any, rI: number) => (
+                        <Fragment key={rI}>
+                          <div
+                            style={{
+                              flex: '1',
+                              minWidth: '0',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              gap: '2px',
+                              padding: '3px 2px',
+                              background: '#141D2E',
+                              borderTop: `2px solid ${r.color}`,
+                              borderRadius: '2px',
+                            }}
+                          >
+                            <div
+                              style={{
+                                fontSize: '8px',
+                                color: r.color,
+                                letterSpacing: '.04em',
+                                whiteSpace: 'nowrap',
+                                maxWidth: '100%',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
+                              {r.label}
+                            </div>
+                            <div
+                              style={{
+                                fontFamily: PIXEL,
+                                fontSize: '11px',
+                                color: r.fg,
+                              }}
+                            >
+                              {r.tally}
+                            </div>
+                          </div>
+                        </Fragment>
+                      ))}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: '9px',
+                        color: '#9DB4D4',
+                        lineHeight: '1.5',
+                      }}
+                    >
+                      {v.collectionLine}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '4px' }}>
-                    {(v.rarityTally || []).map((r: any, rI: number) => (
-                      <Fragment key={rI}>
+
+                  <div
+                    style={{
+                      flexShrink: '0',
+                      display: 'flex',
+                      gap: '5px',
+                      padding: '7px 4px 0 0',
+                    }}
+                  >
+                    {(v.gearFilters || []).map((f: any, fI: number) => (
+                      <Fragment key={fI}>
                         <div
+                          className="glb-press"
+                          onClick={f.run}
                           style={{
-                            flex: '1',
+                            position: 'relative',
+                            cursor: 'pointer',
+                            flex: '1 1 0',
                             minWidth: '0',
                             display: 'flex',
-                            flexDirection: 'column',
                             alignItems: 'center',
-                            gap: '2px',
-                            padding: '3px 2px',
-                            background: '#141D2E',
-                            borderTop: `2px solid ${r.color}`,
-                            borderRadius: '2px',
+                            justifyContent: 'center',
+                            minHeight: '28px',
+                            padding: '0 2px',
+                            border: `2px solid ${f.bd}`,
+                            borderRadius: '6px 2px 6px 2px',
+                            background: f.bg,
+                            boxShadow: f.shadow,
+                            color: f.fg,
+                            fontFamily: PIXEL,
+                            fontSize: '10px',
+                            whiteSpace: 'nowrap',
                           }}
                         >
+                          {f.label}
                           <div
                             style={{
+                              position: 'absolute',
+                              top: '-8px',
+                              right: '-4px',
+                              minWidth: '15px',
+                              height: '13px',
+                              padding: '0 3px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              border: '1px solid #000000',
+                              borderRadius: '7px',
+                              background: f.badgeBg,
+                              color: '#FFFFFF',
+                              fontFamily: 'Volter,monospace',
                               fontSize: '8px',
-                              color: r.color,
-                              letterSpacing: '.04em',
-                              whiteSpace: 'nowrap',
-                              maxWidth: '100%',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
+                              lineHeight: '1',
                             }}
                           >
-                            {r.label}
-                          </div>
-                          <div
-                            style={{
-                              fontFamily: PIXEL,
-                              fontSize: '11px',
-                              color: r.fg,
-                            }}
-                          >
-                            {r.tally}
+                            {f.count}
                           </div>
                         </div>
                       </Fragment>
                     ))}
                   </div>
+                </div>
+
+                <div className="gl-bag-main">
                   <div
                     style={{
-                      fontSize: '9px',
-                      color: '#9DB4D4',
-                      lineHeight: '1.5',
+                      display: v.collectionEmptyDisplay,
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '9px',
+                      padding: '22px 12px',
+                      background: '#1D2956',
+                      border: '1px dashed #3A4C74',
+                      borderRadius: '6px',
                     }}
                   >
-                    {v.collectionLine}
+                    <div
+                      style={{
+                        fontSize: '10px',
+                        color: '#CBD9EC',
+                        textAlign: 'center',
+                        lineHeight: '1.6',
+                      }}
+                    >
+                      {v.collectionEmptyLine}
+                    </div>
                   </div>
-                </div>
 
-                <div
-                  style={{
-                    flexShrink: '0',
-                    display: 'flex',
-                    gap: '5px',
-                    padding: '7px 4px 0 0',
-                  }}
-                >
-                  {(v.gearFilters || []).map((f: any, fI: number) => (
-                    <Fragment key={fI}>
-                      <div
-                        className="glb-press"
-                        onClick={f.run}
-                        style={{
-                          position: 'relative',
-                          cursor: 'pointer',
-                          flex: '1 1 0',
-                          minWidth: '0',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          minHeight: '28px',
-                          padding: '0 2px',
-                          border: `2px solid ${f.bd}`,
-                          borderRadius: '6px 2px 6px 2px',
-                          background: f.bg,
-                          boxShadow: f.shadow,
-                          color: f.fg,
-                          fontFamily: PIXEL,
-                          fontSize: '10px',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {f.label}
-                        <div
-                          style={{
-                            position: 'absolute',
-                            top: '-8px',
-                            right: '-4px',
-                            minWidth: '15px',
-                            height: '13px',
-                            padding: '0 3px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            border: '1px solid #000000',
-                            borderRadius: '7px',
-                            background: f.badgeBg,
-                            color: '#FFFFFF',
-                            fontFamily: 'Volter,monospace',
-                            fontSize: '8px',
-                            lineHeight: '1',
-                          }}
-                        >
-                          {f.count}
-                        </div>
-                      </div>
-                    </Fragment>
-                  ))}
-                </div>
-
-                <div
-                  style={{
-                    display: v.collectionEmptyDisplay,
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '9px',
-                    padding: '22px 12px',
-                    background: '#1D2956',
-                    border: '1px dashed #3A4C74',
-                    borderRadius: '6px',
-                  }}
-                >
                   <div
                     style={{
-                      fontSize: '10px',
-                      color: '#CBD9EC',
-                      textAlign: 'center',
-                      lineHeight: '1.6',
+                      display: 'grid',
+                      gridTemplateColumns: 'var(--gl-bag-cols, repeat(4,1fr))',
+                      gap: '6px',
+                      justifyItems: 'center',
+                      paddingTop: '2px',
                     }}
                   >
-                    {v.collectionEmptyLine}
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(4,1fr)',
-                    gap: '6px',
-                    justifyItems: 'center',
-                    paddingTop: '2px',
-                  }}
-                >
-                  {(v.collection || []).map((c: any, cI: number) => (
-                    <Fragment key={cI}>
-                      <div
-                        onClick={c.inspect}
-                        style={{
-                          position: 'relative',
-                          width: '100%',
-                          aspectRatio: '1/1',
-                          cursor: 'pointer',
-                          opacity: c.opacity,
-                          animation: c.inAnim,
-                        }}
-                      >
+                    {(v.collection || []).map((c: any, cI: number) => (
+                      <Fragment key={cI}>
                         <div
-                          className="glb-tile-ring"
-                          style={{ display: c.ringDisplay }}
-                        >
-                          <div
-                            className="glb-tile-ring-spin"
-                            style={{
-                              background: `conic-gradient(from 0deg,${c.ringColor},#FFFFFF,${c.ringColor} 30%,rgba(0,0,0,0) 45%,${c.ringColor} 60%,#FFF2B0,${c.ringColor} 80%,rgba(0,0,0,0) 95%,${c.ringColor})`,
-                            }}
-                          ></div>
-                        </div>
-                        <div
-                          className={c.tileClass}
-                          data-rarity={c.tier}
+                          onClick={c.inspect}
                           style={{
                             position: 'relative',
                             width: '100%',
-                            height: '100%',
-                            border: `2px solid ${c.bd}`,
-                            borderRadius: '3px',
-                            backgroundColor: '#141D2E',
-                            boxShadow: c.glow,
-                            overflow: 'hidden',
-                            animation: c.tileAnim,
+                            aspectRatio: '1/1',
+                            cursor: 'pointer',
+                            opacity: c.opacity,
+                            animation: c.inAnim,
                           }}
                         >
                           <div
+                            className="glb-tile-ring"
+                            style={{ display: c.ringDisplay }}
+                          >
+                            <div
+                              className="glb-tile-ring-spin"
+                              style={{
+                                background: `conic-gradient(from 0deg,${c.ringColor},#FFFFFF,${c.ringColor} 30%,rgba(0,0,0,0) 45%,${c.ringColor} 60%,#FFF2B0,${c.ringColor} 80%,rgba(0,0,0,0) 95%,${c.ringColor})`,
+                              }}
+                            ></div>
+                          </div>
+                          <div
+                            className={c.tileClass}
+                            data-rarity={c.tier}
                             style={{
-                              position: 'absolute',
-                              left: '0',
-                              right: '0',
-                              top: '0',
-                              bottom: '30px',
-                              padding: '5px',
-                              boxSizing: 'border-box',
+                              position: 'relative',
+                              width: '100%',
+                              height: '100%',
+                              border: `2px solid ${c.bd}`,
+                              borderRadius: '3px',
+                              backgroundColor: '#141D2E',
+                              boxShadow: c.glow,
+                              overflow: 'hidden',
+                              animation: c.tileAnim,
                             }}
                           >
                             <div
-                              className={c.iconClass}
                               style={{
-                                width: '100%',
-                                height: '100%',
-                                backgroundImage: `url(${c.icon})`,
+                                position: 'absolute',
+                                left: '0',
+                                right: '0',
+                                top: '0',
+                                bottom: '30px',
+                                padding: '5px',
+                                boxSizing: 'border-box',
+                              }}
+                            >
+                              <div
+                                className={c.iconClass}
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  backgroundImage: `url(${c.icon})`,
+                                  backgroundSize: 'contain',
+                                  backgroundRepeat: 'no-repeat',
+                                  backgroundPosition: 'center',
+                                  imageRendering: 'pixelated',
+                                  filter: c.filter,
+                                  animationDelay: c.iconDelay,
+                                }}
+                              ></div>
+                            </div>
+                            <div
+                              className="glb-tile-flash"
+                              style={{ display: c.leveledDisplay }}
+                            ></div>
+                            <div
+                              className="glb-up-arrow"
+                              style={{ display: c.arrowDisplay }}
+                            >
+                              ▲
+                            </div>
+                            <div
+                              style={{
+                                position: 'absolute',
+                                left: '4px',
+                                right: '4px',
+                                bottom: '33px',
+                                height: '4px',
+                                display: c.barDisplay,
+                                background: '#0B1220',
+                                border: '1px solid #000000',
+                                borderRadius: '2px',
+                                overflow: 'hidden',
+                              }}
+                            >
+                              <div
+                                className="glb-fill"
+                                style={{
+                                  width: c.barPct,
+                                  height: '100%',
+                                  background: c.barBg,
+                                  boxShadow: c.barGlow,
+                                  animationDelay: c.barDelay,
+                                }}
+                              ></div>
+                            </div>
+                            <div
+                              style={{
+                                position: 'absolute',
+                                left: '0',
+                                right: '0',
+                                top: '0',
+                                bottom: '30px',
+                                display: c.lockDisplay,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontFamily: PIXEL,
+                                fontSize: '22px',
+                                color: '#7F93B8',
+                                textShadow: '0 2px 0 #000000',
+                              }}
+                            >
+                              ?
+                            </div>
+                            <div
+                              className="glb-tile-sheen"
+                              style={{
+                                display: c.sheenDisplay,
+                                animationDelay: c.sheenDelay,
+                              }}
+                            ></div>
+                            <div
+                              style={{
+                                position: 'absolute',
+                                left: '3px',
+                                top: '3px',
+                                display: c.typeDisplay,
+                                width: '12px',
+                                height: '12px',
+                                backgroundImage: `url(${c.typeIcon})`,
                                 backgroundSize: 'contain',
                                 backgroundRepeat: 'no-repeat',
                                 backgroundPosition: 'center',
                                 imageRendering: 'pixelated',
-                                filter: c.filter,
-                                animationDelay: c.iconDelay,
+                                filter: 'drop-shadow(0 1px 0 #000000)',
                               }}
                             ></div>
-                          </div>
-                          <div
-                            className="glb-tile-flash"
-                            style={{ display: c.leveledDisplay }}
-                          ></div>
-                          <div
-                            className="glb-up-arrow"
-                            style={{ display: c.arrowDisplay }}
-                          >
-                            ▲
-                          </div>
-                          <div
-                            style={{
-                              position: 'absolute',
-                              left: '4px',
-                              right: '4px',
-                              bottom: '33px',
-                              height: '4px',
-                              display: c.barDisplay,
-                              background: '#0B1220',
-                              border: '1px solid #000000',
-                              borderRadius: '2px',
-                              overflow: 'hidden',
-                            }}
-                          >
                             <div
-                              className="glb-fill"
+                              className={c.badgeClass}
                               style={{
-                                width: c.barPct,
-                                height: '100%',
-                                background: c.barBg,
-                                boxShadow: c.barGlow,
-                                animationDelay: c.barDelay,
+                                position: 'absolute',
+                                right: '-2px',
+                                top: '-2px',
+                                display: c.countDisplay,
+                                alignItems: 'center',
+                                height: '18px',
+                                zIndex: '2',
+                                padding: '0 4px',
+                                borderRadius: '0 0 4px 0',
+                                background: c.countBg,
+                                fontFamily: 'VolterTitle,Volter,monospace',
+                                fontSize: '12px',
+                                color: c.countFg,
                               }}
-                            ></div>
-                          </div>
-                          <div
-                            style={{
-                              position: 'absolute',
-                              left: '0',
-                              right: '0',
-                              top: '0',
-                              bottom: '30px',
-                              display: c.lockDisplay,
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontFamily: PIXEL,
-                              fontSize: '22px',
-                              color: '#7F93B8',
-                              textShadow: '0 2px 0 #000000',
-                            }}
-                          >
-                            ?
-                          </div>
-                          <div
-                            className="glb-tile-sheen"
-                            style={{
-                              display: c.sheenDisplay,
-                              animationDelay: c.sheenDelay,
-                            }}
-                          ></div>
-                          <div
-                            style={{
-                              position: 'absolute',
-                              left: '3px',
-                              top: '3px',
-                              display: c.typeDisplay,
-                              width: '12px',
-                              height: '12px',
-                              backgroundImage: `url(${c.typeIcon})`,
-                              backgroundSize: 'contain',
-                              backgroundRepeat: 'no-repeat',
-                              backgroundPosition: 'center',
-                              imageRendering: 'pixelated',
-                              filter: 'drop-shadow(0 1px 0 #000000)',
-                            }}
-                          ></div>
-                          <div
-                            className={c.badgeClass}
-                            style={{
-                              position: 'absolute',
-                              right: '-2px',
-                              top: '-2px',
-                              display: c.countDisplay,
-                              alignItems: 'center',
-                              height: '18px',
-                              zIndex: '2',
-                              padding: '0 4px',
-                              borderRadius: '0 0 4px 0',
-                              background: c.countBg,
-                              fontFamily: 'VolterTitle,Volter,monospace',
-                              fontSize: '12px',
-                              color: c.countFg,
-                            }}
-                          >
-                            {c.count}
-                          </div>
-                          <div
-                            style={{
-                              position: 'absolute',
-                              left: '0',
-                              bottom: '0',
-                              width: '100%',
-                              padding: '2px 3px',
-                              background: c.bd,
-                              fontFamily: 'VolterTitle,Volter,monospace',
-                              fontSize: '12px',
-                              lineHeight: '1.1',
-                              color: '#141212',
-                              overflow: 'hidden',
-                              whiteSpace: 'normal',
-                              textWrap: 'balance',
-                              overflowWrap: 'anywhere',
-                              minHeight: '30px',
-                              display: 'flex',
-                              alignItems: 'center',
-                            }}
-                          >
-                            {c.short}
+                            >
+                              {c.count}
+                            </div>
+                            <div
+                              style={{
+                                position: 'absolute',
+                                left: '0',
+                                bottom: '0',
+                                width: '100%',
+                                padding: '2px 3px',
+                                background: c.bd,
+                                fontFamily: 'VolterTitle,Volter,monospace',
+                                fontSize: '12px',
+                                lineHeight: '1.1',
+                                color: '#141212',
+                                overflow: 'hidden',
+                                whiteSpace: 'normal',
+                                textWrap: 'balance',
+                                overflowWrap: 'anywhere',
+                                minHeight: '30px',
+                                display: 'flex',
+                                alignItems: 'center',
+                              }}
+                            >
+                              {c.short}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </Fragment>
-                  ))}
+                      </Fragment>
+                    ))}
+                  </div>
                 </div>
               </div>
 
