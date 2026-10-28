@@ -3366,7 +3366,9 @@ export const buildView = (app: GearLinkApp): View => {
     isKnights: st.phase === 'knights',
     heroScreenLabel: st.phase === 'knights' ? 'Knights' : 'Pick your hero',
     heroStandH:
-      st.phase === 'knights' ? 'min(22cqh,32cqw)' : 'min(30cqh,40cqw)',
+      st.phase === 'knights'
+        ? 'var(--gl-stand-h,min(22cqh,32cqw))'
+        : 'min(30cqh,40cqw)',
     knightsSkinsTitle: st.heroClass.toUpperCase() + ' OUTFITS',
     knightsSkinsCount:
       skinsFor(st.heroClass).filter((d) => skinOwned(d, st.profile.skins))

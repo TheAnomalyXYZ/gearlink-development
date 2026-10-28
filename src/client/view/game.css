@@ -2303,6 +2303,76 @@ html[data-post] .gl-shell {
   border-radius: 0 !important;
 }
 
+/* ---------- hero step / knights page ---------- */
+/* Portrait: one column, the line-up sinking to the bottom above its plate,
+   the knights page's outfits under that, its action bar last. */
+.gl-hero-body {
+  position: relative;
+  z-index: 3;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.gl-hero-side {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.gl-hero-plate {
+  align-items: center;
+  gap: 12px;
+}
+.gl-kn-outfits {
+  flex: 0 1 auto;
+  margin: 10px 12px 0;
+}
+.gl-kn-back {
+  display: none;
+}
+
+/* Landscape (the inline post runs edge to edge): stacking leaves a strip of
+   outfits and a MAP bar 700px long. Split it instead - the line-up and its
+   plate on the left, the outfits as a scrolling panel on the right, and MAP
+   as a back button in the header. */
+@container (min-aspect-ratio: 5/4) and (min-width: 560px) {
+  .gl-kn .gl-hero-body {
+    flex-direction: row;
+    gap: 4px;
+    padding-top: 10px;
+    --gl-stand-h: min(36cqh, 17cqw);
+  }
+  .gl-kn .gl-hero-side {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-bottom: 12px;
+  }
+  /* Half the post is too narrow for the perk text and the upgrade button side
+     by side: the text gets squeezed to a word a line. Stack them instead. */
+  .gl-kn .gl-hero-plate {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .gl-kn .gl-kn-outfits {
+    flex: 1.15 1 0;
+    min-width: 0;
+    margin: 0 12px 12px 0;
+    padding: 10px;
+    border: 1px solid #3a4c74;
+    border-radius: 8px 2px 8px 2px;
+    background: rgba(8, 12, 24, 0.78);
+  }
+  .gl-kn .gl-kn-back {
+    display: flex;
+  }
+  .gl-kn .gl-kn-foot {
+    display: none;
+  }
+}
+
 /* ---------- weekly leaderboard ---------- */
 @keyframes glLbIn {
   0% {

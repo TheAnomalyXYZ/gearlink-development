@@ -2429,6 +2429,7 @@ export const Screen = ({ v }: { v: View }) => (
           <>
             <div
               data-screen-label={v.heroScreenLabel}
+              className={v.isKnights ? 'gl-kn' : undefined}
               style={{
                 position: 'relative',
                 flex: '1',
@@ -2459,18 +2460,57 @@ export const Screen = ({ v }: { v: View }) => (
               >
                 <div
                   style={{
-                    fontFamily: 'VolterTitle,Volter,monospace',
-                    fontSize: '20px',
-                    lineHeight: '1',
-                    color: '#FFF2B0',
-                    WebkitTextStroke: '5px #000000',
-                    paintOrder: 'stroke fill',
-                    textShadow: '0 3px 0 #0B1020',
-                    whiteSpace: 'nowrap',
-                    animation: 'glPlateIn 300ms cubic-bezier(.3,1.6,.5,1) both',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    minWidth: '0',
                   }}
                 >
-                  {v.heroStepTitle}
+                  {/* Landscape knights: MAP moves up here as a back button
+                      instead of a bar across the whole post (see game.css). */}
+                  {(v.isKnights ? v.heroStepActions || [] : []).map(
+                    (a: any, aI: number) => (
+                      <div
+                        key={aI}
+                        className="gl-kn-back"
+                        onClick={a.run}
+                        style={{
+                          cursor: 'pointer',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minHeight: '28px',
+                          padding: '0 12px',
+                          border: '2px solid #000000',
+                          borderRadius: '8px 2px 8px 2px',
+                          background: a.bg,
+                          boxShadow: a.shadow,
+                          color: '#000000',
+                          fontFamily: 'VolterTitle,Volter,monospace',
+                          fontSize: '15px',
+                          lineHeight: '1',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        ‹ {a.label}
+                      </div>
+                    )
+                  )}
+                  <div
+                    style={{
+                      fontFamily: 'VolterTitle,Volter,monospace',
+                      fontSize: '20px',
+                      lineHeight: '1',
+                      color: '#FFF2B0',
+                      WebkitTextStroke: '5px #000000',
+                      paintOrder: 'stroke fill',
+                      textShadow: '0 3px 0 #0B1020',
+                      whiteSpace: 'nowrap',
+                      animation:
+                        'glPlateIn 300ms cubic-bezier(.3,1.6,.5,1) both',
+                    }}
+                  >
+                    {v.heroStepTitle}
+                  </div>
                 </div>
                 <div
                   title={v.heartPiecesNote}
@@ -2506,272 +2546,273 @@ export const Screen = ({ v }: { v: View }) => (
                 </div>
               </div>
 
-              <div style={{ flex: '1', minHeight: '0' }}></div>
-
-              <div
-                ref={v.setFtueHero}
-                style={{
-                  position: 'relative',
-                  zIndex: '3',
-                  display: 'flex',
-                  alignItems: 'flex-end',
-                  justifyContent: 'center',
-                  gap: '2cqw',
-                  padding: '0 10px',
-                }}
-              >
-                {(v.heroCards || []).map((h: any, hI: number) => (
+              <div className="gl-hero-body">
+                <div className="gl-hero-side">
                   <div
-                    key={hI}
-                    onClick={h.pick}
+                    ref={v.setFtueHero}
                     style={{
                       position: 'relative',
-                      flex: '0 1 auto',
-                      minWidth: '0',
+                      zIndex: '3',
                       display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      cursor: 'pointer',
-                      zIndex: h.z,
+                      alignItems: 'flex-end',
+                      justifyContent: 'center',
+                      gap: '2cqw',
+                      padding: '0 10px',
                     }}
                   >
-                    <div
-                      style={{
-                        position: 'relative',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        animation: `glDeal 560ms cubic-bezier(.3,1.5,.5,1) ${h.dealDelay} both`,
-                      }}
-                    >
-                      <HeroStand
-                        h={h}
-                        height={v.heroStandH}
-                        rays="rgba(255,242,176,.4)"
-                      />
+                    {(v.heroCards || []).map((h: any, hI: number) => (
                       <div
+                        key={hI}
+                        onClick={h.pick}
                         style={{
-                          marginTop: '9px',
-                          padding: '3px 10px 4px',
-                          border: `2px solid ${h.tagBd}`,
-                          borderRadius: '6px 2px 6px 2px',
-                          background: h.tagBg,
-                          fontFamily: 'VolterTitle,Volter,monospace',
-                          fontSize: '14px',
-                          lineHeight: '1',
-                          color: h.tagColor,
-                          whiteSpace: 'nowrap',
-                          transition: 'background 160ms,color 160ms',
+                          position: 'relative',
+                          flex: '0 1 auto',
+                          minWidth: '0',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          cursor: 'pointer',
+                          zIndex: h.z,
                         }}
                       >
-                        {h.name}
+                        <div
+                          style={{
+                            position: 'relative',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            animation: `glDeal 560ms cubic-bezier(.3,1.5,.5,1) ${h.dealDelay} both`,
+                          }}
+                        >
+                          <HeroStand
+                            h={h}
+                            height={v.heroStandH}
+                            rays="rgba(255,242,176,.4)"
+                          />
+                          <div
+                            style={{
+                              marginTop: '9px',
+                              padding: '3px 10px 4px',
+                              border: `2px solid ${h.tagBd}`,
+                              borderRadius: '6px 2px 6px 2px',
+                              background: h.tagBg,
+                              fontFamily: 'VolterTitle,Volter,monospace',
+                              fontSize: '14px',
+                              lineHeight: '1',
+                              color: h.tagColor,
+                              whiteSpace: 'nowrap',
+                              transition: 'background 160ms,color 160ms',
+                            }}
+                          >
+                            {h.name}
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
 
-              {(v.heroCards || []).map((h: any, hI: number) => (
-                <div
-                  key={hI}
-                  style={{
-                    position: 'relative',
-                    zIndex: '4',
-                    display: h.plateDisplay,
-                    alignItems: 'center',
-                    gap: '12px',
-                    margin: '10px 12px 0',
-                    padding: '8px 12px',
-                    border: '2px solid #FFF2B0',
-                    borderRadius: '8px 2px 8px 2px',
-                    background: 'rgba(8,12,24,.85)',
-                    boxShadow: '0 4px 0 rgba(0,0,0,.35)',
-                    animation: 'glPlateIn 260ms cubic-bezier(.3,1.6,.5,1)',
-                  }}
-                >
-                  <div
-                    style={{
-                      flex: '1',
-                      minWidth: '0',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '5px',
-                    }}
-                  >
+                  {(v.heroCards || []).map((h: any, hI: number) => (
                     <div
+                      key={hI}
+                      className="gl-hero-plate"
                       style={{
-                        fontSize: '13px',
-                        lineHeight: '1.35',
-                        color: '#FFFFFF',
-                        textWrap: 'pretty',
+                        position: 'relative',
+                        zIndex: '4',
+                        display: h.plateDisplay,
+                        margin: '10px 12px 0',
+                        padding: '8px 12px',
+                        border: '2px solid #FFF2B0',
+                        borderRadius: '8px 2px 8px 2px',
+                        background: 'rgba(8,12,24,.85)',
+                        boxShadow: '0 4px 0 rgba(0,0,0,.35)',
+                        animation: 'glPlateIn 260ms cubic-bezier(.3,1.6,.5,1)',
                       }}
                     >
-                      {h.perkLine}
+                      <div
+                        style={{
+                          flex: '1',
+                          minWidth: '0',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '5px',
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: '13px',
+                            lineHeight: '1.35',
+                            color: '#FFFFFF',
+                            textWrap: 'pretty',
+                          }}
+                        >
+                          {h.perkLine}
+                        </div>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            flexWrap: 'wrap',
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontFamily: 'VolterTitle,Volter,monospace',
+                              fontSize: '13px',
+                              color: '#FF8A94',
+                            }}
+                          >
+                            {h.hpLabel}
+                          </span>
+                          <div style={{ display: 'flex', gap: '3px' }}>
+                            {(h.pips || []).map((q: any, qI: number) => (
+                              <div
+                                key={qI}
+                                style={{
+                                  width: '8px',
+                                  height: '8px',
+                                  background: q.bg,
+                                  boxShadow: `0 0 0 1px ${q.bd}`,
+                                }}
+                              ></div>
+                            ))}
+                          </div>
+                          <span
+                            style={{
+                              fontSize: '11px',
+                              color: '#9DB4D4',
+                              letterSpacing: '.06em',
+                            }}
+                          >
+                            HEARTS {h.heartsLabel}
+                          </span>
+                        </div>
+                      </div>
+                      <div
+                        onClick={h.skinRun}
+                        style={{
+                          display: h.skinDisplay,
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '2px',
+                          flexShrink: '0',
+                          padding: '5px 10px 6px',
+                          border: '3px solid #000000',
+                          borderRadius: '8px 2px 8px 2px',
+                          background: '#B5C0FF',
+                          boxShadow:
+                            '0 -4px 0 0 #7E84E6 inset, 0 4px 0 0 #FFF inset, 0 2px 0 0 rgba(0,0,0,.25)',
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontFamily: 'VolterTitle,Volter,monospace',
+                            fontSize: '13px',
+                            color: '#000000',
+                          }}
+                        >
+                          OUTFIT
+                        </span>
+                        <span style={{ fontSize: '10px', color: '#1D2956' }}>
+                          {h.skinCount}
+                        </span>
+                      </div>
+                      <div
+                        onClick={h.upgradeRun || undefined}
+                        style={{
+                          display: h.upgradeDisplay,
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '2px',
+                          flexShrink: '0',
+                          padding: '5px 12px 6px',
+                          border: '3px solid #000000',
+                          borderRadius: '8px 2px 8px 2px',
+                          background: h.upgradeBg,
+                          boxShadow: h.upgradeShadow,
+                          cursor: h.upgradeCursor,
+                          opacity: h.upgradeOpacity,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontFamily: 'VolterTitle,Volter,monospace',
+                            fontSize: '13px',
+                            color: '#000000',
+                          }}
+                        >
+                          {h.upgradeLabel}
+                        </span>
+                        <span style={{ fontSize: '10px', color: '#1D2956' }}>
+                          {h.upgradeCost}
+                        </span>
+                      </div>
                     </div>
+                  ))}
+                </div>
+
+                {v.isKnights ? (
+                  <div
+                    className="gl-kn-outfits"
+                    style={{
+                      position: 'relative',
+                      zIndex: '4',
+                      minHeight: '0',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                    }}
+                  >
                     <div
                       style={{
                         display: 'flex',
                         alignItems: 'center',
                         gap: '8px',
-                        flexWrap: 'wrap',
                       }}
                     >
                       <span
                         style={{
                           fontFamily: 'VolterTitle,Volter,monospace',
-                          fontSize: '13px',
-                          color: '#FF8A94',
+                          fontSize: '14px',
+                          color: '#FFF2B0',
+                          WebkitTextStroke: '4px #000000',
+                          paintOrder: 'stroke fill',
+                          whiteSpace: 'nowrap',
                         }}
                       >
-                        {h.hpLabel}
+                        {v.knightsSkinsTitle}
                       </span>
-                      <div style={{ display: 'flex', gap: '3px' }}>
-                        {(h.pips || []).map((q: any, qI: number) => (
-                          <div
-                            key={qI}
-                            style={{
-                              width: '8px',
-                              height: '8px',
-                              background: q.bg,
-                              boxShadow: `0 0 0 1px ${q.bd}`,
-                            }}
-                          ></div>
-                        ))}
-                      </div>
-                      <span
+                      <span style={{ fontSize: '11px', color: '#9DB4D4' }}>
+                        {v.knightsSkinsCount}
+                      </span>
+                      <div
                         style={{
-                          fontSize: '11px',
-                          color: '#9DB4D4',
-                          letterSpacing: '.06em',
+                          flex: '1',
+                          height: '1px',
+                          background: '#485E9C',
                         }}
-                      >
-                        HEARTS {h.heartsLabel}
-                      </span>
+                      ></div>
                     </div>
-                  </div>
-                  <div
-                    onClick={h.skinRun}
-                    style={{
-                      display: h.skinDisplay,
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '2px',
-                      flexShrink: '0',
-                      padding: '5px 10px 6px',
-                      border: '3px solid #000000',
-                      borderRadius: '8px 2px 8px 2px',
-                      background: '#B5C0FF',
-                      boxShadow:
-                        '0 -4px 0 0 #7E84E6 inset, 0 4px 0 0 #FFF inset, 0 2px 0 0 rgba(0,0,0,.25)',
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontFamily: 'VolterTitle,Volter,monospace',
-                        fontSize: '13px',
-                        color: '#000000',
-                      }}
-                    >
-                      OUTFIT
-                    </span>
-                    <span style={{ fontSize: '10px', color: '#1D2956' }}>
-                      {h.skinCount}
-                    </span>
-                  </div>
-                  <div
-                    onClick={h.upgradeRun || undefined}
-                    style={{
-                      display: h.upgradeDisplay,
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '2px',
-                      flexShrink: '0',
-                      padding: '5px 12px 6px',
-                      border: '3px solid #000000',
-                      borderRadius: '8px 2px 8px 2px',
-                      background: h.upgradeBg,
-                      boxShadow: h.upgradeShadow,
-                      cursor: h.upgradeCursor,
-                      opacity: h.upgradeOpacity,
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontFamily: 'VolterTitle,Volter,monospace',
-                        fontSize: '13px',
-                        color: '#000000',
-                      }}
-                    >
-                      {h.upgradeLabel}
-                    </span>
-                    <span style={{ fontSize: '10px', color: '#1D2956' }}>
-                      {h.upgradeCost}
-                    </span>
-                  </div>
-                </div>
-              ))}
-
-              {v.isKnights ? (
-                <div
-                  style={{
-                    position: 'relative',
-                    zIndex: '4',
-                    flex: '0 1 auto',
-                    minHeight: '0',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px',
-                    margin: '10px 12px 0',
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontFamily: 'VolterTitle,Volter,monospace',
-                        fontSize: '14px',
-                        color: '#FFF2B0',
-                        WebkitTextStroke: '4px #000000',
-                        paintOrder: 'stroke fill',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {v.knightsSkinsTitle}
-                    </span>
-                    <span style={{ fontSize: '11px', color: '#9DB4D4' }}>
-                      {v.knightsSkinsCount}
-                    </span>
                     <div
                       style={{
-                        flex: '1',
-                        height: '1px',
-                        background: '#485E9C',
+                        minHeight: '0',
+                        overflowY: 'auto',
+                        paddingBottom: '2px',
                       }}
-                    ></div>
+                    >
+                      <SkinTiles skins={v.knightsSkins} cols={3} />
+                    </div>
                   </div>
-                  <div
-                    style={{
-                      minHeight: '0',
-                      overflowY: 'auto',
-                      paddingBottom: '2px',
-                    }}
-                  >
-                    <SkinTiles skins={v.knightsSkins} cols={3} />
-                  </div>
-                </div>
-              ) : null}
+                ) : null}
+              </div>
 
               <div
+                className="gl-kn-foot"
                 style={{
                   position: 'relative',
                   zIndex: '4',
