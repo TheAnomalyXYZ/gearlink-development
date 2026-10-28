@@ -20,7 +20,8 @@ export const SkinTiles = ({
   <div
     style={{
       display: 'grid',
-      gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+      // A landscape layout can widen the grid through --gl-skin-cols.
+      gridTemplateColumns: `repeat(var(--gl-skin-cols, ${cols}), minmax(0, 1fr))`,
       gap: '8px',
     }}
   >

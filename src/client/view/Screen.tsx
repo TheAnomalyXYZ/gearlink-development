@@ -4735,6 +4735,7 @@ export const Screen = ({ v }: { v: View }) => (
         {v.isShop ? (
           <>
             <div
+              className="gl-shop"
               style={{
                 flex: '1',
                 minHeight: '0',
@@ -4744,6 +4745,7 @@ export const Screen = ({ v }: { v: View }) => (
                 padding: '14px',
                 gap: '10px',
                 overflowY: 'auto',
+                containerType: 'size',
               }}
             >
               <div
@@ -4959,122 +4961,124 @@ export const Screen = ({ v }: { v: View }) => (
                   Trade gems for coins. Coins buy packs and one-time monster
                   unlocks.
                 </div>
-                {(v.coinBundles || []).map((b: any, bI: number) => (
-                  <Fragment key={bI}>
-                    <div
-                      data-fx-bundle
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        background: '#1D2956',
-                        border: `2px solid ${b.tint}`,
-                        borderRadius: '8px 0 8px 0',
-                        padding: '9px',
-                        animation: b.inAnim,
-                      }}
-                    >
+                <div className="gl-shop-list" style={{ gap: '8px' }}>
+                  {(v.coinBundles || []).map((b: any, bI: number) => (
+                    <Fragment key={bI}>
                       <div
-                        data-fx-stack
+                        data-fx-bundle
                         style={{
-                          position: 'relative',
-                          width: '38px',
-                          height: b.stackH,
-                          flexShrink: '0',
-                        }}
-                      >
-                        {(b.stack || []).map((c: any, cI: number) => (
-                          <div
-                            key={cI}
-                            style={{
-                              position: 'absolute',
-                              left: c.x,
-                              bottom: c.y,
-                              width: '26px',
-                              height: '26px',
-                              background: `url(${v.coinIcon}) center/contain no-repeat`,
-                              imageRendering: 'pixelated',
-                              filter: 'drop-shadow(0 2px 0 rgba(0,0,0,.35))',
-                            }}
-                          ></div>
-                        ))}
-                      </div>
-                      <div
-                        style={{
-                          flex: '1',
-                          minWidth: '0',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '2px',
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontFamily: 'VolterTitle,Volter,monospace',
-                            fontSize: '13px',
-                            color: '#FCE370',
-                          }}
-                        >
-                          {b.amount}
-                        </div>
-                        <div
-                          style={{
-                            display: b.bonusDisplay,
-                            alignSelf: 'flex-start',
-                            padding: '2px 10px 3px 6px',
-                            background: b.bonusColor,
-                            color: '#141212',
-                            fontFamily: 'VolterTitle,Volter,monospace',
-                            fontSize: '11px',
-                            clipPath:
-                              'polygon(0 0,100% 0,calc(100% - 6px) 50%,100% 100%,0 100%)',
-                            transformOrigin: '0 50%',
-                            animation: 'glRibbon 1.8s ease-in-out infinite',
-                          }}
-                        >
-                          {b.bonusLabel}
-                        </div>
-                      </div>
-                      <div
-                        onClick={b.buy}
-                        style={{
-                          cursor: b.cursor,
-                          opacity: b.opacity,
-                          flexShrink: '0',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '4px',
-                          minHeight: '34px',
-                          padding: '0 11px',
-                          border: '2px solid #000000',
-                          borderRadius: '8px 2px 8px 2px',
-                          background: b.btnBg,
-                          boxShadow: b.btnShadow,
-                          color: '#000000',
-                          fontFamily: 'VolterTitle,Volter,monospace',
-                          fontSize: '16.5px',
-                          lineHeight: '1.05',
-                          textAlign: 'center',
-                          textWrap: 'balance',
+                          gap: '10px',
+                          background: '#1D2956',
+                          border: `2px solid ${b.tint}`,
+                          borderRadius: '8px 0 8px 0',
+                          padding: '9px',
+                          animation: b.inAnim,
                         }}
                       >
                         <div
+                          data-fx-stack
                           style={{
-                            width: '14px',
-                            height: '14px',
-                            backgroundImage: `url(${v.gemIcon})`,
-                            backgroundSize: 'contain',
-                            backgroundRepeat: 'no-repeat',
-                            backgroundPosition: 'center',
-                            imageRendering: 'pixelated',
+                            position: 'relative',
+                            width: '38px',
+                            height: b.stackH,
+                            flexShrink: '0',
                           }}
-                        ></div>
-                        <span>{b.gems}</span>
+                        >
+                          {(b.stack || []).map((c: any, cI: number) => (
+                            <div
+                              key={cI}
+                              style={{
+                                position: 'absolute',
+                                left: c.x,
+                                bottom: c.y,
+                                width: '26px',
+                                height: '26px',
+                                background: `url(${v.coinIcon}) center/contain no-repeat`,
+                                imageRendering: 'pixelated',
+                                filter: 'drop-shadow(0 2px 0 rgba(0,0,0,.35))',
+                              }}
+                            ></div>
+                          ))}
+                        </div>
+                        <div
+                          style={{
+                            flex: '1',
+                            minWidth: '0',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '2px',
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontFamily: 'VolterTitle,Volter,monospace',
+                              fontSize: '13px',
+                              color: '#FCE370',
+                            }}
+                          >
+                            {b.amount}
+                          </div>
+                          <div
+                            style={{
+                              display: b.bonusDisplay,
+                              alignSelf: 'flex-start',
+                              padding: '2px 10px 3px 6px',
+                              background: b.bonusColor,
+                              color: '#141212',
+                              fontFamily: 'VolterTitle,Volter,monospace',
+                              fontSize: '11px',
+                              clipPath:
+                                'polygon(0 0,100% 0,calc(100% - 6px) 50%,100% 100%,0 100%)',
+                              transformOrigin: '0 50%',
+                              animation: 'glRibbon 1.8s ease-in-out infinite',
+                            }}
+                          >
+                            {b.bonusLabel}
+                          </div>
+                        </div>
+                        <div
+                          onClick={b.buy}
+                          style={{
+                            cursor: b.cursor,
+                            opacity: b.opacity,
+                            flexShrink: '0',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '4px',
+                            minHeight: '34px',
+                            padding: '0 11px',
+                            border: '2px solid #000000',
+                            borderRadius: '8px 2px 8px 2px',
+                            background: b.btnBg,
+                            boxShadow: b.btnShadow,
+                            color: '#000000',
+                            fontFamily: 'VolterTitle,Volter,monospace',
+                            fontSize: '16.5px',
+                            lineHeight: '1.05',
+                            textAlign: 'center',
+                            textWrap: 'balance',
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: '14px',
+                              height: '14px',
+                              backgroundImage: `url(${v.gemIcon})`,
+                              backgroundSize: 'contain',
+                              backgroundRepeat: 'no-repeat',
+                              backgroundPosition: 'center',
+                              imageRendering: 'pixelated',
+                            }}
+                          ></div>
+                          <span>{b.gems}</span>
+                        </div>
                       </div>
-                    </div>
-                  </Fragment>
-                ))}
+                    </Fragment>
+                  ))}
+                </div>
               </div>
 
               <div
@@ -5094,110 +5098,112 @@ export const Screen = ({ v }: { v: View }) => (
                   Gems buy premium packs and coin bundles. Gem bundles are
                   purchased with Reddit Gold.
                 </div>
-                {(v.gemBundles || []).map((b: any, bI: number) => (
-                  <Fragment key={bI}>
-                    <div
-                      data-fx-bundle
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        background: '#1D2956',
-                        border: `2px solid ${b.tint}`,
-                        borderRadius: '8px 0 8px 0',
-                        padding: '9px',
-                        animation: b.inAnim,
-                      }}
-                    >
+                <div className="gl-shop-list" style={{ gap: '8px' }}>
+                  {(v.gemBundles || []).map((b: any, bI: number) => (
+                    <Fragment key={bI}>
                       <div
+                        data-fx-bundle
                         style={{
-                          width: '34px',
-                          height: '34px',
-                          flexShrink: '0',
-                          backgroundImage: `url(${v.gemIcon})`,
-                          backgroundSize: 'contain',
-                          backgroundRepeat: 'no-repeat',
-                          backgroundPosition: 'center',
-                          imageRendering: 'pixelated',
-                        }}
-                      ></div>
-                      <div
-                        style={{
-                          flex: '1',
-                          minWidth: '0',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '2px',
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontFamily: 'VolterTitle,Volter,monospace',
-                            fontSize: '13px',
-                            color: '#8FE3FF',
-                          }}
-                        >
-                          {b.amount}
-                        </div>
-                        <div
-                          style={{
-                            display: b.bonusDisplay,
-                            alignSelf: 'flex-start',
-                            padding: '2px 10px 3px 6px',
-                            background: b.bonusColor,
-                            color: '#141212',
-                            fontFamily: 'VolterTitle,Volter,monospace',
-                            fontSize: '11px',
-                            clipPath:
-                              'polygon(0 0,100% 0,calc(100% - 6px) 50%,100% 100%,0 100%)',
-                            transformOrigin: '0 50%',
-                            animation: 'glRibbon 1.8s ease-in-out infinite',
-                          }}
-                        >
-                          {b.bonusLabel}
-                        </div>
-                      </div>
-                      <div
-                        onClick={b.buy}
-                        role="button"
-                        aria-label={b.priceAria}
-                        style={{
-                          cursor: 'pointer',
-                          flexShrink: '0',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '6px',
-                          height: '32px',
-                          padding: '0 14px 0 10px',
-                          borderRadius: '999px',
-                          background: '#0A449B',
-                          color: '#FFFFFF',
-                          fontFamily:
-                            '"Reddit Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif',
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          lineHeight: '1',
-                          whiteSpace: 'nowrap',
+                          gap: '10px',
+                          background: '#1D2956',
+                          border: `2px solid ${b.tint}`,
+                          borderRadius: '8px 0 8px 0',
+                          padding: '9px',
+                          animation: b.inAnim,
                         }}
                       >
-                        {/* Official Reddit Gold icon (filled), from the Devvit
-                            payments design guidelines. */}
-                        <svg
-                          viewBox="0 0 20 20"
-                          width="18"
-                          height="18"
-                          fill="currentColor"
-                          aria-hidden="true"
-                          style={{ flexShrink: '0' }}
+                        <div
+                          style={{
+                            width: '34px',
+                            height: '34px',
+                            flexShrink: '0',
+                            backgroundImage: `url(${v.gemIcon})`,
+                            backgroundSize: 'contain',
+                            backgroundRepeat: 'no-repeat',
+                            backgroundPosition: 'center',
+                            imageRendering: 'pixelated',
+                          }}
+                        ></div>
+                        <div
+                          style={{
+                            flex: '1',
+                            minWidth: '0',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '2px',
+                          }}
                         >
-                          <path d="m17.08 4.953-4.073-2.958a5.118 5.118 0 0 0-6.018 0L2.917 4.953a5.12 5.12 0 0 0-1.86 5.723l1.555 4.786A5.12 5.12 0 0 0 7.482 19h5.032a5.12 5.12 0 0 0 4.87-3.537l1.554-4.786a5.117 5.117 0 0 0-1.859-5.723ZM14.31 9.765l-1.277 3.928a1.022 1.022 0 0 1-.972.706h-4.13c-.443 0-.835-.285-.972-.706L5.683 9.765a1.023 1.023 0 0 1 .371-1.143l3.342-2.427c.358-.26.843-.26 1.201 0l3.342 2.427c.358.26.51.722.372 1.143Z" />
-                        </svg>
-                        <span>{b.priceLabel}</span>
+                          <div
+                            style={{
+                              fontFamily: 'VolterTitle,Volter,monospace',
+                              fontSize: '13px',
+                              color: '#8FE3FF',
+                            }}
+                          >
+                            {b.amount}
+                          </div>
+                          <div
+                            style={{
+                              display: b.bonusDisplay,
+                              alignSelf: 'flex-start',
+                              padding: '2px 10px 3px 6px',
+                              background: b.bonusColor,
+                              color: '#141212',
+                              fontFamily: 'VolterTitle,Volter,monospace',
+                              fontSize: '11px',
+                              clipPath:
+                                'polygon(0 0,100% 0,calc(100% - 6px) 50%,100% 100%,0 100%)',
+                              transformOrigin: '0 50%',
+                              animation: 'glRibbon 1.8s ease-in-out infinite',
+                            }}
+                          >
+                            {b.bonusLabel}
+                          </div>
+                        </div>
+                        <div
+                          onClick={b.buy}
+                          role="button"
+                          aria-label={b.priceAria}
+                          style={{
+                            cursor: 'pointer',
+                            flexShrink: '0',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            height: '32px',
+                            padding: '0 14px 0 10px',
+                            borderRadius: '999px',
+                            background: '#0A449B',
+                            color: '#FFFFFF',
+                            fontFamily:
+                              '"Reddit Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            lineHeight: '1',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {/* Official Reddit Gold icon (filled), from the Devvit
+                            payments design guidelines. */}
+                          <svg
+                            viewBox="0 0 20 20"
+                            width="18"
+                            height="18"
+                            fill="currentColor"
+                            aria-hidden="true"
+                            style={{ flexShrink: '0' }}
+                          >
+                            <path d="m17.08 4.953-4.073-2.958a5.118 5.118 0 0 0-6.018 0L2.917 4.953a5.12 5.12 0 0 0-1.86 5.723l1.555 4.786A5.12 5.12 0 0 0 7.482 19h5.032a5.12 5.12 0 0 0 4.87-3.537l1.554-4.786a5.117 5.117 0 0 0-1.859-5.723ZM14.31 9.765l-1.277 3.928a1.022 1.022 0 0 1-.972.706h-4.13c-.443 0-.835-.285-.972-.706L5.683 9.765a1.023 1.023 0 0 1 .371-1.143l3.342-2.427c.358-.26.843-.26 1.201 0l3.342 2.427c.358.26.51.722.372 1.143Z" />
+                          </svg>
+                          <span>{b.priceLabel}</span>
+                        </div>
                       </div>
-                    </div>
-                  </Fragment>
-                ))}
+                    </Fragment>
+                  ))}
+                </div>
               </div>
 
               <div
@@ -5227,186 +5233,192 @@ export const Screen = ({ v }: { v: View }) => (
                   gap: '9px',
                 }}
               >
-                {(v.shopPacks || []).map((p: any, pI: number) => (
-                  <Fragment key={pI}>
-                    <div
-                      data-fx-pack
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '8px',
-                        background: '#1D2956',
-                        border: `2px solid ${p.tint}`,
-                        borderRadius: '8px 0 8px 0',
-                        padding: '10px',
-                        animation: p.inAnim,
-                      }}
-                    >
+                <div className="gl-shop-list" style={{ gap: '9px' }}>
+                  {(v.shopPacks || []).map((p: any, pI: number) => (
+                    <Fragment key={pI}>
                       <div
+                        data-fx-pack
                         style={{
                           display: 'flex',
-                          alignItems: 'flex-start',
-                          gap: '9px',
+                          flexDirection: 'column',
+                          gap: '8px',
+                          background: '#1D2956',
+                          border: `2px solid ${p.tint}`,
+                          borderRadius: '8px 0 8px 0',
+                          padding: '10px',
+                          animation: p.inAnim,
                         }}
                       >
                         <div
-                          data-fx-packimg
                           style={{
-                            position: 'relative',
-                            width: '52px',
-                            height: '62px',
-                            flexShrink: '0',
-                            transformOrigin: '50% 100%',
-                            animation: `glPackSway 3s ease-in-out ${p.swayDelay} infinite`,
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: '9px',
                           }}
                         >
                           <div
-                            data-tilt
-                            style={{ position: 'absolute', inset: '-8px' }}
+                            data-fx-packimg
+                            style={{
+                              position: 'relative',
+                              width: '52px',
+                              height: '62px',
+                              flexShrink: '0',
+                              transformOrigin: '50% 100%',
+                              animation: `glPackSway 3s ease-in-out ${p.swayDelay} infinite`,
+                            }}
                           >
                             <div
-                              data-tilt-inner
-                              style={{ position: 'absolute', inset: '8px' }}
+                              data-tilt
+                              style={{ position: 'absolute', inset: '-8px' }}
                             >
                               <div
-                                style={{
-                                  position: 'absolute',
-                                  inset: '0',
-                                  background: `url(${p.img}) center/contain no-repeat`,
-                                  imageRendering: 'pixelated',
-                                }}
-                              ></div>
-                              <div
-                                style={{
-                                  position: 'absolute',
-                                  inset: '0',
-                                  WebkitMask: `url(${p.img}) center/contain no-repeat`,
-                                  mask: `url(${p.img}) center/contain no-repeat`,
-                                  background:
-                                    'linear-gradient(115deg,transparent 42%,rgba(255,255,255,.7) 50%,transparent 58%)',
-                                  backgroundSize: '260% 100%',
-                                  animation: `glShineSweep 2.5s ease-in-out ${p.shineDelay} infinite`,
-                                }}
-                              ></div>
-                              <div
-                                style={{
-                                  position: 'absolute',
-                                  inset: '0',
-                                  WebkitMask: `url(${p.img}) center/contain no-repeat`,
-                                  mask: `url(${p.img}) center/contain no-repeat`,
-                                  background:
-                                    'radial-gradient(circle at calc(50% + var(--tilt-x,0) * 45%) calc(45% + var(--tilt-y,0) * 45%),rgba(255,255,255,.45),transparent 55%)',
-                                  opacity: 'var(--tilt-on,0)',
-                                }}
-                              ></div>
+                                data-tilt-inner
+                                style={{ position: 'absolute', inset: '8px' }}
+                              >
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    inset: '0',
+                                    background: `url(${p.img}) center/contain no-repeat`,
+                                    imageRendering: 'pixelated',
+                                  }}
+                                ></div>
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    inset: '0',
+                                    WebkitMask: `url(${p.img}) center/contain no-repeat`,
+                                    mask: `url(${p.img}) center/contain no-repeat`,
+                                    background:
+                                      'linear-gradient(115deg,transparent 42%,rgba(255,255,255,.7) 50%,transparent 58%)',
+                                    backgroundSize: '260% 100%',
+                                    animation: `glShineSweep 2.5s ease-in-out ${p.shineDelay} infinite`,
+                                  }}
+                                ></div>
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    inset: '0',
+                                    WebkitMask: `url(${p.img}) center/contain no-repeat`,
+                                    mask: `url(${p.img}) center/contain no-repeat`,
+                                    background:
+                                      'radial-gradient(circle at calc(50% + var(--tilt-x,0) * 45%) calc(45% + var(--tilt-y,0) * 45%),rgba(255,255,255,.45),transparent 55%)',
+                                    opacity: 'var(--tilt-on,0)',
+                                  }}
+                                ></div>
+                              </div>
+                            </div>
+                          </div>
+                          <div
+                            style={{
+                              flex: '1',
+                              minWidth: '0',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '3px',
+                            }}
+                          >
+                            <div
+                              style={{
+                                fontFamily: 'VolterTitle,Volter,monospace',
+                                fontSize: '14px',
+                                color: '#FFFFFF',
+                              }}
+                            >
+                              {p.name}
+                            </div>
+                            <div
+                              style={{
+                                fontSize: '9px',
+                                color: '#CBD9EC',
+                                lineHeight: '1.5',
+                              }}
+                            >
+                              {p.blurb}
+                            </div>
+                            <div
+                              style={{
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                gap: '4px',
+                                marginTop: '2px',
+                              }}
+                            >
+                              {(p.odds || []).map((o: any, oI: number) => (
+                                <Fragment key={oI}>
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '3px',
+                                      border: `1px solid ${o.color}`,
+                                      borderRadius: '3px',
+                                      padding: '1px 4px',
+                                    }}
+                                  >
+                                    <span
+                                      style={{
+                                        fontSize: '8px',
+                                        color: o.color,
+                                      }}
+                                    >
+                                      {o.label}
+                                    </span>
+                                    <span
+                                      style={{
+                                        fontSize: '8px',
+                                        color: '#FFFFFF',
+                                      }}
+                                    >
+                                      {o.pct}
+                                    </span>
+                                  </div>
+                                </Fragment>
+                              ))}
                             </div>
                           </div>
                         </div>
                         <div
+                          onClick={p.buy}
                           style={{
-                            flex: '1',
-                            minWidth: '0',
+                            cursor: p.cursor,
+                            marginTop: 'auto',
+                            opacity: p.opacity,
                             display: 'flex',
-                            flexDirection: 'column',
-                            gap: '3px',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '5px',
+                            minHeight: '36px',
+                            border: '2px solid #000000',
+                            borderRadius: '8px 2px 8px 2px',
+                            background: p.btnBg,
+                            boxShadow: p.btnShadow,
+                            color: '#000000',
+                            fontFamily: 'VolterTitle,Volter,monospace',
+                            fontSize: '18px',
+                            lineHeight: '1.05',
+                            textAlign: 'center',
+                            textWrap: 'balance',
                           }}
                         >
+                          <span>OPEN</span>
                           <div
                             style={{
-                              fontFamily: 'VolterTitle,Volter,monospace',
-                              fontSize: '14px',
-                              color: '#FFFFFF',
+                              width: '15px',
+                              height: '15px',
+                              backgroundImage: `url(${p.curIcon})`,
+                              backgroundSize: 'contain',
+                              backgroundRepeat: 'no-repeat',
+                              backgroundPosition: 'center',
+                              imageRendering: 'pixelated',
                             }}
-                          >
-                            {p.name}
-                          </div>
-                          <div
-                            style={{
-                              fontSize: '9px',
-                              color: '#CBD9EC',
-                              lineHeight: '1.5',
-                            }}
-                          >
-                            {p.blurb}
-                          </div>
-                          <div
-                            style={{
-                              display: 'flex',
-                              flexWrap: 'wrap',
-                              gap: '4px',
-                              marginTop: '2px',
-                            }}
-                          >
-                            {(p.odds || []).map((o: any, oI: number) => (
-                              <Fragment key={oI}>
-                                <div
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '3px',
-                                    border: `1px solid ${o.color}`,
-                                    borderRadius: '3px',
-                                    padding: '1px 4px',
-                                  }}
-                                >
-                                  <span
-                                    style={{ fontSize: '8px', color: o.color }}
-                                  >
-                                    {o.label}
-                                  </span>
-                                  <span
-                                    style={{
-                                      fontSize: '8px',
-                                      color: '#FFFFFF',
-                                    }}
-                                  >
-                                    {o.pct}
-                                  </span>
-                                </div>
-                              </Fragment>
-                            ))}
-                          </div>
+                          ></div>
+                          <span>{p.price}</span>
                         </div>
                       </div>
-                      <div
-                        onClick={p.buy}
-                        style={{
-                          cursor: p.cursor,
-                          opacity: p.opacity,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '5px',
-                          minHeight: '36px',
-                          border: '2px solid #000000',
-                          borderRadius: '8px 2px 8px 2px',
-                          background: p.btnBg,
-                          boxShadow: p.btnShadow,
-                          color: '#000000',
-                          fontFamily: 'VolterTitle,Volter,monospace',
-                          fontSize: '18px',
-                          lineHeight: '1.05',
-                          textAlign: 'center',
-                          textWrap: 'balance',
-                        }}
-                      >
-                        <span>OPEN</span>
-                        <div
-                          style={{
-                            width: '15px',
-                            height: '15px',
-                            backgroundImage: `url(${p.curIcon})`,
-                            backgroundSize: 'contain',
-                            backgroundRepeat: 'no-repeat',
-                            backgroundPosition: 'center',
-                            imageRendering: 'pixelated',
-                          }}
-                        ></div>
-                        <span>{p.price}</span>
-                      </div>
-                    </div>
-                  </Fragment>
-                ))}
+                    </Fragment>
+                  ))}
+                </div>
               </div>
 
               <div

@@ -2476,6 +2476,33 @@ html[data-post] .gl-shell {
   }
 }
 
+/* ---------- shop ---------- */
+.gl-shop-list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Landscape: the packs and bundles stacked one a row stretch into bars 700px
+   long. Lay them out two abreast, and widen the outfit grid to match. The
+   shop is the container, so the column count is set on its children. */
+@container (min-aspect-ratio: 5/4) and (min-width: 560px) {
+  .gl-shop > * {
+    --gl-skin-cols: 5;
+  }
+  .gl-shop-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container (min-aspect-ratio: 5/4) and (min-width: 960px) {
+  .gl-shop > * {
+    --gl-skin-cols: 6;
+  }
+  .gl-shop-list {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 /* ---------- weekly leaderboard ---------- */
 @keyframes glLbIn {
   0% {
