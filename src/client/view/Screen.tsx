@@ -2429,7 +2429,7 @@ export const Screen = ({ v }: { v: View }) => (
           <>
             <div
               data-screen-label={v.heroScreenLabel}
-              className={v.isKnights ? 'gl-kn' : undefined}
+              className={v.isKnights ? 'gl-kn' : 'gl-hp'}
               style={{
                 position: 'relative',
                 flex: '1',
@@ -2466,13 +2466,14 @@ export const Screen = ({ v }: { v: View }) => (
                     minWidth: '0',
                   }}
                 >
-                  {/* Landscape knights: MAP moves up here as a back button
+                  {/* Landscape: MAP / CANCEL moves up here as a back button
                       instead of a bar across the whole post (see game.css). */}
-                  {(v.isKnights ? v.heroStepActions || [] : []).map(
-                    (a: any, aI: number) => (
+                  {(v.heroStepActions || [])
+                    .filter((a: any) => a.back)
+                    .map((a: any, aI: number) => (
                       <div
                         key={aI}
-                        className="gl-kn-back"
+                        className="gl-hs-back"
                         onClick={a.run}
                         style={{
                           cursor: 'pointer',
@@ -2493,8 +2494,7 @@ export const Screen = ({ v }: { v: View }) => (
                       >
                         ‹ {a.label}
                       </div>
-                    )
-                  )}
+                    ))}
                   <div
                     style={{
                       fontFamily: 'VolterTitle,Volter,monospace',
@@ -2550,6 +2550,7 @@ export const Screen = ({ v }: { v: View }) => (
                 <div className="gl-hero-side">
                   <div
                     ref={v.setFtueHero}
+                    className="gl-hero-lineup"
                     style={{
                       position: 'relative',
                       zIndex: '3',
@@ -2619,7 +2620,6 @@ export const Screen = ({ v }: { v: View }) => (
                         position: 'relative',
                         zIndex: '4',
                         display: h.plateDisplay,
-                        margin: '10px 12px 0',
                         padding: '8px 12px',
                         border: '2px solid #FFF2B0',
                         borderRadius: '8px 2px 8px 2px',
@@ -2688,69 +2688,71 @@ export const Screen = ({ v }: { v: View }) => (
                           </span>
                         </div>
                       </div>
-                      <div
-                        onClick={h.skinRun}
-                        style={{
-                          display: h.skinDisplay,
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '2px',
-                          flexShrink: '0',
-                          padding: '5px 10px 6px',
-                          border: '3px solid #000000',
-                          borderRadius: '8px 2px 8px 2px',
-                          background: '#B5C0FF',
-                          boxShadow:
-                            '0 -4px 0 0 #7E84E6 inset, 0 4px 0 0 #FFF inset, 0 2px 0 0 rgba(0,0,0,.25)',
-                          cursor: 'pointer',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        <span
+                      <div className="gl-hero-plate-btns">
+                        <div
+                          onClick={h.skinRun}
                           style={{
-                            fontFamily: 'VolterTitle,Volter,monospace',
-                            fontSize: '13px',
-                            color: '#000000',
+                            display: h.skinDisplay,
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '2px',
+                            flexShrink: '0',
+                            padding: '5px 10px 6px',
+                            border: '3px solid #000000',
+                            borderRadius: '8px 2px 8px 2px',
+                            background: '#B5C0FF',
+                            boxShadow:
+                              '0 -4px 0 0 #7E84E6 inset, 0 4px 0 0 #FFF inset, 0 2px 0 0 rgba(0,0,0,.25)',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
                           }}
                         >
-                          OUTFIT
-                        </span>
-                        <span style={{ fontSize: '10px', color: '#1D2956' }}>
-                          {h.skinCount}
-                        </span>
-                      </div>
-                      <div
-                        onClick={h.upgradeRun || undefined}
-                        style={{
-                          display: h.upgradeDisplay,
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '2px',
-                          flexShrink: '0',
-                          padding: '5px 12px 6px',
-                          border: '3px solid #000000',
-                          borderRadius: '8px 2px 8px 2px',
-                          background: h.upgradeBg,
-                          boxShadow: h.upgradeShadow,
-                          cursor: h.upgradeCursor,
-                          opacity: h.upgradeOpacity,
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        <span
+                          <span
+                            style={{
+                              fontFamily: 'VolterTitle,Volter,monospace',
+                              fontSize: '13px',
+                              color: '#000000',
+                            }}
+                          >
+                            OUTFIT
+                          </span>
+                          <span style={{ fontSize: '10px', color: '#1D2956' }}>
+                            {h.skinCount}
+                          </span>
+                        </div>
+                        <div
+                          onClick={h.upgradeRun || undefined}
                           style={{
-                            fontFamily: 'VolterTitle,Volter,monospace',
-                            fontSize: '13px',
-                            color: '#000000',
+                            display: h.upgradeDisplay,
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '2px',
+                            flexShrink: '0',
+                            padding: '5px 12px 6px',
+                            border: '3px solid #000000',
+                            borderRadius: '8px 2px 8px 2px',
+                            background: h.upgradeBg,
+                            boxShadow: h.upgradeShadow,
+                            cursor: h.upgradeCursor,
+                            opacity: h.upgradeOpacity,
+                            whiteSpace: 'nowrap',
                           }}
                         >
-                          {h.upgradeLabel}
-                        </span>
-                        <span style={{ fontSize: '10px', color: '#1D2956' }}>
-                          {h.upgradeCost}
-                        </span>
+                          <span
+                            style={{
+                              fontFamily: 'VolterTitle,Volter,monospace',
+                              fontSize: '13px',
+                              color: '#000000',
+                            }}
+                          >
+                            {h.upgradeLabel}
+                          </span>
+                          <span style={{ fontSize: '10px', color: '#1D2956' }}>
+                            {h.upgradeCost}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -2812,7 +2814,7 @@ export const Screen = ({ v }: { v: View }) => (
               </div>
 
               <div
-                className="gl-kn-foot"
+                className="gl-hs-foot"
                 style={{
                   position: 'relative',
                   zIndex: '4',
@@ -2821,6 +2823,7 @@ export const Screen = ({ v }: { v: View }) => (
               >
                 <div
                   ref={v.setFtueHeroCta}
+                  className="gl-hs-cta"
                   style={{
                     marginTop: 'auto',
                     paddingTop: '8px',
@@ -2832,10 +2835,11 @@ export const Screen = ({ v }: { v: View }) => (
                     <Fragment key={aI}>
                       <div
                         onClick={a.run}
+                        className={a.back ? 'gl-hs-foot-back' : undefined}
                         style={{
                           cursor: 'pointer',
                           flex: a.flex,
-                          display: 'flex',
+                          display: a.back ? undefined : 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           minHeight: a.h,
@@ -2871,8 +2875,6 @@ export const Screen = ({ v }: { v: View }) => (
                 minHeight: '0',
                 display: 'flex',
                 flexDirection: 'column',
-                padding: '12px',
-                gap: '8px',
                 overflow: 'hidden',
                 containerType: 'size',
                 background:
@@ -2880,926 +2882,934 @@ export const Screen = ({ v }: { v: View }) => (
               }}
             >
               <HeroBackdrop s={v.heroScene} />
-              {/* Above the hero row: the sticker floats past its box and would
+              {/* The layout box: the root above is the size container,
+                  and a container query cannot lay out the container itself. */}
+              <div className="gl-gs">
+                {/* Above the hero row: the sticker floats past its box and would
                   otherwise cover (and swallow taps on) BACK. */}
-              <div
-                style={{
-                  position: 'relative',
-                  zIndex: '5',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                }}
-              >
-                {(v.gearStepActions || []).map((a: any, aI: number) => (
-                  <Fragment key={aI}>
-                    <div
-                      onClick={a.run}
-                      style={{
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        minHeight: '26px',
-                        padding: '0 10px',
-                        border: '1px solid #000000',
-                        borderRadius: '8px 2px 8px 2px',
-                        background: '#B5C0FF',
-                        boxShadow:
-                          '0 -2px 0 0 #7E84E6 inset, 0 2px 0 0 #FFF inset, 0 2px 0 0 rgba(0,0,0,.25)',
-                        color: '#000000',
-                        fontFamily: 'VolterTitle,Volter,monospace',
-                        fontSize: '15px',
-                        lineHeight: '1.05',
-                        textAlign: 'center',
-                        textWrap: 'balance',
-                      }}
-                    >
-                      {a.label}
-                    </div>
-                  </Fragment>
-                ))}
                 <div
-                  style={{ flex: '1', height: '1px', background: '#485E9C' }}
-                ></div>
-              </div>
-
-              <div
-                style={{
-                  position: 'relative',
-                  zIndex: '2',
-                  display: 'flex',
-                  alignItems: 'flex-end',
-                  gap: '10px',
-                }}
-              >
-                <div
+                  className="gl-gs-head"
                   style={{
                     position: 'relative',
-                    flexShrink: '0',
+                    zIndex: '5',
                     display: 'flex',
-                    flexDirection: 'column',
                     alignItems: 'center',
-                    gap: '6px',
-                    width: 'min(28cqw,150px)',
+                    gap: '8px',
                   }}
                 >
+                  {(v.gearStepActions || []).map((a: any, aI: number) => (
+                    <Fragment key={aI}>
+                      <div
+                        onClick={a.run}
+                        style={{
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minHeight: '26px',
+                          padding: '0 10px',
+                          border: '1px solid #000000',
+                          borderRadius: '8px 2px 8px 2px',
+                          background: '#B5C0FF',
+                          boxShadow:
+                            '0 -2px 0 0 #7E84E6 inset, 0 2px 0 0 #FFF inset, 0 2px 0 0 rgba(0,0,0,.25)',
+                          color: '#000000',
+                          fontFamily: 'VolterTitle,Volter,monospace',
+                          fontSize: '15px',
+                          lineHeight: '1.05',
+                          textAlign: 'center',
+                          textWrap: 'balance',
+                        }}
+                      >
+                        {a.label}
+                      </div>
+                    </Fragment>
+                  ))}
                   <div
-                    style={{
-                      animation: 'glDeal 560ms cubic-bezier(.3,1.5,.5,1) both',
-                    }}
-                  >
-                    <HeroStand
-                      h={v.gearHero}
-                      height="min(26cqh,38cqw)"
-                      rays="rgba(255,242,176,.35)"
-                    />
-                  </div>
-                  <div
-                    style={{
-                      padding: '3px 10px 4px',
-                      border: '2px solid #000000',
-                      borderRadius: '6px 2px 6px 2px',
-                      background: '#FCE270',
-                      fontFamily: 'VolterTitle,Volter,monospace',
-                      fontSize: '14px',
-                      lineHeight: '1',
-                      color: '#000000',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {v.heroName}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: '10px',
-                      lineHeight: '1.35',
-                      color: '#CBD9EC',
-                      textAlign: 'center',
-                      textShadow: '0 1px 0 #05080F',
-                      textWrap: 'pretty',
-                    }}
-                  >
-                    {v.heroPerkLine}
-                  </div>
+                    style={{ flex: '1', height: '1px', background: '#485E9C' }}
+                  ></div>
                 </div>
 
                 <div
+                  className="gl-gs-top"
                   style={{
                     position: 'relative',
-                    flex: '1',
-                    minWidth: '0',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '7px',
-                    background: 'rgba(8,12,24,.8)',
-                    border: '1px solid #3A4C74',
-                    borderRadius: '8px 2px 8px 2px',
-                    padding: '10px',
-                    animation:
-                      'glPlateIn 300ms cubic-bezier(.3,1.6,.5,1) 120ms both',
+                    zIndex: '2',
                   }}
                 >
                   <div
+                    className="gl-gs-hero"
                     style={{
-                      position: 'absolute',
-                      top: '0',
-                      left: '0',
-                      right: '0',
-                      zIndex: '15',
-                      display: v.peekDisplay,
+                      position: 'relative',
+                      flexShrink: '0',
+                      display: 'flex',
                       flexDirection: 'column',
-                      gap: '5px',
-                      background: 'rgba(20,29,46,.97)',
-                      border: '1px solid #3A4C74',
-                      borderRadius: '8px 0 8px 0',
-                      padding: '9px 10px',
-                      boxShadow: '0 6px 14px rgba(0,0,0,.45)',
+                      alignItems: 'center',
+                      gap: '6px',
+                      width: 'min(28cqw,150px)',
                     }}
                   >
                     <div
                       style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '7px',
+                        animation:
+                          'glDeal 560ms cubic-bezier(.3,1.5,.5,1) both',
+                      }}
+                    >
+                      <HeroStand
+                        h={v.gearHero}
+                        height="min(26cqh,38cqw)"
+                        rays="rgba(255,242,176,.35)"
+                      />
+                    </div>
+                    <div
+                      style={{
+                        padding: '3px 10px 4px',
+                        border: '2px solid #000000',
+                        borderRadius: '6px 2px 6px 2px',
+                        background: '#FCE270',
+                        fontFamily: 'VolterTitle,Volter,monospace',
+                        fontSize: '14px',
+                        lineHeight: '1',
+                        color: '#000000',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {v.heroName}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: '10px',
+                        lineHeight: '1.35',
+                        color: '#CBD9EC',
+                        textAlign: 'center',
+                        textShadow: '0 1px 0 #05080F',
+                        textWrap: 'pretty',
+                      }}
+                    >
+                      {v.heroPerkLine}
+                    </div>
+                  </div>
+
+                  <div
+                    className="gl-gs-load"
+                    style={{
+                      position: 'relative',
+                      flex: '1',
+                      minWidth: '0',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '7px',
+                      background: 'rgba(8,12,24,.8)',
+                      border: '1px solid #3A4C74',
+                      borderRadius: '8px 2px 8px 2px',
+                      padding: '10px',
+                      animation:
+                        'glPlateIn 300ms cubic-bezier(.3,1.6,.5,1) 120ms both',
+                    }}
+                  >
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '0',
+                        left: '0',
+                        right: '0',
+                        zIndex: '15',
+                        display: v.peekDisplay,
+                        flexDirection: 'column',
+                        gap: '5px',
+                        background: 'rgba(20,29,46,.97)',
+                        border: '1px solid #3A4C74',
+                        borderRadius: '8px 0 8px 0',
+                        padding: '9px 10px',
+                        boxShadow: '0 6px 14px rgba(0,0,0,.45)',
                       }}
                     >
                       <div
                         style={{
-                          width: '24px',
-                          height: '24px',
-                          flexShrink: '0',
-                          borderRadius: '4px',
-                          backgroundColor: '#141D2E',
-                          backgroundImage: `url(${v.peekIcon})`,
-                          backgroundSize: '80%',
-                          backgroundRepeat: 'no-repeat',
-                          backgroundPosition: 'center',
-                          imageRendering: 'pixelated',
-                        }}
-                      ></div>
-                      <div
-                        style={{
-                          flex: '1',
-                          minWidth: '0',
                           display: 'flex',
-                          alignItems: 'baseline',
-                          gap: '5px',
-                          overflow: 'hidden',
+                          alignItems: 'center',
+                          gap: '7px',
                         }}
                       >
                         <div
                           style={{
-                            fontSize: '11px',
-                            color: '#FFFFFF',
+                            width: '24px',
+                            height: '24px',
+                            flexShrink: '0',
+                            borderRadius: '4px',
+                            backgroundColor: '#141D2E',
+                            backgroundImage: `url(${v.peekIcon})`,
+                            backgroundSize: '80%',
+                            backgroundRepeat: 'no-repeat',
+                            backgroundPosition: 'center',
+                            imageRendering: 'pixelated',
+                          }}
+                        ></div>
+                        <div
+                          style={{
+                            flex: '1',
+                            minWidth: '0',
+                            display: 'flex',
+                            alignItems: 'baseline',
+                            gap: '5px',
                             overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
                           }}
                         >
-                          {v.peekName}
+                          <div
+                            style={{
+                              fontSize: '11px',
+                              color: '#FFFFFF',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {v.peekName}
+                          </div>
+                          <div
+                            style={{
+                              flexShrink: '0',
+                              fontSize: '8px',
+                              color: v.peekRarityColor,
+                              letterSpacing: '.1em',
+                            }}
+                          >
+                            {v.peekRarity}
+                          </div>
                         </div>
                         <div
                           style={{
                             flexShrink: '0',
-                            fontSize: '8px',
-                            color: v.peekRarityColor,
-                            letterSpacing: '.1em',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
                           }}
                         >
-                          {v.peekRarity}
+                          <div
+                            style={{
+                              width: '12px',
+                              height: '12px',
+                              backgroundImage: `url(${v.peekTypeIcon})`,
+                              backgroundSize: 'contain',
+                              backgroundRepeat: 'no-repeat',
+                              backgroundPosition: 'center',
+                              imageRendering: 'pixelated',
+                            }}
+                          ></div>
+                          <span
+                            style={{
+                              fontFamily: 'VolterTitle,Volter,monospace',
+                              fontSize: '12px',
+                              color: v.peekTypeColor,
+                            }}
+                          >
+                            {v.peekPower}
+                          </span>
+                        </div>
+                        <div
+                          onClick={v.closePeek}
+                          style={{
+                            flexShrink: '0',
+                            width: '18px',
+                            height: '18px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderRadius: '3px',
+                            background: '#2B3A5C',
+                            color: '#CBD9EC',
+                            fontSize: '11px',
+                            lineHeight: '1',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          ×
                         </div>
                       </div>
                       <div
                         style={{
-                          flexShrink: '0',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
+                          fontSize: '9px',
+                          color: '#CBD9EC',
+                          lineHeight: '1.5',
+                          textWrap: 'pretty',
+                        }}
+                      >
+                        {v.peekWhat}
+                      </div>
+                      <div
+                        style={{
+                          display: v.peekRiderDisplay,
+                          alignItems: 'flex-start',
+                          gap: '5px',
+                          borderTop: '1px solid #2B3A5C',
+                          paddingTop: '5px',
                         }}
                       >
                         <div
                           style={{
                             width: '12px',
                             height: '12px',
-                            backgroundImage: `url(${v.peekTypeIcon})`,
+                            flexShrink: '0',
+                            marginTop: '1px',
+                            backgroundImage: `url(${v.peekRiderIcon})`,
                             backgroundSize: 'contain',
                             backgroundRepeat: 'no-repeat',
                             backgroundPosition: 'center',
                             imageRendering: 'pixelated',
                           }}
                         ></div>
-                        <span
+                        <div
                           style={{
-                            fontFamily: 'VolterTitle,Volter,monospace',
-                            fontSize: '12px',
-                            color: v.peekTypeColor,
+                            flex: '1',
+                            minWidth: '0',
+                            fontSize: '9px',
+                            color: '#CBD9EC',
+                            lineHeight: '1.5',
+                            textWrap: 'pretty',
                           }}
                         >
-                          {v.peekPower}
-                        </span>
+                          <span style={{ color: v.peekRiderColor }}>
+                            {v.peekRiderTitle}
+                          </span>{' '}
+                          {v.peekRiderText}
+                        </div>
                       </div>
                       <div
-                        onClick={v.closePeek}
                         style={{
-                          flexShrink: '0',
-                          width: '18px',
-                          height: '18px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          borderRadius: '3px',
-                          background: '#2B3A5C',
-                          color: '#CBD9EC',
-                          fontSize: '11px',
-                          lineHeight: '1',
-                          cursor: 'pointer',
+                          fontSize: '8px',
+                          color: '#8A9BBF',
+                          letterSpacing: '.08em',
                         }}
                       >
-                        ×
+                        NOT EQUIPPED - TAP THE GEAR TO EQUIP
                       </div>
                     </div>
                     <div
                       style={{
-                        fontSize: '9px',
-                        color: '#CBD9EC',
-                        lineHeight: '1.5',
-                        textWrap: 'pretty',
+                        display: 'flex',
+                        alignItems: 'baseline',
+                        justifyContent: 'space-between',
+                        gap: '8px',
                       }}
                     >
-                      {v.peekWhat}
+                      <div
+                        style={{
+                          fontSize: '9px',
+                          color: '#FFFFFF',
+                          opacity: '.75',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {v.equipRule}
+                      </div>
+                      <div
+                        style={{
+                          flexShrink: '0',
+                          fontSize: '9px',
+                          color: '#FFFFFF',
+                          opacity: '.75',
+                        }}
+                      >
+                        Max 2 per type
+                      </div>
+                    </div>
+                    <div
+                      ref={v.setFtueSlots}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                      }}
+                    >
+                      {(v.slots || []).map((s: any, sI: number) => (
+                        <Fragment key={sI}>
+                          <div
+                            onClick={s.inspect}
+                            style={{
+                              position: 'relative',
+                              flex: '1',
+                              maxWidth: '52px',
+                              aspectRatio: '1/1',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              overflow: 'hidden',
+                              borderRadius: '3px',
+                              border: `2px solid ${s.bd}`,
+                              background: s.bg,
+                              cursor: s.cursor,
+                              boxShadow: s.ring,
+                              transform: s.slotT,
+                              transition:
+                                'transform 320ms cubic-bezier(.3,1.7,.5,1)',
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: '80%',
+                                height: '80%',
+                                backgroundImage: `url(${s.icon})`,
+                                backgroundSize: 'contain',
+                                backgroundRepeat: 'no-repeat',
+                                backgroundPosition: 'center',
+                                imageRendering: 'pixelated',
+                                opacity: s.iconOpacity,
+                              }}
+                            ></div>
+                            <div
+                              style={{
+                                position: 'absolute',
+                                inset: '8%',
+                                border: '2px dashed #283C74',
+                                borderRadius: '6px',
+                                opacity: s.emptyOpacity,
+                              }}
+                            ></div>
+                            <div
+                              onClick={s.clear}
+                              style={{
+                                position: 'absolute',
+                                top: '-8px',
+                                left: '-8px',
+                                zIndex: '3',
+                                width: '30px',
+                                height: '30px',
+                                display: s.infoDisplay,
+                                alignItems: 'flex-start',
+                                justifyContent: 'flex-start',
+                                padding: '7px',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: '15px',
+                                  height: '15px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  borderRadius: '0 0 4px 0',
+                                  background: '#B5C0FF',
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    fontSize: '10px',
+                                    lineHeight: '1',
+                                    color: '#141212',
+                                  }}
+                                >
+                                  ×
+                                </span>
+                              </div>
+                            </div>
+                            <div
+                              style={{
+                                position: 'absolute',
+                                bottom: '-2px',
+                                right: '-2px',
+                                width: '16px',
+                                height: '16px',
+                                background: '#485E9C',
+                                borderRadius: '3px 0 0 0',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                opacity: s.iconOpacity,
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: '9px',
+                                  height: '9px',
+                                  backgroundImage: `url(${s.typeIcon})`,
+                                  backgroundSize: 'contain',
+                                  backgroundRepeat: 'no-repeat',
+                                  backgroundPosition: 'center',
+                                  imageRendering: 'pixelated',
+                                }}
+                              ></div>
+                            </div>
+                          </div>
+                        </Fragment>
+                      ))}
                     </div>
                     <div
                       style={{
-                        display: v.peekRiderDisplay,
-                        alignItems: 'flex-start',
-                        gap: '5px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '4px',
                         borderTop: '1px solid #2B3A5C',
-                        paddingTop: '5px',
+                        paddingTop: '7px',
                       }}
                     >
                       <div
                         style={{
-                          width: '12px',
-                          height: '12px',
-                          flexShrink: '0',
-                          marginTop: '1px',
-                          backgroundImage: `url(${v.peekRiderIcon})`,
-                          backgroundSize: 'contain',
-                          backgroundRepeat: 'no-repeat',
-                          backgroundPosition: 'center',
-                          imageRendering: 'pixelated',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
                         }}
-                      ></div>
+                      >
+                        <div
+                          onClick={v.slotPrev}
+                          style={{
+                            flexShrink: '0',
+                            width: '18px',
+                            height: '18px',
+                            display: v.slotPagerDisplay,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderRadius: '3px',
+                            background: '#2B3A5C',
+                            color: '#CBD9EC',
+                            fontSize: '10px',
+                            lineHeight: '1',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          ‹
+                        </div>
+                        <div
+                          style={{
+                            width: '16px',
+                            height: '16px',
+                            flexShrink: '0',
+                            display: v.slotInfoIconDisplay,
+                            backgroundImage: `url(${v.slotInfoIcon})`,
+                            backgroundSize: 'contain',
+                            backgroundRepeat: 'no-repeat',
+                            backgroundPosition: 'center',
+                            imageRendering: 'pixelated',
+                          }}
+                        ></div>
+                        <div
+                          style={{
+                            flex: '1',
+                            minWidth: '0',
+                            display: 'flex',
+                            alignItems: 'baseline',
+                            gap: '5px',
+                            overflow: 'hidden',
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontSize: '10px',
+                              color: '#FFFFFF',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {v.slotInfoName}
+                          </div>
+                          <div
+                            style={{
+                              flexShrink: '0',
+                              fontSize: '8px',
+                              color: v.slotInfoRarityColor,
+                              letterSpacing: '.1em',
+                            }}
+                          >
+                            {v.slotInfoRarity}
+                          </div>
+                        </div>
+                        <div
+                          style={{
+                            flexShrink: '0',
+                            display: v.slotInfoIconDisplay,
+                            alignItems: 'center',
+                            gap: '3px',
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: '11px',
+                              height: '11px',
+                              backgroundImage: `url(${v.slotInfoTypeIcon})`,
+                              backgroundSize: 'contain',
+                              backgroundRepeat: 'no-repeat',
+                              backgroundPosition: 'center',
+                              imageRendering: 'pixelated',
+                            }}
+                          ></div>
+                          <span
+                            style={{
+                              fontFamily: 'VolterTitle,Volter,monospace',
+                              fontSize: '11px',
+                              color: v.slotInfoTypeColor,
+                            }}
+                          >
+                            {v.slotInfoPower}
+                          </span>
+                        </div>
+                        <div
+                          onClick={v.slotNext}
+                          style={{
+                            flexShrink: '0',
+                            width: '18px',
+                            height: '18px',
+                            display: v.slotPagerDisplay,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderRadius: '3px',
+                            background: '#2B3A5C',
+                            color: '#CBD9EC',
+                            fontSize: '10px',
+                            lineHeight: '1',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          ›
+                        </div>
+                      </div>
                       <div
                         style={{
-                          flex: '1',
-                          minWidth: '0',
                           fontSize: '9px',
                           color: '#CBD9EC',
                           lineHeight: '1.5',
                           textWrap: 'pretty',
                         }}
                       >
-                        <span style={{ color: v.peekRiderColor }}>
-                          {v.peekRiderTitle}
-                        </span>{' '}
-                        {v.peekRiderText}
+                        {v.slotInfoWhat}
+                      </div>
+                      <div
+                        style={{
+                          display: v.slotInfoRiderDisplay,
+                          alignItems: 'flex-start',
+                          gap: '5px',
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: '12px',
+                            height: '12px',
+                            flexShrink: '0',
+                            marginTop: '1px',
+                            backgroundImage: `url(${v.slotInfoRiderIcon})`,
+                            backgroundSize: 'contain',
+                            backgroundRepeat: 'no-repeat',
+                            backgroundPosition: 'center',
+                            imageRendering: 'pixelated',
+                          }}
+                        ></div>
+                        <div
+                          style={{
+                            flex: '1',
+                            minWidth: '0',
+                            fontSize: '9px',
+                            color: '#CBD9EC',
+                            lineHeight: '1.5',
+                            textWrap: 'pretty',
+                          }}
+                        >
+                          <span style={{ color: v.slotInfoRiderColor }}>
+                            {v.slotInfoRiderTitle}
+                          </span>{' '}
+                          {v.slotInfoRiderText}
+                        </div>
                       </div>
                     </div>
-                    <div
-                      style={{
-                        fontSize: '8px',
-                        color: '#8A9BBF',
-                        letterSpacing: '.08em',
-                      }}
-                    >
-                      NOT EQUIPPED - TAP THE GEAR TO EQUIP
-                    </div>
                   </div>
+                </div>
+
+                <div
+                  className="gl-gs-inv"
+                  style={{
+                    position: 'relative',
+                    zIndex: '2',
+                    flex: '1',
+                    minHeight: '0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    background: 'rgba(8,12,24,.8)',
+                    border: '1px solid #3A4C74',
+                    borderRadius: '8px 2px 8px 2px',
+                    padding: '0 0 10px',
+                    animation:
+                      'glPlateIn 300ms cubic-bezier(.3,1.6,.5,1) 200ms both',
+                  }}
+                >
                   <div
                     style={{
+                      flexShrink: '0',
                       display: 'flex',
-                      alignItems: 'baseline',
-                      justifyContent: 'space-between',
-                      gap: '8px',
+                      height: '32px',
+                      width: '100%',
+                      background: '#141D2E',
+                      borderRadius: '8px 0 8px 0',
+                      overflow: 'hidden',
                     }}
                   >
-                    <div
-                      style={{
-                        fontSize: '9px',
-                        color: '#FFFFFF',
-                        opacity: '.75',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {v.equipRule}
-                    </div>
-                    <div
-                      style={{
-                        flexShrink: '0',
-                        fontSize: '9px',
-                        color: '#FFFFFF',
-                        opacity: '.75',
-                      }}
-                    >
-                      Max 2 per type
-                    </div>
-                  </div>
-                  <div
-                    ref={v.setFtueSlots}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '6px',
-                    }}
-                  >
-                    {(v.slots || []).map((s: any, sI: number) => (
-                      <Fragment key={sI}>
+                    {(v.tabs || []).map((t: any, tI: number) => (
+                      <Fragment key={tI}>
                         <div
-                          onClick={s.inspect}
+                          onClick={t.pick}
                           style={{
-                            position: 'relative',
                             flex: '1',
-                            maxWidth: '52px',
-                            aspectRatio: '1/1',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            overflow: 'hidden',
-                            borderRadius: '3px',
-                            border: `2px solid ${s.bd}`,
-                            background: s.bg,
-                            cursor: s.cursor,
-                            boxShadow: s.ring,
-                            transform: s.slotT,
-                            transition:
-                              'transform 320ms cubic-bezier(.3,1.7,.5,1)',
+                            gap: '5px',
+                            cursor: 'pointer',
+                            background: t.bg,
+                            color: t.fg,
+                            fontSize: '12px',
+                            letterSpacing: '.06em',
+                            borderRadius: '8px 0 8px 0',
                           }}
                         >
-                          <div
-                            style={{
-                              width: '80%',
-                              height: '80%',
-                              backgroundImage: `url(${s.icon})`,
-                              backgroundSize: 'contain',
-                              backgroundRepeat: 'no-repeat',
-                              backgroundPosition: 'center',
-                              imageRendering: 'pixelated',
-                              opacity: s.iconOpacity,
-                            }}
-                          ></div>
-                          <div
-                            style={{
-                              position: 'absolute',
-                              inset: '8%',
-                              border: '2px dashed #283C74',
-                              borderRadius: '6px',
-                              opacity: s.emptyOpacity,
-                            }}
-                          ></div>
-                          <div
-                            onClick={s.clear}
-                            style={{
-                              position: 'absolute',
-                              top: '-8px',
-                              left: '-8px',
-                              zIndex: '3',
-                              width: '30px',
-                              height: '30px',
-                              display: s.infoDisplay,
-                              alignItems: 'flex-start',
-                              justifyContent: 'flex-start',
-                              padding: '7px',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            <div
-                              style={{
-                                width: '15px',
-                                height: '15px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                borderRadius: '0 0 4px 0',
-                                background: '#B5C0FF',
-                              }}
-                            >
-                              <span
-                                style={{
-                                  fontSize: '10px',
-                                  lineHeight: '1',
-                                  color: '#141212',
-                                }}
-                              >
-                                ×
-                              </span>
-                            </div>
-                          </div>
-                          <div
-                            style={{
-                              position: 'absolute',
-                              bottom: '-2px',
-                              right: '-2px',
-                              width: '16px',
-                              height: '16px',
-                              background: '#485E9C',
-                              borderRadius: '3px 0 0 0',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              opacity: s.iconOpacity,
-                            }}
-                          >
-                            <div
-                              style={{
-                                width: '9px',
-                                height: '9px',
-                                backgroundImage: `url(${s.typeIcon})`,
-                                backgroundSize: 'contain',
-                                backgroundRepeat: 'no-repeat',
-                                backgroundPosition: 'center',
-                                imageRendering: 'pixelated',
-                              }}
-                            ></div>
-                          </div>
+                          {t.label} {t.count}
                         </div>
                       </Fragment>
                     ))}
                   </div>
                   <div
+                    ref={v.setFtueGear}
                     style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '4px',
-                      borderTop: '1px solid #2B3A5C',
-                      paddingTop: '7px',
+                      flex: '1',
+                      minHeight: '0',
+                      overflowY: 'auto',
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(4,1fr)',
+                      gap: '6px',
+                      padding: '0 10px',
+                      justifyItems: 'center',
+                      alignContent: 'start',
                     }}
                   >
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                      }}
-                    >
-                      <div
-                        onClick={v.slotPrev}
-                        style={{
-                          flexShrink: '0',
-                          width: '18px',
-                          height: '18px',
-                          display: v.slotPagerDisplay,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          borderRadius: '3px',
-                          background: '#2B3A5C',
-                          color: '#CBD9EC',
-                          fontSize: '10px',
-                          lineHeight: '1',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        ‹
-                      </div>
-                      <div
-                        style={{
-                          width: '16px',
-                          height: '16px',
-                          flexShrink: '0',
-                          display: v.slotInfoIconDisplay,
-                          backgroundImage: `url(${v.slotInfoIcon})`,
-                          backgroundSize: 'contain',
-                          backgroundRepeat: 'no-repeat',
-                          backgroundPosition: 'center',
-                          imageRendering: 'pixelated',
-                        }}
-                      ></div>
-                      <div
-                        style={{
-                          flex: '1',
-                          minWidth: '0',
-                          display: 'flex',
-                          alignItems: 'baseline',
-                          gap: '5px',
-                          overflow: 'hidden',
-                        }}
-                      >
+                    {(v.gearCards || []).map((g: any, gI: number) => (
+                      <Fragment key={gI}>
                         <div
+                          onClick={g.toggle}
                           style={{
-                            fontSize: '10px',
-                            color: '#FFFFFF',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {v.slotInfoName}
-                        </div>
-                        <div
-                          style={{
-                            flexShrink: '0',
-                            fontSize: '8px',
-                            color: v.slotInfoRarityColor,
-                            letterSpacing: '.1em',
-                          }}
-                        >
-                          {v.slotInfoRarity}
-                        </div>
-                      </div>
-                      <div
-                        style={{
-                          flexShrink: '0',
-                          display: v.slotInfoIconDisplay,
-                          alignItems: 'center',
-                          gap: '3px',
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: '11px',
-                            height: '11px',
-                            backgroundImage: `url(${v.slotInfoTypeIcon})`,
-                            backgroundSize: 'contain',
-                            backgroundRepeat: 'no-repeat',
-                            backgroundPosition: 'center',
-                            imageRendering: 'pixelated',
-                          }}
-                        ></div>
-                        <span
-                          style={{
-                            fontFamily: 'VolterTitle,Volter,monospace',
-                            fontSize: '11px',
-                            color: v.slotInfoTypeColor,
-                          }}
-                        >
-                          {v.slotInfoPower}
-                        </span>
-                      </div>
-                      <div
-                        onClick={v.slotNext}
-                        style={{
-                          flexShrink: '0',
-                          width: '18px',
-                          height: '18px',
-                          display: v.slotPagerDisplay,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          borderRadius: '3px',
-                          background: '#2B3A5C',
-                          color: '#CBD9EC',
-                          fontSize: '10px',
-                          lineHeight: '1',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        ›
-                      </div>
-                    </div>
-                    <div
-                      style={{
-                        fontSize: '9px',
-                        color: '#CBD9EC',
-                        lineHeight: '1.5',
-                        textWrap: 'pretty',
-                      }}
-                    >
-                      {v.slotInfoWhat}
-                    </div>
-                    <div
-                      style={{
-                        display: v.slotInfoRiderDisplay,
-                        alignItems: 'flex-start',
-                        gap: '5px',
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: '12px',
-                          height: '12px',
-                          flexShrink: '0',
-                          marginTop: '1px',
-                          backgroundImage: `url(${v.slotInfoRiderIcon})`,
-                          backgroundSize: 'contain',
-                          backgroundRepeat: 'no-repeat',
-                          backgroundPosition: 'center',
-                          imageRendering: 'pixelated',
-                        }}
-                      ></div>
-                      <div
-                        style={{
-                          flex: '1',
-                          minWidth: '0',
-                          fontSize: '9px',
-                          color: '#CBD9EC',
-                          lineHeight: '1.5',
-                          textWrap: 'pretty',
-                        }}
-                      >
-                        <span style={{ color: v.slotInfoRiderColor }}>
-                          {v.slotInfoRiderTitle}
-                        </span>{' '}
-                        {v.slotInfoRiderText}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  position: 'relative',
-                  zIndex: '2',
-                  flex: '1',
-                  minHeight: '0',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                  background: 'rgba(8,12,24,.8)',
-                  border: '1px solid #3A4C74',
-                  borderRadius: '8px 2px 8px 2px',
-                  padding: '0 0 10px',
-                  animation:
-                    'glPlateIn 300ms cubic-bezier(.3,1.6,.5,1) 200ms both',
-                }}
-              >
-                <div
-                  style={{
-                    flexShrink: '0',
-                    display: 'flex',
-                    height: '32px',
-                    width: '100%',
-                    background: '#141D2E',
-                    borderRadius: '8px 0 8px 0',
-                    overflow: 'hidden',
-                  }}
-                >
-                  {(v.tabs || []).map((t: any, tI: number) => (
-                    <Fragment key={tI}>
-                      <div
-                        onClick={t.pick}
-                        style={{
-                          flex: '1',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '5px',
-                          cursor: 'pointer',
-                          background: t.bg,
-                          color: t.fg,
-                          fontSize: '12px',
-                          letterSpacing: '.06em',
-                          borderRadius: '8px 0 8px 0',
-                        }}
-                      >
-                        {t.label} {t.count}
-                      </div>
-                    </Fragment>
-                  ))}
-                </div>
-                <div
-                  ref={v.setFtueGear}
-                  style={{
-                    flex: '1',
-                    minHeight: '0',
-                    overflowY: 'auto',
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(4,1fr)',
-                    gap: '6px',
-                    padding: '0 10px',
-                    justifyItems: 'center',
-                    alignContent: 'start',
-                  }}
-                >
-                  {(v.gearCards || []).map((g: any, gI: number) => (
-                    <Fragment key={gI}>
-                      <div
-                        onClick={g.toggle}
-                        style={{
-                          width: '100%',
-                          maxWidth: '68px',
-                          aspectRatio: '1/1',
-                          padding: '2px',
-                          cursor: g.cursor,
-                          opacity: g.opacity,
-                          animation: `glCardDeal 380ms cubic-bezier(.3,1.6,.5,1) ${g.dealDelay} backwards`,
-                        }}
-                      >
-                        <div
-                          style={{
-                            position: 'relative',
-                            height: '100%',
                             width: '100%',
-                            borderRadius: '8px 0 8px 0',
-                            background: '#485E9C',
-                            border: '2px solid #657BB9',
-                            padding: '7px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
+                            maxWidth: '68px',
+                            aspectRatio: '1/1',
+                            padding: '2px',
+                            cursor: g.cursor,
+                            opacity: g.opacity,
+                            animation: `glCardDeal 380ms cubic-bezier(.3,1.6,.5,1) ${g.dealDelay} backwards`,
                           }}
                         >
                           <div
                             style={{
-                              width: '80%',
-                              height: '80%',
-                              backgroundImage: `url(${g.icon})`,
-                              backgroundSize: 'contain',
-                              backgroundRepeat: 'no-repeat',
-                              backgroundPosition: 'center',
-                              imageRendering: 'pixelated',
-                              filter: g.lockFilter,
-                            }}
-                          ></div>
-                          <div
-                            onClick={g.inspect}
-                            style={{
-                              position: 'absolute',
-                              right: '-10px',
-                              top: '-10px',
-                              zIndex: '3',
-                              width: '36px',
-                              height: '36px',
+                              position: 'relative',
+                              height: '100%',
+                              width: '100%',
+                              borderRadius: '8px 0 8px 0',
+                              background: '#485E9C',
+                              border: '2px solid #657BB9',
+                              padding: '7px',
                               display: 'flex',
-                              alignItems: 'flex-start',
-                              justifyContent: 'flex-end',
-                              padding: '8px',
-                              cursor: 'pointer',
+                              alignItems: 'center',
+                              justifyContent: 'center',
                             }}
                           >
                             <div
                               style={{
-                                width: '18px',
-                                height: '18px',
+                                width: '80%',
+                                height: '80%',
+                                backgroundImage: `url(${g.icon})`,
+                                backgroundSize: 'contain',
+                                backgroundRepeat: 'no-repeat',
+                                backgroundPosition: 'center',
+                                imageRendering: 'pixelated',
+                                filter: g.lockFilter,
+                              }}
+                            ></div>
+                            <div
+                              onClick={g.inspect}
+                              style={{
+                                position: 'absolute',
+                                right: '-10px',
+                                top: '-10px',
+                                zIndex: '3',
+                                width: '36px',
+                                height: '36px',
                                 display: 'flex',
+                                alignItems: 'flex-start',
+                                justifyContent: 'flex-end',
+                                padding: '8px',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: '18px',
+                                  height: '18px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  borderRadius: '0 0 0 4px',
+                                  background: g.infoBg,
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    fontFamily: 'VolterTitle,Volter,monospace',
+                                    fontSize: '10px',
+                                    lineHeight: '1',
+                                    color: '#141212',
+                                  }}
+                                >
+                                  i
+                                </span>
+                              </div>
+                            </div>
+                            <div
+                              style={{
+                                position: 'absolute',
+                                left: '-2px',
+                                top: '-2px',
+                                display: g.riderDisplay,
                                 alignItems: 'center',
-                                justifyContent: 'center',
-                                borderRadius: '0 0 0 4px',
-                                background: g.infoBg,
+                                height: '14px',
+                                padding: '0 3px',
+                                borderRadius: '8px 0 4px 0',
+                                background: g.riderColor,
+                                zIndex: '1',
                               }}
                             >
                               <span
                                 style={{
                                   fontFamily: 'VolterTitle,Volter,monospace',
-                                  fontSize: '10px',
-                                  lineHeight: '1',
+                                  fontSize: '8px',
                                   color: '#141212',
                                 }}
                               >
-                                i
+                                {g.riderTag}
                               </span>
                             </div>
-                          </div>
-                          <div
-                            style={{
-                              position: 'absolute',
-                              left: '-2px',
-                              top: '-2px',
-                              display: g.riderDisplay,
-                              alignItems: 'center',
-                              height: '14px',
-                              padding: '0 3px',
-                              borderRadius: '8px 0 4px 0',
-                              background: g.riderColor,
-                              zIndex: '1',
-                            }}
-                          >
-                            <span
+                            <div
                               style={{
+                                position: 'absolute',
+                                left: '0',
+                                bottom: '0',
+                                width: '100%',
+                                padding: '0 4px',
+                                background: g.rarityColor,
                                 fontFamily: 'VolterTitle,Volter,monospace',
                                 fontSize: '8px',
+                                lineHeight: '1.5',
                                 color: '#141212',
+                                overflow: 'hidden',
+                                textOverflow: 'clip',
+                                whiteSpace: 'nowrap',
                               }}
                             >
-                              {g.riderTag}
-                            </span>
-                          </div>
-                          <div
-                            style={{
-                              position: 'absolute',
-                              left: '0',
-                              bottom: '0',
-                              width: '100%',
-                              padding: '0 4px',
-                              background: g.rarityColor,
-                              fontFamily: 'VolterTitle,Volter,monospace',
-                              fontSize: '8px',
-                              lineHeight: '1.5',
-                              color: '#141212',
-                              overflow: 'hidden',
-                              textOverflow: 'clip',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            {g.levelName}
-                          </div>
-                          <div
-                            style={{
-                              position: 'absolute',
-                              right: '-2px',
-                              bottom: '-2px',
-                              height: '18px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: '2px',
-                              borderRadius: '4px 0 8px 0',
-                              background: '#657BB9',
-                              padding: '0 4px',
-                            }}
-                          >
+                              {g.levelName}
+                            </div>
                             <div
                               style={{
-                                width: '10px',
-                                height: '10px',
-                                backgroundImage: `url(${g.typeIcon})`,
-                                backgroundSize: 'contain',
-                                backgroundRepeat: 'no-repeat',
-                                backgroundPosition: 'center',
-                                imageRendering: 'pixelated',
-                              }}
-                            ></div>
-                            <span
-                              style={{
-                                fontFamily: 'VolterTitle,Volter,monospace',
-                                fontSize: '10px',
-                                color: '#FFFFFF',
+                                position: 'absolute',
+                                right: '-2px',
+                                bottom: '-2px',
+                                height: '18px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '2px',
+                                borderRadius: '4px 0 8px 0',
+                                background: '#657BB9',
+                                padding: '0 4px',
                               }}
                             >
-                              {g.power}
-                            </span>
-                          </div>
-                          <div
-                            style={{
-                              position: 'absolute',
-                              left: '-2px',
-                              top: '-2px',
-                              width: 'calc(100% + 4px)',
-                              height: 'calc(100% + 4px)',
-                              zIndex: '2',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              background: 'rgba(0,0,0,.5)',
-                              borderRadius: '8px 0 8px 0',
-                              opacity: g.tickOpacity,
-                            }}
-                          >
+                              <div
+                                style={{
+                                  width: '10px',
+                                  height: '10px',
+                                  backgroundImage: `url(${g.typeIcon})`,
+                                  backgroundSize: 'contain',
+                                  backgroundRepeat: 'no-repeat',
+                                  backgroundPosition: 'center',
+                                  imageRendering: 'pixelated',
+                                }}
+                              ></div>
+                              <span
+                                style={{
+                                  fontFamily: 'VolterTitle,Volter,monospace',
+                                  fontSize: '10px',
+                                  color: '#FFFFFF',
+                                }}
+                              >
+                                {g.power}
+                              </span>
+                            </div>
                             <div
                               style={{
-                                width: '12px',
-                                height: '22px',
-                                borderRight: '5px solid #AEE45D',
-                                borderBottom: '5px solid #AEE45D',
-                                transform: 'rotate(45deg)',
-                                marginTop: '-6px',
+                                position: 'absolute',
+                                left: '-2px',
+                                top: '-2px',
+                                width: 'calc(100% + 4px)',
+                                height: 'calc(100% + 4px)',
+                                zIndex: '2',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                background: 'rgba(0,0,0,.5)',
+                                borderRadius: '8px 0 8px 0',
+                                opacity: g.tickOpacity,
                               }}
-                            ></div>
+                            >
+                              <div
+                                style={{
+                                  width: '12px',
+                                  height: '22px',
+                                  borderRight: '5px solid #AEE45D',
+                                  borderBottom: '5px solid #AEE45D',
+                                  transform: 'rotate(45deg)',
+                                  marginTop: '-6px',
+                                }}
+                              ></div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </Fragment>
-                  ))}
+                      </Fragment>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              <div
-                ref={v.setFtueGearCta}
-                style={{
-                  position: 'relative',
-                  zIndex: '2',
-                  flexShrink: '0',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                  paddingTop: '2px',
-                }}
-              >
                 <div
-                  onClick={v.startRun}
+                  ref={v.setFtueGearCta}
+                  className="gl-gs-cta"
                   style={{
-                    cursor: 'pointer',
+                    position: 'relative',
+                    zIndex: '2',
+                    flexShrink: '0',
                     display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    minHeight: '46px',
-                    border: '3px solid #000000',
-                    borderRadius: '8px 2px 8px 2px',
-                    background: v.startBg,
-                    boxShadow: v.startShadow,
-                    color: '#000000',
-                    fontFamily: 'VolterTitle,Volter,monospace',
-                    fontSize: '22.5px',
-                    opacity: v.startOpacity,
-                    lineHeight: '1.05',
-                    textAlign: 'center',
-                    textWrap: 'balance',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    paddingTop: '2px',
                   }}
                 >
-                  {v.startLabel}
+                  <div
+                    onClick={v.startRun}
+                    style={{
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      minHeight: '46px',
+                      border: '3px solid #000000',
+                      borderRadius: '8px 2px 8px 2px',
+                      background: v.startBg,
+                      boxShadow: v.startShadow,
+                      color: '#000000',
+                      fontFamily: 'VolterTitle,Volter,monospace',
+                      fontSize: '22.5px',
+                      opacity: v.startOpacity,
+                      lineHeight: '1.05',
+                      textAlign: 'center',
+                      textWrap: 'balance',
+                    }}
+                  >
+                    {v.startLabel}
+                  </div>
                 </div>
               </div>
             </div>

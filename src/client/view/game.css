@@ -2303,9 +2303,9 @@ html[data-post] .gl-shell {
   border-radius: 0 !important;
 }
 
-/* ---------- hero step / knights page ---------- */
-/* Portrait: one column, the line-up sinking to the bottom above its plate,
-   the knights page's outfits under that, its action bar last. */
+/* ---------- hero step / knights page / loadout ---------- */
+/* Portrait: one column. The line-up sinks to the bottom above its plate, the
+   knights page's outfits go under that, and the action bar comes last. */
 .gl-hero-body {
   position: relative;
   z-index: 3;
@@ -2324,20 +2324,90 @@ html[data-post] .gl-shell {
 .gl-hero-plate {
   align-items: center;
   gap: 12px;
+  margin: 10px 12px 0;
+}
+.gl-hero-plate-btns {
+  flex-shrink: 0;
+  display: flex;
+  gap: 12px;
 }
 .gl-kn-outfits {
   flex: 0 1 auto;
   margin: 10px 12px 0;
 }
-.gl-kn-back {
+.gl-hs-back {
   display: none;
 }
+.gl-hs-foot-back {
+  display: flex;
+}
 
-/* Landscape (the inline post runs edge to edge): stacking leaves a strip of
-   outfits and a MAP bar 700px long. Split it instead - the line-up and its
-   plate on the left, the outfits as a scrolling panel on the right, and MAP
-   as a back button in the header. */
+.gl-gs {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+.gl-gs-top {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+/* Landscape (the inline post runs edge to edge): stacked, these screens leave
+   strips of content and buttons 700px long. Split them into columns instead,
+   with the way back as a button in the header and the way on bottom right. */
 @container (min-aspect-ratio: 5/4) and (min-width: 560px) {
+  .gl-hs-back {
+    display: flex;
+  }
+  .gl-hs-foot-back {
+    display: none;
+  }
+  .gl-hero-plate {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  /* The perk text and buttons are stacked, so the buttons share the plate's
+     width, wrapping when a long label will not fit beside its neighbour. */
+  .gl-hero-plate-btns {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .gl-hero-plate-btns > * {
+    flex: 1 1 auto;
+  }
+
+  /* Pick your hero: the line-up on the left, its plate on the right, NEXT
+     under the plate. */
+  .gl-hp .gl-hero-body {
+    padding-top: 10px;
+    --gl-stand-h: min(44cqh, 24cqw);
+  }
+  .gl-hp .gl-hero-side {
+    flex-direction: row;
+    align-items: flex-end;
+  }
+  .gl-hp .gl-hero-lineup {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .gl-hp .gl-hero-plate {
+    flex: 0 0 calc(40cqw - 12px);
+    min-width: 0;
+    margin: 0 12px 0 0;
+  }
+  .gl-hp .gl-hs-cta {
+    width: calc(40cqw - 12px);
+    margin-left: auto;
+  }
+
+  /* Knights: the line-up and its plate on the left, the outfits as a
+     scrolling panel on the right; MAP is in the header, so no action bar. */
   .gl-kn .gl-hero-body {
     flex-direction: row;
     gap: 4px;
@@ -2349,13 +2419,6 @@ html[data-post] .gl-shell {
     min-width: 0;
     padding-bottom: 12px;
   }
-  /* Half the post is too narrow for the perk text and the upgrade button side
-     by side: the text gets squeezed to a word a line. Stack them instead. */
-  .gl-kn .gl-hero-plate {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-  }
   .gl-kn .gl-kn-outfits {
     flex: 1.15 1 0;
     min-width: 0;
@@ -2365,11 +2428,42 @@ html[data-post] .gl-shell {
     border-radius: 8px 2px 8px 2px;
     background: rgba(8, 12, 24, 0.78);
   }
-  .gl-kn .gl-kn-back {
-    display: flex;
-  }
-  .gl-kn .gl-kn-foot {
+  .gl-kn .gl-hs-foot {
     display: none;
+  }
+
+  /* Loadout: hero | equipped slots | inventory, with the start button under
+     the inventory. The hero row dissolves so its two halves are columns. */
+  .gl-gs {
+    display: grid;
+    grid-template-columns: min(22cqw, 160px) minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'head head head'
+      'hero load inv'
+      'hero load cta';
+    column-gap: 12px;
+  }
+  .gl-gs-head {
+    grid-area: head;
+  }
+  .gl-gs-top {
+    display: contents;
+  }
+  .gl-gs-hero {
+    grid-area: hero;
+    align-self: end;
+    padding-bottom: 4px;
+  }
+  .gl-gs-load {
+    grid-area: load;
+    justify-content: center;
+  }
+  .gl-gs-inv {
+    grid-area: inv;
+  }
+  .gl-gs-cta {
+    grid-area: cta;
   }
 }
 

@@ -3368,7 +3368,7 @@ export const buildView = (app: GearLinkApp): View => {
     heroStandH:
       st.phase === 'knights'
         ? 'var(--gl-stand-h,min(22cqh,32cqw))'
-        : 'min(30cqh,40cqw)',
+        : 'var(--gl-stand-h,min(30cqh,40cqw))',
     knightsSkinsTitle: st.heroClass.toUpperCase() + ' OUTFITS',
     knightsSkinsCount:
       skinsFor(st.heroClass).filter((d) => skinOwned(d, st.profile.skins))
@@ -3410,6 +3410,7 @@ export const buildView = (app: GearLinkApp): View => {
             {
               label: 'MAP',
               run: app.goMap,
+              back: true,
               h: '46px',
               size: '15px',
               flex: '1 1 auto',
@@ -3421,6 +3422,7 @@ export const buildView = (app: GearLinkApp): View => {
             {
               label: st.flow === 'duel' ? 'CANCEL' : 'MAP',
               run: st.flow === 'duel' ? app.leaveDuelSetup : app.goMap,
+              back: true,
               h: '46px',
               size: '13px',
               flex: '0 0 34%',
