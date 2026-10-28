@@ -2957,7 +2957,7 @@ export const Screen = ({ v }: { v: View }) => (
                     >
                       <HeroStand
                         h={v.gearHero}
-                        height="min(26cqh,38cqw)"
+                        height="var(--gl-gear-hero-h,min(26cqh,38cqw))"
                         rays="rgba(255,242,176,.35)"
                       />
                     </div>
@@ -3770,6 +3770,31 @@ export const Screen = ({ v }: { v: View }) => (
                           </div>
                         </div>
                       </Fragment>
+                    ))}
+                    {/* Empty slots after the gear, shown only in landscape
+                        (see game.css), so a tall inventory panel reads as a
+                        grid with room in it rather than a void. */}
+                    {(v.gearEmpty || []).map((eI: number) => (
+                      <div
+                        key={'e' + eI}
+                        className="gl-gs-empty"
+                        style={{
+                          width: '100%',
+                          maxWidth: '68px',
+                          aspectRatio: '1/1',
+                          padding: '2px',
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: '100%',
+                            borderRadius: '8px 0 8px 0',
+                            border: '2px solid #24314F',
+                            background: 'rgba(20,29,46,.7)',
+                            boxShadow: 'inset 0 2px 0 rgba(0,0,0,.35)',
+                          }}
+                        ></div>
+                      </div>
                     ))}
                   </div>
                 </div>

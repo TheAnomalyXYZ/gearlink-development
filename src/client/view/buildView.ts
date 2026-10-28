@@ -3598,6 +3598,14 @@ export const buildView = (app: GearLinkApp): View => {
       wornSkin(st.heroClass, st.profile.skinWorn, st.profile.skins).img
     ),
     gearCards,
+    // Pads the inventory to at least four rows of four.
+    gearEmpty: Array.from(
+      {
+        length:
+          Math.max(16, Math.ceil(gearCards.length / 4) * 4) - gearCards.length,
+      },
+      (_, i) => i
+    ),
     tabs,
     slots,
     riderRows,

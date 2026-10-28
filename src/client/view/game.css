@@ -2356,6 +2356,9 @@ html[data-post] .gl-shell {
   align-items: flex-end;
   gap: 10px;
 }
+.gl-gs-empty {
+  display: none;
+}
 
 /* Landscape (the inline post runs edge to edge): stacked, these screens leave
    strips of content and buttons 700px long. Split them into columns instead,
@@ -2432,17 +2435,21 @@ html[data-post] .gl-shell {
     display: none;
   }
 
-  /* Loadout: hero | equipped slots | inventory, with the start button under
-     the inventory. The hero row dissolves so its two halves are columns. */
+  /* Loadout: two columns that fill the post. Left, the hero grows into the
+     room above the equipped slots; right, the inventory runs the full height,
+     padded out with empty slots, with the start button under it. */
   .gl-gs {
     display: grid;
-    grid-template-columns: min(22cqw, 160px) minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
     grid-template-areas:
-      'head head head'
-      'hero load inv'
-      'hero load cta';
+      'head head'
+      'hero inv'
+      'load inv'
+      'load cta';
     column-gap: 12px;
+    row-gap: 8px;
+    --gl-gear-hero-h: min(30cqh, 30cqw);
   }
   .gl-gs-head {
     grid-area: head;
@@ -2453,17 +2460,19 @@ html[data-post] .gl-shell {
   .gl-gs-hero {
     grid-area: hero;
     align-self: end;
-    padding-bottom: 4px;
+    justify-self: center;
   }
   .gl-gs-load {
     grid-area: load;
-    justify-content: center;
   }
   .gl-gs-inv {
     grid-area: inv;
   }
   .gl-gs-cta {
     grid-area: cta;
+  }
+  .gl-gs-empty {
+    display: block;
   }
 }
 
