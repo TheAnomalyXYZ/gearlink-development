@@ -5440,6 +5440,7 @@ export const Screen = ({ v }: { v: View }) => (
         {v.isQuests ? (
           <>
             <div
+              className="gl-quests"
               style={{
                 flex: '1',
                 minHeight: '0',
@@ -5449,6 +5450,7 @@ export const Screen = ({ v }: { v: View }) => (
                 padding: '14px',
                 gap: '10px',
                 overflowY: 'auto',
+                containerType: 'size',
               }}
             >
               <div
@@ -5748,170 +5750,172 @@ export const Screen = ({ v }: { v: View }) => (
                 >
                   CLAIM ALL
                 </div>
-                {(v.questRows || []).map((q: any, qI: number) => (
-                  <Fragment key={qI}>
-                    <div
-                      data-fx-quest={q.id}
-                      style={{
-                        position: 'relative',
-                        overflow: 'hidden',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        background: '#1D2956',
-                        border: `2px solid ${q.rowBd}`,
-                        borderRadius: '8px 0 8px 0',
-                        padding: '9px',
-                        opacity: q.opacity,
-                        animation: `${q.rowIn}, ${q.glowAnim}`,
-                      }}
-                    >
+                <div className="gl-quest-list" style={{ gap: '8px' }}>
+                  {(v.questRows || []).map((q: any, qI: number) => (
+                    <Fragment key={qI}>
                       <div
+                        data-fx-quest={q.id}
                         style={{
-                          display: q.shineDisplay,
-                          position: 'absolute',
-                          inset: '0',
-                          pointerEvents: 'none',
-                          background:
-                            'linear-gradient(110deg,transparent 40%,rgba(255,242,176,.22) 50%,transparent 60%)',
-                          backgroundSize: '250% 100%',
-                          animation: 'glShineSweep 2.6s ease-in-out infinite',
-                        }}
-                      ></div>
-                      <div
-                        title={q.rewardTitle}
-                        style={{
-                          minWidth: '44px',
-                          flexShrink: '0',
+                          position: 'relative',
+                          overflow: 'hidden',
                           display: 'flex',
-                          flexDirection: 'column',
                           alignItems: 'center',
-                          gap: '3px',
+                          gap: '10px',
+                          background: '#1D2956',
+                          border: `2px solid ${q.rowBd}`,
+                          borderRadius: '8px 0 8px 0',
+                          padding: '9px',
+                          opacity: q.opacity,
+                          animation: `${q.rowIn}, ${q.glowAnim}`,
                         }}
                       >
                         <div
-                          data-fx-reward
                           style={{
-                            width: '30px',
-                            height: '30px',
-                            backgroundImage: `url(${q.rewardIcon})`,
-                            backgroundSize: 'contain',
-                            backgroundRepeat: 'no-repeat',
-                            backgroundPosition: 'center',
-                            imageRendering: 'pixelated',
-                            animation: q.iconAnim,
+                            display: q.shineDisplay,
+                            position: 'absolute',
+                            inset: '0',
+                            pointerEvents: 'none',
+                            background:
+                              'linear-gradient(110deg,transparent 40%,rgba(255,242,176,.22) 50%,transparent 60%)',
+                            backgroundSize: '250% 100%',
+                            animation: 'glShineSweep 2.6s ease-in-out infinite',
                           }}
                         ></div>
                         <div
+                          title={q.rewardTitle}
                           style={{
-                            fontFamily: 'VolterTitle,Volter,monospace',
-                            fontSize: '12px',
-                            color: q.rewardColor,
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {q.rewardText}
-                        </div>
-                      </div>
-                      <div
-                        style={{
-                          flex: '1',
-                          minWidth: '0',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '4px',
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontFamily: 'VolterTitle,Volter,monospace',
-                            fontSize: '14px',
-                            color: '#FFF2B0',
-                          }}
-                        >
-                          {q.title}
-                        </div>
-                        <div
-                          style={{
-                            fontSize: '9px',
-                            color: '#CBD9EC',
-                            lineHeight: '1.4',
-                          }}
-                        >
-                          {q.blurb}
-                        </div>
-                        <div
-                          style={{
+                            minWidth: '44px',
+                            flexShrink: '0',
                             display: 'flex',
+                            flexDirection: 'column',
                             alignItems: 'center',
-                            gap: '6px',
+                            gap: '3px',
+                          }}
+                        >
+                          <div
+                            data-fx-reward
+                            style={{
+                              width: '30px',
+                              height: '30px',
+                              backgroundImage: `url(${q.rewardIcon})`,
+                              backgroundSize: 'contain',
+                              backgroundRepeat: 'no-repeat',
+                              backgroundPosition: 'center',
+                              imageRendering: 'pixelated',
+                              animation: q.iconAnim,
+                            }}
+                          ></div>
+                          <div
+                            style={{
+                              fontFamily: 'VolterTitle,Volter,monospace',
+                              fontSize: '12px',
+                              color: q.rewardColor,
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {q.rewardText}
+                          </div>
+                        </div>
+                        <div
+                          style={{
+                            flex: '1',
+                            minWidth: '0',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '4px',
                           }}
                         >
                           <div
                             style={{
-                              flex: '1',
-                              minWidth: '0',
-                              display: 'flex',
-                              gap: '2px',
-                              height: '10px',
+                              fontFamily: 'VolterTitle,Volter,monospace',
+                              fontSize: '14px',
+                              color: '#FFF2B0',
                             }}
                           >
-                            {(q.segs || []).map((sg: any, sgI: number) => (
-                              <div
-                                key={sgI}
-                                style={{
-                                  flex: '1',
-                                  minWidth: '0',
-                                  background: sg.bg,
-                                  border: '1px solid #000000',
-                                  boxShadow: 'inset 0 -2px 0 rgba(0,0,0,.25)',
-                                  animation: sg.anim,
-                                }}
-                              ></div>
-                            ))}
+                            {q.title}
                           </div>
                           <div
                             style={{
-                              flexShrink: '0',
-                              fontFamily: 'VolterTitle,Volter,monospace',
                               fontSize: '9px',
                               color: '#CBD9EC',
+                              lineHeight: '1.4',
                             }}
                           >
-                            {q.progressLabel}
+                            {q.blurb}
+                          </div>
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                            }}
+                          >
+                            <div
+                              style={{
+                                flex: '1',
+                                minWidth: '0',
+                                display: 'flex',
+                                gap: '2px',
+                                height: '10px',
+                              }}
+                            >
+                              {(q.segs || []).map((sg: any, sgI: number) => (
+                                <div
+                                  key={sgI}
+                                  style={{
+                                    flex: '1',
+                                    minWidth: '0',
+                                    background: sg.bg,
+                                    border: '1px solid #000000',
+                                    boxShadow: 'inset 0 -2px 0 rgba(0,0,0,.25)',
+                                    animation: sg.anim,
+                                  }}
+                                ></div>
+                              ))}
+                            </div>
+                            <div
+                              style={{
+                                flexShrink: '0',
+                                fontFamily: 'VolterTitle,Volter,monospace',
+                                fontSize: '9px',
+                                color: '#CBD9EC',
+                              }}
+                            >
+                              {q.progressLabel}
+                            </div>
                           </div>
                         </div>
+                        <div
+                          data-fx-claim
+                          onClick={q.run}
+                          style={{
+                            animation: q.claimAnim,
+                            cursor: q.cursor,
+                            flexShrink: '0',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            minWidth: '58px',
+                            minHeight: '34px',
+                            padding: '0 10px',
+                            border: '2px solid #000000',
+                            borderRadius: '8px 2px 8px 2px',
+                            background: q.btnBg,
+                            boxShadow: q.btnShadow,
+                            color: '#000000',
+                            fontFamily: 'VolterTitle,Volter,monospace',
+                            fontSize: '16.5px',
+                            lineHeight: '1.05',
+                            textAlign: 'center',
+                            textWrap: 'balance',
+                          }}
+                        >
+                          {q.btnLabel}
+                        </div>
                       </div>
-                      <div
-                        data-fx-claim
-                        onClick={q.run}
-                        style={{
-                          animation: q.claimAnim,
-                          cursor: q.cursor,
-                          flexShrink: '0',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          minWidth: '58px',
-                          minHeight: '34px',
-                          padding: '0 10px',
-                          border: '2px solid #000000',
-                          borderRadius: '8px 2px 8px 2px',
-                          background: q.btnBg,
-                          boxShadow: q.btnShadow,
-                          color: '#000000',
-                          fontFamily: 'VolterTitle,Volter,monospace',
-                          fontSize: '16.5px',
-                          lineHeight: '1.05',
-                          textAlign: 'center',
-                          textWrap: 'balance',
-                        }}
-                      >
-                        {q.btnLabel}
-                      </div>
-                    </div>
-                  </Fragment>
-                ))}
+                    </Fragment>
+                  ))}
+                </div>
               </div>
             </div>
           </>
