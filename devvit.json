@@ -81,21 +81,21 @@
       {
         "sku": "gems_220",
         "displayName": "220 Gems",
-        "description": "A satchel of gems, with a 10% bonus over the pouch.",
+        "description": "A satchel of gems, with a 37% bonus over the pouch.",
         "price": 100,
         "accountingType": "INSTANT"
       },
       {
         "sku": "gems_500",
-        "displayName": "500 Gems",
-        "description": "A chest of gems, with a 25% bonus.",
+        "displayName": "600 Gems",
+        "description": "A chest of gems, with a 50% bonus.",
         "price": 250,
         "accountingType": "INSTANT"
       },
       {
         "sku": "gems_1300",
         "displayName": "1300 Gems",
-        "description": "A hoard of gems, with a 40% bonus - the best rate in the shop.",
+        "description": "A hoard of gems, with a 62% bonus - the best rate in the shop.",
         "price": 500,
         "accountingType": "INSTANT"
       }

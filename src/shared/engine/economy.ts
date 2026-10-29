@@ -33,6 +33,8 @@ export type Pack = {
   floor: Rarity | null;
   img: string;
   glow: string;
+  /** Percent weights, shown to players as-is - so nothing here may sit below
+   *  `floor`, or the shop advertises a pull the pack can never give. */
   odds: [Rarity, number][];
   blurb: string;
 };
@@ -66,8 +68,7 @@ export const PACKS: Pack[] = [
     img: PACK_ART('Bronze'),
     glow: PACK_GLOW('Bronze'),
     odds: [
-      ['Common', 45],
-      ['Rare', 40],
+      ['Rare', 85],
       ['Epic', 13],
       ['Legendary', 2],
     ],
@@ -84,9 +85,7 @@ export const PACKS: Pack[] = [
     img: PACK_ART('Silver'),
     glow: PACK_GLOW('Silver'),
     odds: [
-      ['Common', 25],
-      ['Rare', 45],
-      ['Epic', 27],
+      ['Epic', 97],
       ['Legendary', 3],
     ],
     blurb: 'One gear card, guaranteed epic or better.',
@@ -102,9 +101,7 @@ export const PACKS: Pack[] = [
     img: PACK_ART('Gold'),
     glow: PACK_GLOW('Gold'),
     odds: [
-      ['Common', 10],
-      ['Rare', 40],
-      ['Epic', 42],
+      ['Epic', 92],
       ['Legendary', 8],
     ],
     blurb: 'One gear card, epic floor and the best legendary odds.',
@@ -120,7 +117,6 @@ export const packById = (id: string): Pack | null =>
 export type Bundle = {
   id: string;
   amount: number;
-  bonus: number;
   tint: string;
   /** Coin bundles only: the gem price paid for them. */
   gems?: number;
@@ -133,27 +129,25 @@ export type Bundle = {
 };
 
 export const COIN_BUNDLES: Bundle[] = [
-  { id: 'c1', amount: 300, gems: 12, bonus: 0, tint: '#9FB3D1' },
-  { id: 'c2', amount: 950, gems: 32, bonus: 18, tint: '#4F92F0' },
-  { id: 'c3', amount: 2200, gems: 65, bonus: 35, tint: '#A46BE8' },
-  { id: 'c4', amount: 6000, gems: 150, bonus: 60, tint: '#F4B740' },
+  { id: 'c1', amount: 300, gems: 12, tint: '#9FB3D1' },
+  { id: 'c2', amount: 950, gems: 32, tint: '#4F92F0' },
+  { id: 'c3', amount: 2200, gems: 65, tint: '#A46BE8' },
+  { id: 'c4', amount: 6000, gems: 150, tint: '#F4B740' },
 ];
 export const GEM_BUNDLES: Bundle[] = [
-  { id: 'g1', amount: 40, sku: 'gems_40', gold: 25, bonus: 0, tint: '#9FB3D1' },
+  { id: 'g1', amount: 40, sku: 'gems_40', gold: 25, tint: '#9FB3D1' },
   {
     id: 'g2',
     amount: 220,
     sku: 'gems_220',
     gold: 100,
-    bonus: 10,
     tint: '#4F92F0',
   },
   {
     id: 'g3',
-    amount: 500,
+    amount: 600,
     sku: 'gems_500',
     gold: 250,
-    bonus: 25,
     tint: '#A46BE8',
   },
   {
@@ -161,7 +155,6 @@ export const GEM_BUNDLES: Bundle[] = [
     amount: 1300,
     sku: 'gems_1300',
     gold: 500,
-    bonus: 40,
     tint: '#F4B740',
   },
 ];
@@ -172,6 +165,21 @@ export const gemsForSku = (sku: string): number | null =>
   GEM_BUNDLES.find((b) => b.sku === sku)?.amount ?? null;
 export const bundleById = (list: Bundle[], id: string): Bundle | null =>
   list.find((b) => b.id === id) ?? null;
+
+const bundlePrice = (b: Bundle): number => b.gems ?? b.gold ?? 0;
+
+/** How much more a bundle gives per unit spent than the first (smallest) one
+ *  in its list, in whole percent, rounded down so the shop never overstates
+ *  it. Worked out from the numbers rather than stored, so a retuned amount or
+ *  price cannot leave a stale label behind. Integer maths: 6000 coins for 150
+ *  gems must read +60, not +59. */
+export const bundleBonusPct = (list: Bundle[], b: Bundle): number => {
+  const base = list[0];
+  if (!base) return 0;
+  const num = b.amount * bundlePrice(base) * 100;
+  const den = bundlePrice(b) * base.amount;
+  return den > 0 ? Math.max(0, Math.floor(num / den) - 100) : 0;
+};
 
 const rollRarity = (odds: [Rarity, number][], rand: () => number): Rarity => {
   let total = 0;

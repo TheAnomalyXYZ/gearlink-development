@@ -87,6 +87,7 @@ import {
   monsterUrlFor,
   orbTypeOf,
   packById,
+  bundleBonusPct,
   bookFor,
   xpToNext,
   riderOf,
@@ -2570,10 +2571,10 @@ export const buildView = (app: GearLinkApp): View => {
         icon: icon || '',
         iconDisplay: icon ? 'block' : 'none',
       });
-      const bonus = (b: any) => ({
-        bonusLabel: b.bonus > 0 ? '+' + b.bonus + '% BONUS' : '',
-        bonusColor: b.bonus >= 40 ? '#FFC24B' : '#AEE45D',
-        bonusDisplay: b.bonus > 0 ? 'block' : 'none',
+      const bonus = (pct: number) => ({
+        bonusLabel: pct > 0 ? '+' + pct + '% BONUS' : '',
+        bonusColor: pct >= 40 ? '#FFC24B' : '#AEE45D',
+        bonusDisplay: pct > 0 ? 'block' : 'none',
       });
       return {
         shopTabs: [
@@ -2610,7 +2611,7 @@ export const buildView = (app: GearLinkApp): View => {
               btnBg: can ? BTN.secondary.bg : BTN.disabled.bg,
               btnShadow: can ? BTN.secondary.shadow : BTN.disabled.shadow,
             },
-            bonus(b)
+            bonus(bundleBonusPct(COIN_BUNDLES, b))
           );
         }),
         gemBundles: GEM_BUNDLES.map((b) =>
@@ -2629,7 +2630,7 @@ export const buildView = (app: GearLinkApp): View => {
                 GEM_BUNDLES.indexOf(b) * 40
               ),
             },
-            bonus(b)
+            bonus(bundleBonusPct(GEM_BUNDLES, b))
           )
         ),
       };
