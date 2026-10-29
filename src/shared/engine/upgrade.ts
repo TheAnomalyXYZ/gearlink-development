@@ -14,8 +14,16 @@ import type { Gear, Rarity } from './types.js';
 
 export const GEAR_MAX_LEVEL = 10;
 
-/** Spare copies spent to go from level L to L+1, indexed by L - 1. */
-export const UPGRADE_COPIES: readonly number[] = [1, 2, 3, 4, 5, 6, 8, 10, 12];
+/** Spare copies spent to go from level L to L+1, indexed by L - 1. Rarer
+ *  tiers ask for fewer: a specific epic or legendary drops far less often than
+ *  a specific common, so one copy curve for all of them put the top levels of
+ *  the best gear out of reach. */
+export const UPGRADE_COPIES: Record<Rarity, readonly number[]> = {
+  Common: [1, 2, 3, 4, 5, 6, 8, 10, 12],
+  Rare: [1, 2, 3, 3, 4, 5, 6, 7, 8],
+  Epic: [1, 1, 2, 2, 3, 3, 4, 5, 6],
+  Legendary: [1, 1, 1, 2, 2, 2, 3, 3, 4],
+};
 
 /** Coins for the first level-up, by rarity. Later levels multiply it. */
 export const UPGRADE_COINS_BASE: Record<Rarity, number> = {
@@ -69,7 +77,7 @@ export const upgradeCost = (
   const L = clampGearLevel(level);
   if (L >= GEAR_MAX_LEVEL) return null;
   return {
-    copies: UPGRADE_COPIES[L - 1]!,
+    copies: UPGRADE_COPIES[rarity][L - 1]!,
     coins: UPGRADE_COINS_BASE[rarity] * UPGRADE_COINS_MULT[L - 1]!,
   };
 };

@@ -1,18 +1,25 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { GEAR_BY_ID, defaultLoadout, resolveLoadout } from './gear.js';
+import {
+  GEAR_BY_ID,
+  RARITY_ORDER,
+  defaultLoadout,
+  resolveLoadout,
+} from './gear.js';
 import { rollPack, packById } from './economy.js';
 import { Run } from './run.js';
 import { verifyRun } from './replay.js';
 import {
   GEAR_MAX_LEVEL,
   UPGRADE_COINS_BASE,
+  UPGRADE_COPIES,
   gearLevelOf,
   leveledPower,
   spareCopies,
   upgradeBlock,
   upgradeCost,
 } from './upgrade.js';
+import type { Rarity } from './types.js';
 
 void test('every level-up costs more copies and coins than the last', () => {
   let prev = { copies: 0, coins: 0 };
@@ -90,4 +97,15 @@ void test('the replay fights at the submitted levels and rejects bad ones', () =
     levels: [GEAR_MAX_LEVEL + 1, 1, 1, 1, 1],
   });
   assert.deepEqual(bad, { ok: false, reason: 'bad gear levels' });
+});
+
+void test('rarer gear never needs more copies to max than commoner gear', () => {
+  const total = (r: Rarity) => UPGRADE_COPIES[r].reduce((n, c) => n + c, 0);
+  for (const r of RARITY_ORDER)
+    assert.equal(UPGRADE_COPIES[r].length, GEAR_MAX_LEVEL - 1, r);
+  for (let i = 1; i < RARITY_ORDER.length; i++)
+    assert.ok(
+      total(RARITY_ORDER[i]!) <= total(RARITY_ORDER[i - 1]!),
+      RARITY_ORDER[i] + ' needs more copies than ' + RARITY_ORDER[i - 1]
+    );
 });
