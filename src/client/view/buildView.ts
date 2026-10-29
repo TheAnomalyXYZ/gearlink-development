@@ -2947,7 +2947,7 @@ export const buildView = (app: GearLinkApp): View => {
       // Fresh off a level-up: the new pip, the badge and the stats celebrate.
       const fresh = st.gearLeveled === g.id && !fx.reduced();
       const col = RARITY_OUTLINE[g.rarity] || '#9FB3D1';
-      // The power the next level would fight with, so the button says what it buys.
+      // The power the next level would fight with, for the level-up animation.
       const nextPower = cost ? atLevel(g0!, level + 1).power : g.power;
       // Prev/next walk the same filtered list the grid shows, wrapping round.
       const list = gearInFilter(st.gearFilter || 'all', st.profile.gear);
@@ -3047,7 +3047,7 @@ export const buildView = (app: GearLinkApp): View => {
           ? 'MAX LEVEL'
           : st.gearUpgrading
             ? 'LEVELLING...'
-            : 'LEVEL UP   ' + g.power + ' > ' + nextPower,
+            : 'LEVEL UP   LV ' + level + ' > ' + (level + 1),
         cardInfoUpCopies: cost
           ? Math.min(spare, cost.copies) + '/' + cost.copies + ' copies'
           : '',
