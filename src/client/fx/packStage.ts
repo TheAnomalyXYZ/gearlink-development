@@ -831,9 +831,10 @@ class Stage {
   }
 
   async stamp(ce: CardEl): Promise<void> {
+    // Mounted on `inner`, not `front`: the face clips overflow, which cut off the overhang.
     const s = make(
-      ce.front,
-      'position:absolute;top:8px;right:-4px;padding:3px 8px 4px;background:#FF4D4D;border:3px solid #000000;border-radius:6px 2px 6px 2px;color:#FFFFFF;font-size:15px;transform:rotate(-12deg)',
+      ce.inner,
+      'position:absolute;top:8px;right:-6px;padding:3px 8px 4px;background:#FF4D4D;border:3px solid #000000;border-radius:6px 2px 6px 2px;color:#FFFFFF;font-size:15px;white-space:nowrap;pointer-events:none;transform:translateZ(2px) rotate(-12deg)',
       null,
       'NEW!'
     );
@@ -841,8 +842,8 @@ class Stage {
     await anim(
       s,
       [
-        { transform: 'rotate(-12deg) scale(2.2)', opacity: 0 },
-        { transform: 'rotate(-12deg) scale(1)', opacity: 1 },
+        { transform: 'translateZ(2px) rotate(-12deg) scale(2.2)', opacity: 0 },
+        { transform: 'translateZ(2px) rotate(-12deg) scale(1)', opacity: 1 },
       ],
       160,
       'cubic-bezier(.5,0,.75,0)'
