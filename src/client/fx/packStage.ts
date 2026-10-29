@@ -475,7 +475,7 @@ class Stage {
 
   setGlow(tier: Rarity, step: number): void {
     const c = GLOW[tier];
-    this.ui.glow.style.background = `radial-gradient(closest-side, ${c}, ${c}55 45%, transparent 72%)`;
+    this.ui.glow.style.background = `radial-gradient(closest-side, ${c}88, ${c}44 30%, ${c}1A 60%, transparent 100%)`;
     void anim(
       this.ui.glow,
       [
