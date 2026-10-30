@@ -2285,6 +2285,10 @@ a:hover {
 
 /* The inline post (postGame.tsx): the post is landscape, so the game drops
    its phone bezel and runs edge to edge across it. */
+html[data-post],
+html[data-post] body {
+  overscroll-behavior: none;
+}
 html[data-post] .gl-page {
   padding: 0 !important;
   height: 100vh !important;
