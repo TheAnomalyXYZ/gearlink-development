@@ -4,25 +4,39 @@
 
 | Currency | How you get it | What it's for |
 | --- | --- | --- |
-| 🪙 **Coins** | Battles (1 coin per 40 score), quests, daily rewards, league prizes | Base Packs, [levelling up gear](heroes-and-gear.md#gear-levels) |
-| 💎 **Gems** | Quests, daily rewards, league prizes, or bought with Reddit Gold | Bronze, Silver and Gold Packs; trading for coins |
+| 🪙 **Coins** | Battles (1 coin per 40 score), quests, daily rewards, league prizes | Base and Bronze Packs, [levelling up gear](heroes-and-gear.md#gear-levels) |
+| 💎 **Gems** | Quests, daily rewards, league prizes, or bought with Reddit Gold | Silver and Gold Packs; trading for coins |
 
 New accounts start with **250 coins** and **60 gems**.
 
 ## Packs
 
-Every pack gives **one gear card**. Packs are rolled on the server, so the odds are the odds.
+Packs are rolled on the server, so the odds shown are the real odds.
 
-| Pack | Price | Guarantee | Common | Rare | Epic | Legendary |
-| --- | --- | --- | --- | --- | --- | --- |
-| **Base Pack** | 90 coins | – | 70% | 25% | 5% | – |
-| **Bronze Pack** | 60 gems | Rare or better | 45% | 40% | 13% | 2% |
-| **Silver Pack** | 100 gems | Epic or better | 25% | 45% | 27% | 3% |
-| **Gold Pack** | 150 gems | Epic or better | 10% | 40% | 42% | 8% |
+| Pack | Price | Cards | Tier | Guarantee | Common | Rare | Epic | Legendary |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| **Base Pack** | 90 coins | 1 | Bronze | – | 70% | 25% | 5% | – |
+| **Bronze Pack** | 450 coins | 1 | Bronze | Rare or better | – | 87% | 12% | 1% |
+| **Silver Pack** | 100 gems | 1 | **Silver** | Epic or better | – | – | 97% | 3% |
+| **Gold Pack** | 150 gems | 2 | **Gold** | Epic or better | – | – | 85% | 15% |
 
-If a pack rolls below its guarantee, it's bumped up to the guaranteed rarity. Since Legendaries are weapons only, a Legendary roll can land on any hero's Legendary.
+Each card picks its rarity first, then a random piece of that rarity from any hero. Legendaries are weapons only, so a Legendary pull is one of the three heroes' Legendary weapons.
 
-Each pack also has a **tier**. Base and Bronze Packs give **Bronze** cards. Silver Packs give **Silver** cards, and Gold Packs give **Gold** cards. A Silver or Gold card you don't own yet arrives at that tier's level 1. If you already own the card below that tier, the pull **promotes** it to the tier's level 1 and also adds a spare copy. A card already at or above the pack's tier just gets the spare copy. Packs only give base pieces, never [variants](heroes-and-gear.md#variants).
+Packs only give **base pieces**, never [variants](heroes-and-gear.md#variants).
+
+### Pack tiers
+
+A pack's tier decides what [gear tier](heroes-and-gear.md#gear-levels) its cards land at:
+
+| You pull... | Bronze tier (Base, Bronze Packs) | Silver tier (Silver Pack) | Gold tier (Gold Pack) |
+| --- | --- | --- | --- |
+| **A card you don't own** | New card at Bronze LV 1 | New card at **Silver LV 1** | New card at **Gold LV 1** |
+| **A card you own, below the pack's tier** | – | **Promoted** to Silver LV 1, +1 spare copy | **Promoted** to Gold LV 1, +1 spare copy |
+| **A card you own, at or above the pack's tier** | +1 spare copy | +1 spare copy, level kept | +1 spare copy, level kept |
+
+Example: your Blessed Hammer (Epic) is at Bronze LV 7. A Silver Pack pulls it again, so it jumps to **Silver LV 1** and gains a spare copy. If it had already been at Silver LV 4, it would stay at Silver LV 4 and just gain the copy.
+
+Silver and Gold cards show their tier on the reveal. A pull that promotes a card gets a **SILVER!** or **GOLD!** stamp instead of the usual duplicate crack.
 
 ### Duplicates
 
