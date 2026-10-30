@@ -19,7 +19,7 @@ import {
 import { clampPan, panBounds } from './mapPan.js';
 import { packSummary, toOpenCards } from './packs.js';
 import { Timers } from './timers.js';
-import type { OpenState } from './appState.js';
+import type { OpenCard, OpenState } from './appState.js';
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -110,17 +110,25 @@ void test('the duel log names the biggest thing a move did', () => {
   assert.equal(line, 'You hit for 4, sent 2 junk');
 });
 
-const card = (gear: Gear, isNew: boolean, owned: number) => ({
+const card = (gear: Gear, isNew: boolean, owned: number): OpenCard => ({
   gear,
   isNew,
   owned,
+  tier: 'Bronze',
+  promoted: false,
 });
 
 void test('pack cards drop unknown pulls and the summary names the best one', () => {
   const [a, b] = [GEAR[0]!, GEAR[1]!];
   const cards = toOpenCards([
-    { id: a.id, isNew: true, owned: 1 },
-    { id: 'no-such-gear', isNew: true, owned: 1 },
+    { id: a.id, isNew: true, owned: 1, tier: 'Bronze', promoted: false },
+    {
+      id: 'no-such-gear',
+      isNew: true,
+      owned: 1,
+      tier: 'Bronze',
+      promoted: false,
+    },
   ]);
   assert.equal(cards.length, 1);
   const op: OpenState = {

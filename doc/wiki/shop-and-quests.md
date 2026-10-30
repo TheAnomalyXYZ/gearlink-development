@@ -22,6 +22,8 @@ Every pack gives **one gear card**. Packs are rolled on the server, so the odds 
 
 If a pack rolls below its guarantee, it's bumped up to the guaranteed rarity. Since Legendaries are weapons only, a Legendary roll can land on any hero's Legendary.
 
+Each pack also has a **tier**. Base and Bronze Packs give **Bronze** cards. Silver Packs give **Silver** cards, and Gold Packs give **Gold** cards. A Silver or Gold card you don't own yet arrives at that tier's level 1. If you already own the card below that tier, the pull **promotes** it to the tier's level 1 and also adds a spare copy. A card already at or above the pack's tier just gets the spare copy. Packs only give base pieces, never [variants](heroes-and-gear.md#variants).
+
 ### Duplicates
 
 Pull a card you already own and it becomes a **spare copy** of that card. Spare copies and coins level the card up; see [Gear levels](heroes-and-gear.md#gear-levels).

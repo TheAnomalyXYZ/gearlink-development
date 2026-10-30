@@ -19,6 +19,13 @@ export const GEAR_BY_ID: Record<string, Gear> = Object.fromEntries(
 export const riderOf = (cardId: string): Rider | null =>
   RIDER_BY_ID[cardId] ?? null;
 
+/** The piece a card remixes, or the card itself for a base piece. Two cards
+ *  with the same base are one piece as far as a loadout is concerned. */
+export const baseIdOf = (g: Gear): string => g.variantOf ?? g.id;
+
+/** Base pieces only: starter and default loadouts never hand out a variant. */
+const BASE_GEAR = GEAR.filter((g) => !g.variantOf);
+
 /** Mark is a setup-then-cash-in ladder, not a flat bonus. */
 export const markMultX100 = (stacks: number): number =>
   stacks > 2 ? 225 : stacks > 1 ? 175 : stacks > 0 ? 150 : 100;
@@ -172,7 +179,7 @@ export const getGearImageUrl = (cardId: string): string => {
 /** Default five for a class: strongest two attack, two block, one heal. */
 export const defaultLoadout = (cls: HeroClass): string[] => {
   const of = (eff: EffectKind, n: number) =>
-    GEAR.filter((g) => g.cls === cls && g.effect === eff)
+    BASE_GEAR.filter((g) => g.cls === cls && g.effect === eff)
       .sort((a, b) => b.power - a.power)
       .slice(0, n)
       .map((g) => g.id);
@@ -186,18 +193,34 @@ export const ownedLoadout = (
   gear: Record<string, number> | null | undefined
 ): string[] => {
   const have = (g: Gear) => (gear ? (gear[g.id] ?? 0) : 1) > 0;
+  // A variant and its base are one piece, so once one is in the other is not.
+  const bases = new Set<string>();
+  const pick = (from: Gear[], n: number): string[] => {
+    const ids: string[] = [];
+    for (const g of from) {
+      if (ids.length >= n) break;
+      if (bases.has(baseIdOf(g))) continue;
+      bases.add(baseIdOf(g));
+      ids.push(g.id);
+    }
+    return ids;
+  };
   const of = (eff: EffectKind, n: number) =>
-    GEAR.filter((g) => g.cls === cls && g.effect === eff && have(g))
-      .sort((a, b) => b.power - a.power)
-      .slice(0, n)
-      .map((g) => g.id);
+    pick(
+      GEAR.filter((g) => g.cls === cls && g.effect === eff && have(g)).sort(
+        (a, b) => b.power - a.power
+      ),
+      n
+    );
   const out = of('attack', 2).concat(of('block', 2), of('effect', 1));
   if (out.length === 5) return out;
   // Pad from anything else owned in the class so the five slots always fill.
-  const extra = GEAR.filter(
-    (g) => g.cls === cls && have(g) && out.indexOf(g.id) < 0
-  ).map((g) => g.id);
-  return out.concat(extra).slice(0, 5);
+  return out.concat(
+    pick(
+      GEAR.filter((g) => g.cls === cls && have(g)),
+      5 - out.length
+    )
+  );
 };
 
 /** A new account's five for a class: the weakest legal loadout. A class has
@@ -206,7 +229,7 @@ export const ownedLoadout = (
  *  packs. */
 export const starterLoadout = (cls: HeroClass): string[] => {
   const of = (eff: EffectKind, n: number) =>
-    GEAR.filter((g) => g.cls === cls && g.effect === eff)
+    BASE_GEAR.filter((g) => g.cls === cls && g.effect === eff)
       .sort((a, b) => a.power - b.power)
       .slice(0, n)
       .map((g) => g.id);
@@ -236,7 +259,8 @@ export const resolveLoadout = (
     .filter((g): g is Gear => !!g);
 
 /** A loadout is legal if it is exactly five pieces, all of the hero's class,
- *  with at most two of any one archetype. The server re-checks this: a forged
+ *  with at most two of any one archetype, and never a variant beside its own
+ *  base. The server re-checks this: a forged
  *  loadout is the cheapest way to inflate a score. */
 export const loadoutIsLegal = (picked: string[], cls: HeroClass): boolean => {
   if (!Array.isArray(picked) || picked.length !== 5) return false;
@@ -244,6 +268,7 @@ export const loadoutIsLegal = (picked: string[], cls: HeroClass): boolean => {
   const gear = resolveLoadout(picked);
   if (gear.length !== 5) return false;
   if (gear.some((g) => g.cls !== cls)) return false;
+  if (new Set(gear.map(baseIdOf)).size !== 5) return false;
   for (const eff of ['attack', 'block', 'effect'] as const) {
     if (gear.filter((g) => g.effect === eff).length > 2) return false;
   }

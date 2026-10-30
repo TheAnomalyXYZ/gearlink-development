@@ -26,7 +26,10 @@ export type GearUpInfo = {
   block: 'unowned' | 'maxed' | 'copies' | 'coins' | null;
   copies: number;
   color: string;
-  fromLevel: number;
+  /** The big stamp: LEVEL UP!, or the tier a promotion lands in. */
+  stamp: string;
+  /** The step under it, e.g. LV 3 > LV 4 or BRONZE > SILVER. */
+  step: string;
   fromPower: number;
   toPower: number;
 };
@@ -200,7 +203,7 @@ const burstScene = (
   const stamp = spawn(
     art,
     `left:50%;top:38%;font-family:${PIXEL};font-size:34px;line-height:1;color:#FFF2B0;-webkit-text-stroke:6px #000000;paint-order:stroke fill;text-shadow:0 4px 0 #141D2E;white-space:nowrap;opacity:0`,
-    'LEVEL UP!'
+    info.stamp
   );
   once(
     anim(
@@ -238,7 +241,7 @@ const burstScene = (
   const step = spawn(
     art,
     `left:50%;top:60%;padding:3px 9px 4px;background:#141D2E;border:3px solid #000000;border-radius:6px 2px 6px 2px;font-family:${PIXEL};font-size:15px;color:#FFFFFF;white-space:nowrap;opacity:0`,
-    'LV ' + info.fromLevel + '  >  LV ' + (info.fromLevel + 1)
+    info.step
   );
   once(
     anim(

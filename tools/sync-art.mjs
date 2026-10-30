@@ -54,7 +54,9 @@ export const artPaths = () => {
   const paths = new Set(HARDCODED);
   for (const a of audioPaths()) paths.add(a);
   for (const pin of MAP_PIN_URLS) paths.add(pin);
+  // Variants are not on the CDN: tools/recolor-gear.mjs draws them locally.
   for (const g of GEAR) {
+    if (g.variantOf) continue;
     const u = getGearImageUrl(g.id);
     if (u) paths.add(u);
   }

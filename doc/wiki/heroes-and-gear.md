@@ -19,6 +19,7 @@ Each hero can also wear [outfits](outfits.md). They change the look only, never 
 - Equip **exactly five** pieces.
 - All five must belong to **your hero's class**.
 - **At most 2 of any one type** (attack, block, heal).
+- A **variant** and the piece it remixes can't be equipped together. Tapping one while the other is equipped swaps it in.
 - You can only equip gear you **own**. New accounts start with a default five for every hero, so you can play right away.
 
 Each piece becomes one orb colour on the board, so your loadout literally decides what the board is made of.
@@ -44,12 +45,20 @@ Legendary cards exist only as weapons, one per hero.
 
 ## Gear levels
 
-Pulling a card you already own adds a **spare copy** to it. Spare copies plus coins **level the card up**, from level 1 to **level 10**.
+Pulling a card you already own adds a **spare copy** to it. Spare copies plus coins **level the card up** through three tiers:
 
-- Each level adds **+10% of the card's base Power** (level 10 = +90%). The card's type and rider never change.
+| Tier | Levels | How you get there |
+| --- | --- | --- |
+| **Bronze** | 1 – 10 | Every card starts here. |
+| **Silver** | 1 – 10 | **Promote** a Bronze 10 card. |
+| **Gold** | 1 – 99 | **Promote** a Silver 10 card. Gold keeps going long after anything else. |
+
+- In Bronze and Silver, each level adds **+10% of the card's base Power** (Bronze 10 = +90%). Each promotion adds **+25%**. Each Gold level adds **+2%**. The card's type and rider never change.
 - The card itself always keeps one copy. Only copies past the first are spare, so levelling up never takes a card out of your loadout.
 - Every level up costs **both** spare copies and coins. Both climb with the level.
-- To level up, open a gear card's details and tap **LEVEL UP**. The panel shows your level (e.g. *LV 3 / 10*), spare copies against what's needed (e.g. *2/3 copies*) and the coin cost. Anything you're short on shows in red. At level 10 the button reads **MAX LEVEL**.
+- To level up, open a gear card's details and tap **LEVEL UP**. The panel shows your tier and level (e.g. *SILVER LV 3 / 10*), spare copies against what's needed (e.g. *2/3 copies*) and the coin cost. Anything you're short on shows in red. At level 10 of Bronze or Silver the button reads **PROMOTE TO SILVER** / **PROMOTE TO GOLD**. At Gold 99 it reads **MAX LEVEL**.
+
+The tables below are for Bronze. Silver levels need the **same copies** and **3× the coins**.
 
 ### Spare copies per level
 
@@ -85,7 +94,18 @@ Rarer cards cost **more coins** per level.
 | 9 → 10 | 1,000 | 2,000 | 4,000 | 8,000 |
 | **Total (1 → 10)** | **3,440** | **6,880** | **13,760** | **27,520** |
 
-Example: a Rare at level 4 with 5 spare copies and 500 coins can level up to 5. It spends 3 copies and 400 coins, leaving 2 spare copies.
+Example: a Rare at Bronze 4 with 5 spare copies and 500 coins can level up to Bronze 5. It spends 3 copies and 400 coins, leaving 2 spare copies.
+
+### Promotions
+
+| Promotion | Common | Rare | Epic | Legendary |
+| --- | --- | --- | --- | --- |
+| Bronze 10 → Silver | 15 copies, 1,600 coins | 10 copies, 3,200 coins | 8 copies, 6,400 coins | 5 copies, 12,800 coins |
+| Silver 10 → Gold | 30 copies, 4,800 coins | 20 copies, 9,600 coins | 15 copies, 19,200 coins | 10 copies, 38,400 coins |
+
+### Gold levels
+
+Each Gold level costs the card's Bronze 9 → 10 copies (12 / 8 / 6 / 4), plus one more copy every 10 Gold levels. Coins start at **80×** the card's Bronze 1 → 2 cost and rise by **10×** that each level.
 
 ## Rider effects
 
@@ -171,6 +191,25 @@ Power shown is at level 1. "Rider" shows the effect and the minimum link length 
 | Frostbite Amulet | Necklace | Epic | 9 | – |
 
 > Heal pieces have low Power numbers on purpose: they're priced against your 40 HP pool, not the enemy's.
+
+### Variants
+
+Variants are recoloured remixes of existing pieces. Same slot and rarity, **1 less Power**, plus a rider. They **don't drop from packs** (packs only pay out base pieces). Each variant levels on its own.
+
+| Variant | Remix of | Class | Rarity | Power | Rider |
+| --- | --- | --- | --- | --- | --- |
+| Stormcharged Bolt | Lightning Bolt | Hero | Legendary | 18 | Strength 2 @ 5+ |
+| Squire's Edge | Short Sword | Hero | Common | 7 | Strength 1 @ 4+ |
+| Gilded Tower Shield | Tower Shield | Hero | Rare | 12 | Strength 1 @ 5+ |
+| Nightwatch Helm | Shadow Helm | Hero | Rare | 3 | Grit 1 @ 4+ |
+| Gale Zephyr Bow | Zephyr Bow | Archer | Epic | 16 | Mark 1 @ 4+ |
+| Hunter's Hood | Feathered Cap | Archer | Common | 2 | Mark 1 @ 4+ |
+| Falcon Talisman | Eagle Talisman | Archer | Epic | 8 | Strength 2 @ 5+ |
+| Frostfletch Quiver | Infinite Quiver | Archer | Epic | 14 | Frost 1 @ 5+ |
+| Cinder Hat | Smoldering Hat | Mage | Rare | 4 | Burn 3 @ 4+ |
+| Hoarfrost Hat | Icicle Hat | Mage | Epic | 6 | Frost 2 @ 5+ |
+| Glacier Amulet | Frostbite Amulet | Mage | Epic | 8 | Frost 3 @ 5+ |
+| Ember Staff | Mage's Staff | Mage | Common | 6 | Burn 2 @ 4+ |
 
 ## Build tips
 

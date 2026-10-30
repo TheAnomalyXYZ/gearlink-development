@@ -14,6 +14,7 @@ import type {
   DuelFoe,
   DuelState,
   Gear,
+  GearTier,
   HeroClass,
   Mutators,
   RunState,
@@ -67,7 +68,13 @@ export type Place = {
   hole: { top: number; left: number; w: number; h: number };
 };
 /** `owned` is the copies held once the card lands. */
-export type OpenCard = { gear: Gear; isNew: boolean; owned: number };
+export type OpenCard = {
+  gear: Gear;
+  isNew: boolean;
+  owned: number;
+  tier: GearTier;
+  promoted: boolean;
+};
 export type OpenState = {
   id: string;
   token: string;

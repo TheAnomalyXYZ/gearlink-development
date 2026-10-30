@@ -132,6 +132,7 @@ import {
   xpLines,
   GEAR_BY_ID,
   gearLevelOf,
+  levelAfterPull,
   upgradeBlock,
   upgradeCost,
 } from '../../shared/engine/index.js';
@@ -750,7 +751,7 @@ api.post('/shop/open', async (c) => {
       400
     );
 
-  const cards = rollPack(pack, profile.gear, Math.random);
+  const cards = rollPack(pack, profile.gear, Math.random, profile.gearLevels);
   const token = `${Date.now().toString(36)}-${Math.floor(Math.random() * 0xffffffff).toString(36)}`;
   await redis.set(
     openKey(me.userId),
@@ -808,13 +809,21 @@ api.post('/shop/collect', async (c) => {
     );
 
   // A duplicate stacks on the card as a spare copy - that is what levels it.
+  // The pack's tier lifts a card below it to that tier's level 1. The tier
+  // comes from the pack table, not from the held cards.
+  const tier = packById(held.packId)?.tier ?? 'Bronze';
   const gear = { ...profile.gear };
-  for (const card of held.cards) gear[card.id] = (gear[card.id] ?? 0) + 1;
+  const gearLevels = { ...profile.gearLevels };
+  for (const card of held.cards) {
+    gear[card.id] = (gear[card.id] ?? 0) + 1;
+    const lifted = levelAfterPull(gearLevelOf(gearLevels, card.id), tier);
+    if (lifted > 1) gearLevels[card.id] = lifted;
+  }
   const packs = {
     ...profile.packs,
     [held.packId]: Math.max(0, (profile.packs[held.packId] ?? 0) - 1),
   };
-  await saveProfile(me.userId, { gear, packs });
+  await saveProfile(me.userId, { gear, gearLevels, packs });
   await recordQuestEvents(me.userId, [{ metric: 'packs', amount: 1 }]);
   await recordEvent('packs_opened');
   // The last piece of a gear set unlocks its outfit.

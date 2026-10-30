@@ -12,6 +12,8 @@
  */
 import { GEAR, RARITY_ORDER } from './gear.js';
 import type { Gear, Rarity } from './types.js';
+import { gearLevelOf, gearTierOf, levelAfterPull } from './upgrade.js';
+import type { GearLevels, GearTier } from './upgrade.js';
 
 /** Real pack art from utils/package.ts, so the shop sells the game's own tiers. */
 const PACK_ART = (n: string) => '/art/PocketKnights/Item/' + n + 'Pack_V2.png';
@@ -31,6 +33,9 @@ export type Pack = {
   price: number;
   tint: string;
   floor: Rarity | null;
+  /** The tier its cards land at. A card already at or past it keeps its
+   *  level; one below jumps to the tier's level 1. */
+  tier: GearTier;
   img: string;
   glow: string;
   /** Percent weights, shown to players as-is - so nothing here may sit below
@@ -48,6 +53,7 @@ export const PACKS: Pack[] = [
     price: 90,
     tint: '#9FB3D1',
     floor: null,
+    tier: 'Bronze',
     img: PACK_ART('Base'),
     glow: PACK_GLOW('Base'),
     odds: [
@@ -60,11 +66,12 @@ export const PACKS: Pack[] = [
   {
     id: 'bronze',
     name: 'BRONZE PACK',
-    cards: 2,
+    cards: 1,
     cur: 'coins',
     price: 450,
     tint: '#C8813E',
     floor: 'Rare',
+    tier: 'Bronze',
     img: PACK_ART('Bronze'),
     glow: PACK_GLOW('Bronze'),
     odds: [
@@ -72,39 +79,41 @@ export const PACKS: Pack[] = [
       ['Epic', 12],
       ['Legendary', 1],
     ],
-    blurb: 'Two gear cards, each guaranteed rare or better.',
+    blurb: 'One gear card, guaranteed rare or better.',
   },
   {
     id: 'silver',
     name: 'SILVER PACK',
-    cards: 2,
+    cards: 1,
     cur: 'gems',
     price: 100,
     tint: '#C9D4E8',
     floor: 'Epic',
+    tier: 'Silver',
     img: PACK_ART('Silver'),
     glow: PACK_GLOW('Silver'),
     odds: [
       ['Epic', 97],
       ['Legendary', 3],
     ],
-    blurb: 'Two gear cards, each guaranteed epic or better.',
+    blurb: 'One Silver-tier gear card, guaranteed epic or better.',
   },
   {
     id: 'gold',
     name: 'GOLD PACK',
-    cards: 3,
+    cards: 2,
     cur: 'gems',
     price: 150,
     tint: '#F4B740',
     floor: 'Epic',
+    tier: 'Gold',
     img: PACK_ART('Gold'),
     glow: PACK_GLOW('Gold'),
     odds: [
       ['Epic', 85],
       ['Legendary', 15],
     ],
-    blurb: 'Three gear cards, epic floor and the best legendary odds.',
+    blurb: 'Two Gold-tier gear cards, epic floor and the best legendary odds.',
   },
 ];
 
@@ -192,7 +201,10 @@ const rollRarity = (odds: [Rarity, number][], rand: () => number): Rarity => {
   return odds[odds.length - 1]![0];
 };
 
-const gearOfRarity = (r: Rarity): Gear[] => GEAR.filter((g) => g.rarity === r);
+/** Packs pay out base pieces only. Variants come from elsewhere, and a tier
+ *  (Bronze, Silver, Gold) is earned by levelling the card, never pulled. */
+const gearOfRarity = (r: Rarity): Gear[] =>
+  GEAR.filter((g) => g.rarity === r && !g.variantOf);
 
 /** One card. `atLeast` enforces a pack's floor by re-rolling the tier upward. */
 export const rollCard = (
@@ -213,22 +225,41 @@ export const rollCard = (
 };
 
 /** `owned` is the copies held once this card lands, so a duplicate can show
- *  how far it moved the stack. */
-export type PulledCard = { id: string; isNew: boolean; owned: number };
+ *  how far it moved the stack. `tier` is the pack's, and `promoted` is true
+ *  when the pull lifted a card it already had into that tier. */
+export type PulledCard = {
+  id: string;
+  isNew: boolean;
+  owned: number;
+  tier: GearTier;
+  promoted: boolean;
+};
 
 /** Roll a whole pack against a wallet snapshot, deciding new-vs-duplicate as it
- *  goes so two copies in one pack cannot both read as new. */
+ *  goes so two copies in one pack cannot both read as new, and the second of
+ *  two copies cannot read as promoted too. */
 export const rollPack = (
   pack: Pack,
   owned: Record<string, number>,
-  rand: () => number
+  rand: () => number,
+  levels?: GearLevels
 ): PulledCard[] => {
   const cards: PulledCard[] = [];
+  const level: GearLevels = { ...levels };
   for (let i = 0; i < pack.cards; i++) {
     const g = rollCard(pack.odds, pack.floor, rand);
     const already =
       (owned[g.id] ?? 0) + cards.filter((c) => c.id === g.id).length;
-    cards.push({ id: g.id, isNew: already === 0, owned: already + 1 });
+    const before = gearLevelOf(level, g.id);
+    const after = levelAfterPull(before, pack.tier);
+    level[g.id] = after;
+    cards.push({
+      id: g.id,
+      isNew: already === 0,
+      owned: already + 1,
+      tier: pack.tier,
+      promoted: already > 0 && gearTierOf(after) !== gearTierOf(before),
+    });
   }
   return cards;
 };

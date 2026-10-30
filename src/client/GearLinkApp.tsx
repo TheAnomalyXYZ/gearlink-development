@@ -55,6 +55,7 @@ import {
   NO_STATUS,
   Run,
   areAdjacent,
+  baseIdOf,
   bundleById,
   canApplyHeart,
   duelBestMove,
@@ -1272,7 +1273,18 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
       if (i >= 0)
         return { ...unchanged, picked: s.picked.filter((_, j) => j !== i) };
       const g = GEAR_BY_ID[id];
-      if (!g || s.picked.length >= 5) return unchanged;
+      if (!g) return unchanged;
+      // A variant and its base are one piece: tapping the other swaps it in
+      // place, so the slot (and the archetype count) stays as it was.
+      const twin = s.picked.findIndex(
+        (p) => GEAR_BY_ID[p] && baseIdOf(GEAR_BY_ID[p]) === baseIdOf(g)
+      );
+      if (twin >= 0)
+        return {
+          ...unchanged,
+          picked: s.picked.map((p, j) => (j === twin ? id : p)),
+        };
+      if (s.picked.length >= 5) return unchanged;
       const sameEffect = s.picked.filter(
         (p) => GEAR_BY_ID[p]?.effect === g.effect
       ).length;
@@ -2987,7 +2999,15 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
         id: rarity === 'Common' ? 'base' : 'bronze',
         token: 'mock-' + Date.now(),
         mock: true,
-        cards: [{ gear, isNew: !dupe, owned: dupe ? 2 : 1 }],
+        cards: [
+          {
+            gear,
+            isNew: !dupe,
+            owned: dupe ? 2 : 1,
+            tier: 'Bronze',
+            promoted: false,
+          },
+        ],
         shown: 0,
         torn: false,
         from: 'shop',

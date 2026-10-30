@@ -14,6 +14,10 @@ export type StageCard = {
   gear: { id: string; rarity: string; name: string };
   isNew: boolean;
   owned: number;
+  /** The pack's tier: Bronze, Silver or Gold. */
+  tier: string;
+  /** A duplicate that lifted the card into the pack's tier. */
+  promoted: boolean;
 };
 /** The app's open-pack state, as far as the stage reads it. `fromRect` is the
  *  shop card the pack was bought from (shared-element entry), when known. */
@@ -58,6 +62,11 @@ const OUT: Record<Rarity, string> = {
   Rare: '#4F92F0',
   Epic: '#A46BE8',
   Legendary: '#F4B740',
+};
+/** Tier tag colours, matching TIER_COLOR in the engine. */
+const TIER_TAG: Record<string, string> = {
+  Silver: '#C9D4E8',
+  Gold: '#FFCF4A',
 };
 const GLOW: Record<Rarity, string> = {
   Common: '#FFFFFF',
@@ -806,8 +815,23 @@ class Stage {
       rar = c.gear.rarity;
     if (ce.foil) void anim(ce.foil, [{ opacity: 0 }, { opacity: 0.25 }], 300);
     if (rar === 'Legendary') await this.legendary();
+    this.tierTag(ce);
+    // A promoting duplicate is good news, so it stamps rather than shatters.
     if (c.isNew) await this.stamp(ce);
+    else if (c.promoted) await this.stamp(ce, c.tier.toUpperCase() + '!');
     else await this.shatter(ce);
+  }
+
+  /** Silver and Gold pulls wear their tier along the card's foot. */
+  tierTag(ce: CardEl): void {
+    const col = TIER_TAG[ce.c.tier];
+    if (!col) return;
+    make(
+      ce.inner,
+      `position:absolute;left:50%;bottom:-8px;padding:2px 8px 3px;background:#141D2E;border:3px solid #000000;border-radius:6px 2px 6px 2px;color:${col};font-size:${ce.w > 100 ? 13 : 10}px;white-space:nowrap;pointer-events:none;transform:translateZ(2px) translateX(-50%);box-shadow:0 0 10px ${col}`,
+      null,
+      ce.c.tier.toUpperCase()
+    );
   }
 
   async legendary(): Promise<void> {
@@ -830,13 +854,13 @@ class Stage {
     this.stops.push(fx.motes(() => this.ui.root, [OUT.Legendary, '#FFF2B0']));
   }
 
-  async stamp(ce: CardEl): Promise<void> {
+  async stamp(ce: CardEl, text = 'NEW!'): Promise<void> {
     // Mounted on `inner`, not `front`: the face clips overflow, which cut off the overhang.
     const s = make(
       ce.inner,
       'position:absolute;top:8px;right:-6px;padding:3px 8px 4px;background:#FF4D4D;border:3px solid #000000;border-radius:6px 2px 6px 2px;color:#FFFFFF;font-size:15px;white-space:nowrap;pointer-events:none;transform:translateZ(2px) rotate(-12deg)',
       null,
-      'NEW!'
+      text
     );
     fx.sfx.thud();
     await anim(

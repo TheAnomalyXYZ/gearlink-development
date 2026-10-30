@@ -27,4 +27,17 @@ export const RIDER_BY_ID: Record<string, Rider> = {
   'Mage-Necklace-Common-Base': { r: 'burn', v: 4, at: 4 },
   'Mage-Necklace-Rare-Base': { r: 'burn', v: 5, at: 4 },
   'Mage-Weapon-Legendary-Base': { r: 'burn', v: 4, at: 5 },
+  // Flavoured variants (gear-data.ts): each trades a point of power for these.
+  'Hero-Weapon-Legendary-Stormcharged': { r: 'strength', v: 2, at: 5 },
+  'Hero-Weapon-Common-Squire': { r: 'strength', v: 1, at: 4 },
+  'Hero-Off-Hand-Rare-Gilded': { r: 'strength', v: 1, at: 5 },
+  'Hero-Hat-Rare-Nightwatch': { r: 'grit', v: 1, at: 4 },
+  'Archer-Weapon-Epic-Gale': { r: 'mark', v: 1, at: 4 },
+  'Archer-Hat-Common-Hunter': { r: 'mark', v: 1, at: 4 },
+  'Archer-Necklace-Epic-Falcon': { r: 'strength', v: 2, at: 5 },
+  'Archer-Off-Hand-Epic-Frostfletch': { r: 'frost', v: 1, at: 5 },
+  'Mage-Hat-Rare-Cinder': { r: 'burn', v: 3, at: 4 },
+  'Mage-Hat-Epic-Hoarfrost': { r: 'frost', v: 2, at: 5 },
+  'Mage-Necklace-Epic-Glacier': { r: 'frost', v: 3, at: 5 },
+  'Mage-Weapon-Common-Ember': { r: 'burn', v: 2, at: 4 },
 };

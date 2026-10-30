@@ -6826,7 +6826,7 @@ export const Screen = ({ v }: { v: View }) => (
                             fontFamily: PIXEL,
                             fontSize: '18px',
                             lineHeight: '1',
-                            color: '#FFF2B0',
+                            color: v.cardInfoLvColor,
                             animation: v.cardInfoLvAnim,
                           }}
                         >
@@ -7029,7 +7029,7 @@ export const Screen = ({ v }: { v: View }) => (
                             style={{
                               animationDelay: '500ms',
                               fontSize: '9px',
-                              color: '#FFF2B0',
+                              color: v.cardInfoLevelColor,
                               background: '#1D2956',
                               border: '1px solid #000000',
                               borderRadius: '3px',
@@ -7529,6 +7529,27 @@ export const Screen = ({ v }: { v: View }) => (
                         }}
                       >
                         <span>DUPE {c.owned}</span>
+                      </div>
+                      <div
+                        style={{
+                          position: 'absolute',
+                          left: '50%',
+                          top: '16px',
+                          transform: 'translateX(-50%)',
+                          display: c.tierDisplay,
+                          alignItems: 'center',
+                          height: '14px',
+                          padding: '0 5px',
+                          border: '1px solid #000000',
+                          borderRadius: '3px',
+                          background: '#141D2E',
+                          boxShadow: `0 0 8px ${c.tierColor}`,
+                          fontFamily: 'VolterTitle,Volter,monospace',
+                          fontSize: '8px',
+                          color: c.tierColor,
+                        }}
+                      >
+                        {c.tierLabel}
                       </div>
                       <div
                         style={{

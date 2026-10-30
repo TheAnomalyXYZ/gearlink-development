@@ -12,6 +12,10 @@ export type Gear = {
   effect: EffectKind;
   slot: Slot;
   power: number;
+  /** Set on a flavoured variant: the id of the piece it remixes. A variant is
+   *  its own card (own copies, own level) but shares the base's slot and
+   *  rarity, and a loadout may not hold both. */
+  variantOf?: string;
 };
 
 /** A rider only fires on a link of `at` orbs or longer - that threshold is what

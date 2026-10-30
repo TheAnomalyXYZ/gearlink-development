@@ -9,7 +9,15 @@ export const toOpenCards = (pulls: PulledCard[]): OpenCard[] => {
   const cards: OpenCard[] = [];
   for (const c of pulls) {
     const gear = GEAR_BY_ID[c.id];
-    if (gear) cards.push({ gear, isNew: c.isNew, owned: c.owned });
+    if (gear)
+      cards.push({
+        gear,
+        isNew: c.isNew,
+        owned: c.owned,
+        // A held open from before tiers carries none: it was Bronze.
+        tier: c.tier ?? 'Bronze',
+        promoted: !!c.promoted,
+      });
   }
   return cards;
 };
@@ -18,9 +26,12 @@ export const toOpenCards = (pulls: PulledCard[]): OpenCard[] => {
 export const packSummary = (op: OpenState): string => {
   if (op.cards.length === 1) {
     const c = op.cards[0]!;
+    const tier = c.tier === 'Bronze' ? '' : c.tier + ' ';
     return c.isNew
-      ? 'New gear - ' + c.gear.rarity
-      : 'Duplicate - now x' + c.owned + ', spare copies level it up';
+      ? 'New ' + tier + 'gear - ' + c.gear.rarity
+      : c.promoted
+        ? 'Promoted to ' + c.tier + ' - now x' + c.owned
+        : 'Duplicate - now x' + c.owned + ', spare copies level it up';
   }
   const nw = op.cards.filter((c) => c.isNew).length;
   const dupes = op.cards.length - nw;
@@ -39,6 +50,8 @@ export const packSummary = (op: OpenState): string => {
     parts.push(
       dupes + (dupes === 1 ? ' duplicate' : ' duplicates') + ' stacked'
     );
+  const promoted = op.cards.filter((c) => c.promoted).length;
+  if (promoted > 0) parts.push(promoted + ' promoted to ' + op.cards[0]!.tier);
   if (best) parts.push('best: ' + best.gear.rarity);
   return parts.join('  -  ');
 };

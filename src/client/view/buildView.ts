@@ -94,10 +94,18 @@ import {
   rowOf,
   rewardLabel,
   atLevel,
+  baseIdOf,
+  gearTierOf,
+  isPromotion,
+  levelLabel,
   spareCopies,
+  tierLevelOf,
+  tierMaxOf,
   upgradeBlock,
   upgradeCost,
-  GEAR_MAX_LEVEL,
+  GEAR_BY_ID,
+  TIER_COLOR,
+  TIER_LEVELS,
   DUEL_ENABLED,
 } from '../../shared/engine/index.js';
 import { DEFAULT_SNOO, GEARLINK_ICON, NAV_ICON } from './assets.js';
@@ -656,8 +664,16 @@ export const buildView = (app: GearLinkApp): View => {
       // Unowned gear stays on the shelf but cannot be equipped - the pack is the
       // only way in, which is what makes the collection matter.
       const locked = ownedN <= 0;
+      // Its variant (or base) already equipped: a tap swaps, never blocked.
+      const twinOn = st.picked.some(
+        (p: string) =>
+          p !== g.id &&
+          !!GEAR_BY_ID[p] &&
+          baseIdOf(GEAR_BY_ID[p]) === baseIdOf(g)
+      );
       const blocked =
-        (locked && !on) || (!on && (st.picked.length >= 5 || sameEffect >= 2));
+        (locked && !on) ||
+        (!on && !twinOn && (st.picked.length >= 5 || sameEffect >= 2));
       return {
         name: g.name,
         // The shelf deals in card by card when the tab opens.
@@ -2795,11 +2811,12 @@ export const buildView = (app: GearLinkApp): View => {
             sheenDisplay: shiny ? 'block' : 'none',
             sheenDelay: ((gi % 7) * 0.45).toFixed(2) + 's',
             lockDisplay: n > 0 ? 'none' : 'flex',
-            // Level, and a green badge once spare copies and coins buy the next.
-            count: n > 0 ? 'LV' + app.gearLevel(g.id) : '',
+            // Level in the tier's colour, and a green badge once spare copies
+            // and coins buy the next.
+            count: n > 0 ? 'LV' + tierLevelOf(lvl) : '',
             countDisplay: n > 0 ? 'flex' : 'none',
-            countBg: app.canUpgradeGear(g.id) ? '#AEE45D' : '#141212',
-            countFg: app.canUpgradeGear(g.id) ? '#141212' : '#FCE370',
+            countBg: ready ? '#AEE45D' : '#141212',
+            countFg: ready ? '#141212' : TIER_COLOR[gearTierOf(lvl)],
             inAnim: fxs.listIn(
               'bagGear',
               st.phase === 'inventory' &&
@@ -2867,6 +2884,13 @@ export const buildView = (app: GearLinkApp): View => {
             newDisplay: shown && c.isNew ? 'flex' : 'none',
             dupeDisplay: shown && !c.isNew ? 'flex' : 'none',
             owned: 'x' + c.owned,
+            tierDisplay:
+              shown && (c.tier === 'Silver' || c.tier === 'Gold')
+                ? 'flex'
+                : 'none',
+            tierLabel:
+              String(c.tier || '').toUpperCase() + (c.promoted ? '!' : ''),
+            tierColor: c.tier === 'Gold' ? TIER_COLOR.Gold : TIER_COLOR.Silver,
           };
         }),
       };
@@ -2912,6 +2936,7 @@ export const buildView = (app: GearLinkApp): View => {
           cardInfoCtaShadow: BTN_BLUE.shadow,
           cardInfoCtaAnim: 'none',
           cardInfoLevel: '',
+          cardInfoLevelColor: '#FFF2B0',
           cardInfoUpDisplay: 'none',
           cardInfoUpLabel: '',
           cardInfoUpCopies: '',
@@ -2933,6 +2958,7 @@ export const buildView = (app: GearLinkApp): View => {
           cardInfoBarKey: '',
           cardInfoGearMini: '',
           cardInfoLvBadge: '',
+          cardInfoLvColor: '#FFF2B0',
           cardInfoLvKey: '',
           cardInfoLvAnim: 'none',
         };
@@ -2941,6 +2967,11 @@ export const buildView = (app: GearLinkApp): View => {
       const shiny = n > 0 && (g.rarity === 'Epic' || g.rarity === 'Legendary');
       const level = app.gearLevel(g.id);
       const cost = upgradeCost(g.rarity, level);
+      const promo = isPromotion(level);
+      const tier = gearTierOf(level);
+      const tierLv = tierLevelOf(level);
+      const tierCol = TIER_COLOR[tier];
+      const base = g.variantOf ? GEAR_BY_ID[g.variantOf] : null;
       const spare = spareCopies(n);
       const block = upgradeBlock(g.rarity, n, level, st.profile.coins);
       const canUp = block === null && !st.gearUpgrading;
@@ -2992,6 +3023,9 @@ export const buildView = (app: GearLinkApp): View => {
             : 'Not found yet - pull it from a pack',
         cardInfoOwnColor: n > 0 ? '#2E8B57' : '#8B7355',
         cardInfoWhat:
+          (base
+            ? 'A remix of ' + base.name + ', and never equipped beside it. '
+            : '') +
           'A 3-link ' +
           verb +
           ' ' +
@@ -3041,13 +3075,18 @@ export const buildView = (app: GearLinkApp): View => {
         cardInfoCtaShadow: n > 0 ? BTN_BLUE.shadow : BTN_GOLD.shadow,
         cardInfoCtaAnim:
           n > 0 || fx.reduced() ? 'none' : 'wmBreath 1.6s ease-in-out infinite',
-        cardInfoLevel: n > 0 ? 'LV ' + level + ' / ' + GEAR_MAX_LEVEL : '',
+        cardInfoLevel: n > 0 ? levelLabel(level) + ' / ' + tierMaxOf(tier) : '',
+        cardInfoLevelColor: tierCol,
         cardInfoUpDisplay: n > 0 ? 'flex' : 'none',
         cardInfoUpLabel: !cost
           ? 'MAX LEVEL'
           : st.gearUpgrading
-            ? 'LEVELLING...'
-            : 'LEVEL UP   LV ' + level + ' > ' + (level + 1),
+            ? promo
+              ? 'PROMOTING...'
+              : 'LEVELLING...'
+            : promo
+              ? 'PROMOTE TO ' + gearTierOf(level + 1).toUpperCase()
+              : 'LEVEL UP   LV ' + tierLv + ' > ' + (tierLv + 1),
         cardInfoUpCopies: cost
           ? Math.min(spare, cost.copies) + '/' + cost.copies + ' copies'
           : '',
@@ -3068,8 +3107,15 @@ export const buildView = (app: GearLinkApp): View => {
                     id: g.id,
                     block,
                     copies: cost.copies,
-                    color: col,
-                    fromLevel: level,
+                    color: promo ? TIER_COLOR[gearTierOf(level + 1)] : col,
+                    stamp: promo
+                      ? gearTierOf(level + 1).toUpperCase() + '!'
+                      : 'LEVEL UP!',
+                    step: promo
+                      ? tier.toUpperCase() +
+                        '  >  ' +
+                        gearTierOf(level + 1).toUpperCase()
+                      : 'LV ' + tierLv + '  >  LV ' + (tierLv + 1),
                     fromPower: g.power,
                     toPower: nextPower,
                   },
@@ -3087,14 +3133,18 @@ export const buildView = (app: GearLinkApp): View => {
             ? 'wmBreath 1.6s ease-in-out infinite'
             : 'none',
         cardInfoUpBandDisplay: canUp ? 'block' : 'none',
-        cardInfoPips: Array.from({ length: GEAR_MAX_LEVEL }, (_, i) => {
-          const lit = i < level;
-          const gained = fresh && i === level - 1;
-          const nextPip = !lit && i === level && canUp;
+        // Ten pips per tier. Gold runs long, so its pips count the current
+        // ten levels and refill every ten.
+        cardInfoPips: Array.from({ length: TIER_LEVELS }, (_, i) => {
+          const filled =
+            tier === 'Gold' ? ((tierLv - 1) % TIER_LEVELS) + 1 : tierLv;
+          const lit = i < filled;
+          const gained = fresh && i === filled - 1;
+          const nextPip = !lit && i === filled && canUp;
           return {
-            bg: lit ? (gained ? '#FFFFFF' : '#FCE370') : '#0E1730',
+            bg: lit ? (gained ? '#FFFFFF' : tierCol) : '#0E1730',
             bd: lit ? '#000000' : nextPip ? '#AEE45D' : '#304A69',
-            glow: lit ? '0 0 6px ' + col : 'none',
+            glow: lit ? '0 0 6px ' + tierCol : 'none',
             anim: fx.reduced()
               ? 'none'
               : gained
@@ -3117,7 +3167,8 @@ export const buildView = (app: GearLinkApp): View => {
         // Keyed by level so the bar refills from empty after a level-up.
         cardInfoBarKey: g.id + ':' + level,
         cardInfoGearMini: getGearImageUrl(g.id) || EFFECT_ICON[g.effect],
-        cardInfoLvBadge: n > 0 ? 'LV' + level : '',
+        cardInfoLvBadge: n > 0 ? 'LV' + tierLv : '',
+        cardInfoLvColor: tierCol,
         cardInfoLvKey: g.id + ':' + level,
         cardInfoLvAnim: fx.reduced()
           ? 'none'

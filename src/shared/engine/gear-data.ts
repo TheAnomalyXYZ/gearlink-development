@@ -3,7 +3,7 @@
  *  (Weapon -> attack, Off-Hand -> block, else heal). */
 import type { Gear } from './types.js';
 
-export const GEAR: Gear[] = [
+const BASE_GEAR: Gear[] = [
   {
     id: 'Hero-Weapon-Common-Base',
     cls: 'Hero',
@@ -437,3 +437,40 @@ export const GEAR: Gear[] = [
     power: 17,
   },
 ];
+
+/** Flavoured variants: a remix of a base piece with the same slot and rarity,
+ *  one less power and a rider (see rider-data.ts). The art is the base sprite
+ *  palette-swapped by tools/recolor-gear.mjs, saved under the variant's own id
+ *  so getGearImageUrl needs no special case. The id keeps the base's
+ *  class-slot-rarity prefix and swaps the trailing tier for the flavour. */
+const VARIANTS: [base: string, flavour: string, name: string][] = [
+  ['Hero-Weapon-Legendary-Base', 'Stormcharged', 'Stormcharged Bolt'],
+  ['Hero-Weapon-Common-Base', 'Squire', "Squire's Edge"],
+  ['Hero-Off-Hand-Rare-Base', 'Gilded', 'Gilded Tower Shield'],
+  ['Hero-Hat-Rare-Base', 'Nightwatch', 'Nightwatch Helm'],
+  ['Archer-Weapon-Epic-Base', 'Gale', 'Gale Zephyr Bow'],
+  ['Archer-Hat-Common-Base', 'Hunter', "Hunter's Hood"],
+  ['Archer-Necklace-Epic-Base', 'Falcon', 'Falcon Talisman'],
+  ['Archer-Off-Hand-Epic-Base', 'Frostfletch', 'Frostfletch Quiver'],
+  ['Mage-Hat-Rare-Base', 'Cinder', 'Cinder Hat'],
+  ['Mage-Hat-Epic-Base', 'Hoarfrost', 'Hoarfrost Hat'],
+  ['Mage-Necklace-Epic-Base', 'Glacier', 'Glacier Amulet'],
+  ['Mage-Weapon-Common-Base', 'Ember', 'Ember Staff'],
+];
+
+export const GEAR: Gear[] = BASE_GEAR.concat(
+  VARIANTS.flatMap(([base, flavour, name]) => {
+    const g = BASE_GEAR.find((x) => x.id === base);
+    return g
+      ? [
+          {
+            ...g,
+            id: base.replace(/-Base$/, '-' + flavour),
+            name,
+            power: g.power - 1,
+            variantOf: base,
+          },
+        ]
+      : [];
+  })
+);
