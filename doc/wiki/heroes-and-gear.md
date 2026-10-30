@@ -47,22 +47,45 @@ Legendary cards exist only as weapons, one per hero.
 Pulling a card you already own adds a **spare copy** to it. Spare copies plus coins **level the card up**, from level 1 to **level 10**.
 
 - Each level adds **+10% of the card's base Power** (level 10 = +90%). The card's type and rider never change.
-- The card itself always keeps one copy. Only copies past the first are spare.
-- To level up, open a gear card's details and tap **LEVEL UP**.
+- The card itself always keeps one copy. Only copies past the first are spare, so levelling up never takes a card out of your loadout.
+- Every level up costs **both** spare copies and coins. Both climb with the level.
+- To level up, open a gear card's details and tap **LEVEL UP**. The panel shows your level (e.g. *LV 3 / 10*), spare copies against what's needed (e.g. *2/3 copies*) and the coin cost. Anything you're short on shows in red. At level 10 the button reads **MAX LEVEL**.
 
-| Level up | Spare copies | Common | Rare | Epic | Legendary |
-| --- | --- | --- | --- | --- | --- |
-| 1 → 2 | 1 | 40 | 80 | 160 | 320 |
-| 2 → 3 | 2 | 80 | 160 | 320 | 640 |
-| 3 → 4 | 3 | 120 | 240 | 480 | 960 |
-| 4 → 5 | 4 | 200 | 400 | 800 | 1,600 |
-| 5 → 6 | 5 | 280 | 560 | 1,120 | 2,240 |
-| 6 → 7 | 6 | 400 | 800 | 1,600 | 3,200 |
-| 7 → 8 | 8 | 560 | 1,120 | 2,240 | 4,480 |
-| 8 → 9 | 10 | 760 | 1,520 | 3,040 | 6,080 |
-| 9 → 10 | 12 | 1,000 | 2,000 | 4,000 | 8,000 |
+### Spare copies per level
 
-Coin costs are per level. Getting a card from level 1 to 10 takes 51 spare copies.
+Rarer cards need **fewer copies**, since any specific Epic or Legendary drops far less often than a specific Common.
+
+| Level up | Common | Rare | Epic | Legendary |
+| --- | --- | --- | --- | --- |
+| 1 → 2 | 1 | 1 | 1 | 1 |
+| 2 → 3 | 2 | 2 | 1 | 1 |
+| 3 → 4 | 3 | 3 | 2 | 1 |
+| 4 → 5 | 4 | 3 | 2 | 2 |
+| 5 → 6 | 5 | 4 | 3 | 2 |
+| 6 → 7 | 6 | 5 | 3 | 2 |
+| 7 → 8 | 8 | 6 | 4 | 3 |
+| 8 → 9 | 10 | 7 | 5 | 3 |
+| 9 → 10 | 12 | 8 | 6 | 4 |
+| **Total (1 → 10)** | **51** | **39** | **27** | **19** |
+
+### Coins per level
+
+Rarer cards cost **more coins** per level.
+
+| Level up | Common | Rare | Epic | Legendary |
+| --- | --- | --- | --- | --- |
+| 1 → 2 | 40 | 80 | 160 | 320 |
+| 2 → 3 | 80 | 160 | 320 | 640 |
+| 3 → 4 | 120 | 240 | 480 | 960 |
+| 4 → 5 | 200 | 400 | 800 | 1,600 |
+| 5 → 6 | 280 | 560 | 1,120 | 2,240 |
+| 6 → 7 | 400 | 800 | 1,600 | 3,200 |
+| 7 → 8 | 560 | 1,120 | 2,240 | 4,480 |
+| 8 → 9 | 760 | 1,520 | 3,040 | 6,080 |
+| 9 → 10 | 1,000 | 2,000 | 4,000 | 8,000 |
+| **Total (1 → 10)** | **3,440** | **6,880** | **13,760** | **27,520** |
+
+Example: a Rare at level 4 with 5 spare copies and 500 coins can level up to 5. It spends 3 copies and 400 coins, leaving 2 spare copies.
 
 ## Rider effects
 
