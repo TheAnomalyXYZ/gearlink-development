@@ -326,6 +326,7 @@ export const EMPTY_PROFILE: Profile = {
   heartPieces: 0,
   hearts: { ...NO_HEARTS },
   seenFtue: true,
+  seenFtueFight: true,
   seenDuelFtue: true,
   seenDuelSetup: true,
   duelCls: null,

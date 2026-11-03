@@ -402,6 +402,8 @@ export const loadProfile = async (
     hearts: parseHearts(h['hearts']),
     progress: clamp(num(h['progress'], 0), 0, MAP_LENGTH),
     seenFtue: h['seenFtue'] === '1',
+    // Finished the old build-first coaching: the fight was part of it.
+    seenFtueFight: h['seenFtueFight'] === '1' || h['seenFtue'] === '1',
     seenDuelFtue: h['seenDuelFtue'] === '1',
     seenDuelSetup: h['seenDuelSetup'] === '1',
     duelCls,
@@ -479,6 +481,7 @@ export type ProfilePatch = Partial<
     | 'heartPieces'
     | 'hearts'
     | 'seenFtue'
+    | 'seenFtueFight'
     | 'seenDuelFtue'
     | 'seenDuelSetup'
     | 'duelCls'
@@ -519,6 +522,8 @@ export const saveProfile = async (
     fields['hearts'] = JSON.stringify(normaliseHearts(patch.hearts));
   if (patch.seenFtue !== undefined)
     fields['seenFtue'] = patch.seenFtue ? '1' : '0';
+  if (patch.seenFtueFight !== undefined)
+    fields['seenFtueFight'] = patch.seenFtueFight ? '1' : '0';
   if (patch.seenDuelFtue !== undefined)
     fields['seenDuelFtue'] = patch.seenDuelFtue ? '1' : '0';
   if (patch.seenDuelSetup !== undefined)

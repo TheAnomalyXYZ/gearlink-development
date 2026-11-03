@@ -1154,6 +1154,8 @@ api.post('/ftue/seen', async (c) => {
     await saveProfile(me.userId, { seenDuelFtue: true });
   else if (body?.which === 'duelSetup')
     await saveProfile(me.userId, { seenDuelSetup: true });
+  else if (body?.which === 'fight')
+    await saveProfile(me.userId, { seenFtueFight: true });
   else {
     // Counted once per account: the coaching can be replayed, the first
     // finish only happens once.

@@ -37,6 +37,9 @@ export type Profile = {
   progress: number;
   /** Whether this account has been shown the first-run coaching. */
   seenFtue: boolean;
+  /** Whether its first half - the tutorial fight - is done. A new player is
+   *  dropped straight into that fight; the map and the build come after. */
+  seenFtueFight: boolean;
   seenDuelFtue: boolean;
   /** Whether the duel SETUP flow (hero, five, opt-in) has been walked once. */
   seenDuelSetup: boolean;

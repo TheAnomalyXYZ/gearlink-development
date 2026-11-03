@@ -33,6 +33,7 @@ export const profile: Profile = {
   heartPieces: 4,
   hearts: { Hero: 2, Archer: 0, Mage: 10 },
   seenFtue: false,
+  seenFtueFight: false,
   seenDuelFtue: false,
   seenDuelSetup: false,
   duelCls: 'Hero',

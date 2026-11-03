@@ -138,8 +138,9 @@ import {
   FTUE_COPY,
   FTUE_POST_COPY,
   FTUE_DOING,
+  FTUE_FIGHT,
   FTUE_LEGEND,
-  FTUE_ORDER,
+  ftueHalf,
 } from '../ftue.js';
 
 /** Every icon a loadout can put on a tile, so crispIcon can upscale them before
@@ -1643,11 +1644,11 @@ export const buildView = (app: GearLinkApp): View => {
         blurb: FTUE_LEGEND[orb.effect]!.blurb,
       };
     }),
-    ftueDots: FTUE_ORDER.map((s) => ({
+    ftueDots: ftueHalf(st.ftueStep).map((s) => ({
       bg: s === st.ftueStep ? '#141D2E' : 'rgba(20,29,46,.25)',
     })),
     ftueNextLabel:
-      st.ftueStep === FTUE_ORDER[FTUE_ORDER.length - 1] ? 'FIGHT!' : 'NEXT',
+      st.ftueStep === FTUE_FIGHT[FTUE_FIGHT.length - 1] ? 'FIGHT!' : 'NEXT',
     ftueNextDisplay: FTUE_DOING[st.ftueStep] ? 'none' : 'flex',
     // Hidden until measured, so it never flashes at the wrong offset.
     ftueCardVis: st.ftuePlace ? 'visible' : 'hidden',

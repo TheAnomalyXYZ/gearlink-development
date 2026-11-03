@@ -98,7 +98,7 @@ export const api = {
   claimQuest: (questId: string) =>
     call<ClaimQuestResponse>('/quests/claim', { questId }),
   claimStreak: () => call<StreakClaimResponse>('/streak/claim', {}),
-  ftueSeen: (which: 'run' | 'duel' | 'duelSetup') =>
+  ftueSeen: (which: 'run' | 'fight' | 'duel' | 'duelSetup') =>
     call<ProfileResponse>('/ftue/seen', { which }),
   prizeSeen: () => call<ProfileResponse>('/duel/prize/seen', {}),
   equipFlair: (flairId: string | null) =>

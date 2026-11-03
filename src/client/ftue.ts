@@ -1,6 +1,11 @@
 /**
  * First-run coaching: seven steps, in order, seen once per ACCOUNT.
  *
+ * It comes in two halves. A new player is dropped straight into a tutorial
+ * fight that teaches the board (FTUE_FIGHT); only once that is done does the
+ * map, the hero and the gear get explained (FTUE_BUILD), on the way into the
+ * second fight.
+ *
  * The pre-battle steps are completed by DOING the thing, so they never block
  * input and advance off the phase change rather than a Next button. Only `drag`
  * is interactive inside the arena: the scrim lifts, a sample link glows, and
@@ -12,15 +17,13 @@ import type { Gear } from '../shared/engine/types.js';
 export type FtueStep =
   'fight' | 'location' | 'hero' | 'gear' | 'orbs' | 'drag' | 'damage' | 'waves';
 
-export const FTUE_ORDER: FtueStep[] = [
-  'location',
-  'hero',
-  'gear',
-  'orbs',
-  'drag',
-  'damage',
-  'waves',
-];
+export const FTUE_FIGHT: FtueStep[] = ['orbs', 'drag', 'damage', 'waves'];
+export const FTUE_BUILD: FtueStep[] = ['location', 'hero', 'gear'];
+export const FTUE_ORDER: FtueStep[] = [...FTUE_FIGHT, ...FTUE_BUILD];
+
+/** The steps of whichever half `step` is in, for the progress dots. */
+export const ftueHalf = (step: FtueStep | null): FtueStep[] =>
+  step !== null && FTUE_BUILD.indexOf(step) >= 0 ? FTUE_BUILD : FTUE_FIGHT;
 
 /** Which phase each pre-battle step belongs to, so back-navigation re-points
  *  the card instead of stranding it on a screen that is no longer showing. */
@@ -55,7 +58,7 @@ export const FTUE_TARGET: Record<
 export const FTUE_COPY: Record<string, { title: string; body: string }> = {
   location: {
     title: 'Choose where to fight',
-    body: 'Tap a place on the map. Each one is a battle of 3 to 5 waves, and the last wave is the elite guarding it. Start at Greenwood - the rest opens as you take them.',
+    body: 'That fight was one place on this map. Each one is a battle of 3 to 5 waves, and the last wave is the elite guarding it - take one and the road opens to the next. Tap a place to go.',
   },
   hero: {
     title: 'Pick your hero',
@@ -63,11 +66,11 @@ export const FTUE_COPY: Record<string, { title: string; body: string }> = {
   },
   gear: {
     title: 'Equip five pieces',
-    body: 'Tap gear below to fill these five slots - max 2 per type. Each piece becomes one orb colour on the board.',
+    body: 'Tap gear below to fill these five slots - max 2 per type. Each piece becomes one orb colour on the board, like the ones you just linked.',
   },
   orbs: {
-    title: 'Your gear, as orbs',
-    body: 'Each piece you equipped became one orb colour on the board. The colour tells you what a link of it does:',
+    title: 'Welcome to the fight!',
+    body: 'Your hero carries five pieces of gear, and each one is an orb colour on this board. The colour tells you what a link of it does:',
   },
   drag: {
     title: 'Drag to link',

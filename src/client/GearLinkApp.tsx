@@ -114,6 +114,7 @@ import { Booting, Fatal } from './components/BootScreens.js';
 import {
   FTUE_ARROW_GAP,
   FTUE_DOING,
+  FTUE_FIGHT,
   FTUE_ORDER,
   FTUE_PHASE_STEP,
   FTUE_TARGET,
@@ -293,6 +294,9 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
   postSizing = false;
   /** The post's own intro (straight into a battle) has been played or skipped. */
   postIntroDone = false;
+  /** A new player's tutorial fight has been started this session - once, so
+   *  quitting out of it does not throw them straight back in. */
+  private tutorialStarted = false;
   /** The login reward has been put up once this session; after that it waits
    *  to be opened from the quests screen. */
   private streakOffered = false;
@@ -385,7 +389,10 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
     if (this.prevPhase !== st.phase) {
       this.prevPhase = st.phase;
       this.syncFtueToPhase();
-      if (st.phase === 'home') this.offerStreak();
+      if (st.phase === 'home') {
+        this.startTutorialFight();
+        this.offerStreak();
+      }
     }
     this.syncMusic();
     // Don't consume the step until a placement actually lands, so a frame that
@@ -520,7 +527,7 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
 
   /** Record a primer as seen. Best-effort: a failed write only means it shows
    *  again next time. */
-  private markSeen(which: 'run' | 'duel' | 'duelSetup'): void {
+  private markSeen(which: 'run' | 'fight' | 'duel' | 'duelSetup'): void {
     void api
       .ftueSeen(which)
       .then((r) => this.adopt(r.profile))
@@ -1367,8 +1374,10 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
       ...BATTLE_RESET,
       phase: 'battle',
       bs,
-      ftueStep: this.state.profile.seenFtue ? null : 'orbs',
+      ftueStep: this.state.profile.seenFtueFight ? null : 'orbs',
     });
+    // Starting a fight off the gear step is the end of the build lessons.
+    if (this.state.ftueStep === 'gear') this.markFtueSeen();
   };
 
   quitRun = (): void => {
@@ -1434,10 +1443,11 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
 
   /* ---------- the inline post ---------- */
 
-  /** After boot, with no challenge, daily or chest to open: the post leaves a
-   *  new player on the map, where the coaching starts; the full game picks up
+  /** After boot, with no challenge, daily or chest to open: a new player goes
+   *  straight into the tutorial fight; the full game picks up
    *  whatever the post handed it (a battle to resume, or a location to enter). */
   private routeAfterBoot(): void {
+    if (this.startTutorialFight()) return;
     if (this.postMode) {
       if (this.state.profile.progress > 0) this.postIntroDone = true;
       return;
@@ -1465,6 +1475,9 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
   private resumeLiveRun(): boolean {
     const v = loadLiveRun();
     if (!isLiveRun(v)) return false;
+    // A tutorial fight carried over from the post is that fight, not a reason
+    // to start another one.
+    this.tutorialStarted = true;
     const spec = v.spec;
     this.setState(
       {
@@ -1520,6 +1533,17 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
     this.postIntroDone = true;
     this.pickLocation(id)();
   };
+
+  /** A brand new player skips the map and the build: their first look at the
+   *  game is a fight, coached from the first move. Returns whether it started. */
+  private startTutorialFight(): boolean {
+    const st = this.state;
+    if (this.tutorialStarted || !st.ready || st.phase !== 'home') return false;
+    if (st.profile.seenFtueFight) return false;
+    this.tutorialStarted = true;
+    this.startPost();
+    return true;
+  }
 
   /** The post's battle: straight into the furthest location as the default
    *  Hero with the gear owned. */
@@ -3020,8 +3044,16 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
 
   private markFtueSeen(): void {
     if (this.state.profile.seenFtue) return;
-    this.setState((s) => ({ profile: { ...s.profile, seenFtue: true } }));
+    this.setState((s) => ({
+      profile: { ...s.profile, seenFtue: true, seenFtueFight: true },
+    }));
     this.markSeen('run');
+  }
+
+  private markFtueFightSeen(): void {
+    if (this.state.profile.seenFtueFight) return;
+    this.setState((s) => ({ profile: { ...s.profile, seenFtueFight: true } }));
+    this.markSeen('fight');
   }
 
   /** Hint cells for the drag step - null when the board holds no attack link,
@@ -3037,13 +3069,15 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
   }
 
   /** Pre-battle steps follow the phase, so back-navigation re-points the card
-   *  instead of stranding it on a screen that is no longer showing. */
+   *  instead of stranding it on a screen that is no longer showing. They only
+   *  start once the tutorial fight is behind the player. */
   private syncFtueToPhase(): void {
     if (this.state.profile.seenFtue) {
       if (this.state.ftueStep !== null)
         this.setState({ ftueStep: null, ftuePlace: null });
       return;
     }
+    if (!this.state.profile.seenFtueFight) return;
     const want = FTUE_PHASE_STEP[this.state.phase];
     if (want && this.state.ftueStep !== want)
       this.setState({ ftueStep: want, ftuePlace: null });
@@ -3080,6 +3114,13 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
   advanceFtue = (): void => {
     const cur = this.state.ftueStep;
     if (!cur) return;
+    // The fight's last card ends the fight half; the build half waits for the
+    // map, where syncFtueToPhase picks it up.
+    if (cur === FTUE_FIGHT[FTUE_FIGHT.length - 1]) {
+      this.markFtueFightSeen();
+      this.setState({ ftueStep: null, ftuePlace: null });
+      return;
+    }
     let next: FtueStep | null = FTUE_ORDER[FTUE_ORDER.indexOf(cur) + 1] ?? null;
     // Linking is the whole game, so re-deal instead of skipping it.
     if (
