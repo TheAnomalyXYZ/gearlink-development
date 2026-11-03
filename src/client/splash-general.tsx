@@ -118,7 +118,7 @@ export const General = ({ cta }: { cta?: ReactNode }) => (
     className="relative flex h-screen max-h-screen w-full flex-col items-center gap-1.5 overflow-hidden px-4 pt-[clamp(10px,4vh,28px)] pb-[clamp(10px,4vh,28px)] text-center"
     style={{
       backgroundColor: '#2A7FD0',
-      backgroundImage: 'url(/art/PocketKnights/sky_v3.png)',
+      backgroundImage: 'url(/art/PocketKnights/sky_v3.jpg)',
       backgroundSize: 'cover',
       backgroundPosition: 'center bottom',
       fontFamily: 'Volter,ui-monospace,monospace',

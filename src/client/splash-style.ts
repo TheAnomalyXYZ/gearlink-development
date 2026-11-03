@@ -4,7 +4,7 @@ import type { CSSProperties } from 'react';
 
 export const SHELL: CSSProperties = {
   backgroundColor: '#101528',
-  backgroundImage: 'url(/art/PocketKnights/sky_v3.png)',
+  backgroundImage: 'url(/art/PocketKnights/sky_v3.jpg)',
   backgroundSize: 'cover',
   backgroundPosition: 'center bottom',
   fontFamily: 'Volter,ui-monospace,monospace',
@@ -16,7 +16,7 @@ export const SHELL: CSSProperties = {
 export const ARENA: CSSProperties = {
   ...SHELL,
   backgroundImage:
-    'url(/art/PocketKnights/Background/Castle.png),url(/art/PocketKnights/sky_v3.png)',
+    'url(/art/PocketKnights/Background/Castle.png),url(/art/PocketKnights/sky_v3.jpg)',
   backgroundSize: 'cover,cover',
   backgroundPosition: 'center 65%,center bottom',
 };

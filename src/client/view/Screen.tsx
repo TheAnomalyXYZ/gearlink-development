@@ -1620,7 +1620,7 @@ export const Screen = ({ v }: { v: View }) => (
     className="gl-page"
     style={{
       backgroundColor: '#0B1020',
-      backgroundImage: 'url(/art/PocketKnights/sky_v3.png)',
+      backgroundImage: 'url(/art/PocketKnights/sky_v3.jpg)',
       backgroundSize: 'cover',
       backgroundPosition: 'center bottom',
       backgroundRepeat: 'no-repeat',
@@ -1643,7 +1643,7 @@ export const Screen = ({ v }: { v: View }) => (
             padding: '0',
             overflow: 'hidden',
             backgroundColor: '#101528',
-            backgroundImage: 'url(/art/PocketKnights/sky_v3.png)',
+            backgroundImage: 'url(/art/PocketKnights/sky_v3.jpg)',
             backgroundSize: 'cover',
             backgroundPosition: 'center bottom',
             backgroundRepeat: 'no-repeat',

@@ -89,9 +89,9 @@ falls back to a system font, with nothing in the console to say why.
 `node tools/sync-art.mjs` re-pulls the art from the CDN when it changes. Unit
 tests fail the build if a path points off-origin or has no file behind it.
 
-One manual step: `public/art/PocketKnights/sky_v3.png` is downscaled to 1600px
-wide (the CDN original is 4858px / 4.3MB). Re-run the `sips` line the sync
-script prints if that file is ever refreshed.
+The sky backdrop every feed card paints is the one exception: the CDN original
+is a 4858px / 4.3MB PNG, so the sync script converts it with macOS `sips` to a
+1600px JPEG (`public/art/PocketKnights/sky_v3.jpg`, ~110KB) and drops the PNG.
 
 ## Layout on phones
 

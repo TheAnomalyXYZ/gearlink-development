@@ -9,7 +9,8 @@
  * It writes only files that are missing or whose bytes differ, so a rerun is
  * cheap and the diff shows exactly what moved.
  */
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import {
   COIN_ICON,
@@ -34,6 +35,13 @@ const CDN = 'https://files.anomalygames.ai/';
 const LOCAL = '/art/';
 const OUT = 'public/art';
 
+/**
+ * The CDN sky is a 4858px / 4.3MB PNG with no transparency, and every feed
+ * card paints it, so it is shipped as a 1600px JPEG instead of as downloaded.
+ */
+const SKY_PNG = join(OUT, 'PocketKnights/sky_v3.png');
+const SKY_JPG = join(OUT, 'PocketKnights/sky_v3.jpg');
+
 /** Paths the code builds, plus the handful the markup and stylesheet hardcode. */
 const HARDCODED = [
   '/art/NeuraKnights/Fonts/yosterislandreg.ttf',
@@ -43,6 +51,7 @@ const HARDCODED = [
   '/art/NeuraKnights/gui/Bag_V2.png',
   '/art/PocketKnights/Map/Base.png',
   '/art/PocketKnights/Pattern/MenuButtonPatten.svg',
+  // Converted to sky_v3.jpg after download (see SKY_PNG).
   '/art/PocketKnights/sky_v3.png',
   // Full-body heroes on the general post's feed card.
   '/art/NeuraKnights/Characters/Hero.png',
@@ -112,11 +121,23 @@ const main = async () => {
     `\n${written} written, ${unchanged} unchanged, ${failed.length} failed.`
   );
   for (const f of failed) console.error('  ' + f);
-  if (written) {
-    console.log(
-      '\nNote: public/art/PocketKnights/sky_v3.png is downscaled to 1600px wide.' +
-        '\nIf it was just refreshed, re-run: sips -Z 1600 public/art/PocketKnights/sky_v3.png --out public/art/PocketKnights/sky_v3.png'
-    );
+  if (await readFile(SKY_PNG).catch(() => null)) {
+    // macOS `sips`; the 80 quality keeps the gradient free of banding.
+    execFileSync('sips', [
+      '-Z',
+      '1600',
+      '-s',
+      'format',
+      'jpeg',
+      '-s',
+      'formatOptions',
+      '80',
+      SKY_PNG,
+      '--out',
+      SKY_JPG,
+    ]);
+    await rm(SKY_PNG);
+    console.log('converted ' + SKY_PNG + ' -> ' + SKY_JPG);
   }
   if (failed.length) process.exitCode = 1;
 };
