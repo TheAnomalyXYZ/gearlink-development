@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import type { Context as HonoContext } from 'hono';
+import type { Context as HonoContext, MiddlewareHandler } from 'hono';
 import { context, reddit, redis } from '@devvit/web/server';
 import type {
   ApplyHeartRequest,
@@ -15,6 +15,7 @@ import type {
   DuelOpponentsResponse,
   DuelRefreshResponse,
   DuelResultRequest,
+  DuelStartResponse,
   EquipFlairRequest,
   EquipSkinRequest,
   BuySkinRequest,
@@ -28,6 +29,8 @@ import type {
   ProfileResponse,
   QuestsResponse,
   ReviveRunRequest,
+  RunSeedErrorResponse,
+  RunSeedResponse,
   SoloBoardsResponse,
   StreakClaimResponse,
   SubmitRunRequest,
@@ -95,6 +98,13 @@ import {
   paidRevives,
   releasePaidRevive,
 } from '../core/revive.js';
+import { BusyError, takeOnce, withProfileLock } from '../core/lock.js';
+import {
+  consumeRunSeed,
+  peekRunSeed,
+  pendingRunSeed,
+  seedFor,
+} from '../core/runseed.js';
 import {
   claimQuest,
   loadQuestBoard,
@@ -115,6 +125,7 @@ import {
   DUEL_LOSS_TROPHIES,
   DUEL_REFRESH_COST,
   DUEL_MATCH_SECONDS,
+  DUEL_RESULT_GRACE_SECONDS,
   DUEL_WIN_TROPHIES,
   bundleById,
   loadoutIsLegal,
@@ -127,6 +138,10 @@ import {
   donationIsLegal,
   duelRefreshCost,
   verifyRun,
+  isRunSeed,
+  duelDayOf,
+  duelSecondsCredible,
+  DUEL_RANKED_PER_DAY,
   reviveCost,
   applyXp,
   xpLines,
@@ -157,12 +172,43 @@ const unauthorised = (c: HonoContext) =>
     401
   );
 
+/** Any thrown error becomes JSON the client can show. A player whose last
+ *  write is still landing gets a 409 to retry, not a failure. */
+api.onError((err, c) => {
+  if (err instanceof BusyError)
+    return c.json<ErrorResponse>(
+      { status: 'error', message: err.message },
+      409
+    );
+  console.error('api route failed: ' + String(err));
+  return c.json<ErrorResponse>(
+    { status: 'error', message: 'Something went wrong. Try again.' },
+    500
+  );
+});
+
+/**
+ * Every route that writes a player's profile runs holding that player's lock
+ * (see core/lock.ts): handlers read, compute and write back absolute numbers,
+ * and two of them interleaving would write over each other's result.
+ */
+const locked: MiddlewareHandler = async (c, next) => {
+  const me = who();
+  if (!me) return unauthorised(c);
+  await withProfileLock(me.userId, next);
+};
+
 api.get('/init', async (c) => {
   const me = who();
   if (!me) return unauthorised(c);
   // Before the profile read: a first read writes the profile, and the visit
   // has to see whether one existed to know if this is a new player.
   await recordVisit(me.userId, me.username);
+  // Boot also catches up flair and outfit unlocks: one added to the
+  // catalogue since the last visit lands for everyone who already qualifies.
+  const booted = loadProfile(me.userId, me.username).then((p) =>
+    syncUnlocks(me.userId, p)
+  );
   const [
     profile,
     leaderboard,
@@ -174,10 +220,9 @@ api.get('/init', async (c) => {
     soloGroup,
     soloAlert,
     streak,
+    nextSeed,
   ] = await Promise.all([
-    // Boot also catches up flair and outfit unlocks: one added to the
-    // catalogue since the last visit lands for everyone who already qualifies.
-    loadProfile(me.userId, me.username).then((p) => syncUnlocks(me.userId, p)),
+    booted,
     getLeaderboard(me.postId, me.userId),
     // A failed read only means the post opens like any other.
     readChallengeFoe(me.postId, me.userId, me.username).catch(() => null),
@@ -190,6 +235,8 @@ api.get('/init', async (c) => {
     // A failed read only means no "you were passed" notice this visit.
     getSoloAlert(soloWeekNow(), me.userId).catch(() => null),
     loadStreak(me.userId),
+    // A new player's first seed has to deal a board the tutorial can teach.
+    booted.then((p) => pendingRunSeed(me.userId, seedFor(p))),
   ]);
   return c.json<InitResponse>({
     type: 'init',
@@ -204,6 +251,18 @@ api.get('/init', async (c) => {
     soloGroup,
     soloAlert,
     streak,
+    nextSeed,
+  });
+});
+
+/** The pending battle seed, for a client that lost the one it was handed.
+ *  The same seed comes back until a run is banked on it. */
+api.get('/run/seed', async (c) => {
+  const me = who();
+  if (!me) return unauthorised(c);
+  return c.json<RunSeedResponse>({
+    type: 'runSeed',
+    seed: await pendingRunSeed(me.userId),
   });
 });
 
@@ -222,7 +281,7 @@ api.get('/solo', async (c) => {
 });
 
 /** Last week's leaderboard prize was paid at the reset; this clears its notice. */
-api.post('/solo/prize/seen', async (c) => {
+api.post('/solo/prize/seen', locked, async (c) => {
   const me = who();
   if (!me) return unauthorised(c);
   await dismissSoloPrize(me.userId);
@@ -246,12 +305,29 @@ api.get('/leaderboard', async (c) => {
   });
 });
 
+/** A run on a seed that is not the pending one: answered with the seed the
+ *  next battle should use, so the client can carry straight on. */
+const staleSeed = async (c: HonoContext, userId: string) =>
+  c.json<RunSeedErrorResponse>(
+    {
+      status: 'error',
+      message:
+        'That battle was already banked or has expired, so it did not count.',
+      nextSeed: await pendingRunSeed(userId),
+    },
+    409
+  );
+
 /**
  * Submit a finished run. The body carries the seed, the loadout and the exact
  * moves; the server replays them through the shared engine and uses ITS score.
  * Nothing the client claims about the outcome is read.
+ *
+ * The seed has to be the one the server is holding for this player, and
+ * banking the run burns it - so a transcript pays out once, and the client
+ * never gets to pick (or shop around for) the board it is dealt.
  */
-api.post('/run', async (c) => {
+api.post('/run', locked, async (c) => {
   const me = who();
   if (!me) return unauthorised(c);
 
@@ -260,6 +336,10 @@ api.post('/run', async (c) => {
     .catch(() => null)) as SubmitRunRequest | null;
   if (!body)
     return c.json<ErrorResponse>({ status: 'error', message: 'bad body' }, 400);
+  // Checked first and cheaply; the burn itself comes after the replay, so a
+  // transcript refused for some other reason leaves the battle open.
+  if ((await peekRunSeed(me.userId)) !== body.seed)
+    return staleSeed(c, me.userId);
 
   const profile = await loadProfile(me.userId, me.username);
 
@@ -346,6 +426,9 @@ api.post('/run', async (c) => {
       { status: 'error', message: 'run rejected: unpaid revive' },
       400
     );
+  // The point of no return: only the request that burns the seed pays out.
+  if (!(await consumeRunSeed(me.userId, body.seed)))
+    return staleSeed(c, me.userId);
   await clearPaidRevives(me.userId, body.seed);
 
   const { score, state, won, waveCount } = replay;
@@ -447,12 +530,17 @@ api.post('/run', async (c) => {
     division: profile.soloDiv,
   });
 
-  const [after, leaderboard, soloBoard, soloGroup] = await Promise.all([
-    loadProfile(me.userId, me.username).then((p) => syncUnlocks(me.userId, p)),
-    getLeaderboard(me.postId, me.userId),
-    getSoloBoard(solo.week, me.userId, 10),
-    getGroupBoard(solo.week, me.userId),
-  ]);
+  const reloaded = loadProfile(me.userId, me.username).then((p) =>
+    syncUnlocks(me.userId, p)
+  );
+  const [after, leaderboard, soloBoard, soloGroup, nextSeed] =
+    await Promise.all([
+      reloaded,
+      getLeaderboard(me.postId, me.userId),
+      getSoloBoard(solo.week, me.userId, 10),
+      getGroupBoard(solo.week, me.userId),
+      reloaded.then((p) => pendingRunSeed(me.userId, seedFor(p))),
+    ]);
 
   return c.json<SubmitRunResponse>({
     type: 'run',
@@ -474,6 +562,7 @@ api.post('/run', async (c) => {
     solo,
     soloBoard,
     soloGroup,
+    nextSeed,
   });
 });
 
@@ -482,20 +571,22 @@ api.post('/run', async (c) => {
  * here; the revive itself is a move in the transcript, which the run's
  * submission may only spend as many times as this has been paid.
  */
-api.post('/run/revive', async (c) => {
+api.post('/run/revive', locked, async (c) => {
   const me = who();
   if (!me) return unauthorised(c);
   const body = (await c.req
     .json()
     .catch(() => null)) as ReviveRunRequest | null;
   const seed = body?.seed;
-  if (
-    typeof seed !== 'number' ||
-    !Number.isInteger(seed) ||
-    seed < 0 ||
-    seed > 0xffffffff
-  )
+  if (!isRunSeed(seed))
     return c.json<ErrorResponse>({ status: 'error', message: 'bad body' }, 400);
+  // Only the battle still open can be continued - coins spent on one already
+  // banked (or banked from another window) would buy nothing.
+  if ((await peekRunSeed(me.userId)) !== seed)
+    return c.json<ErrorResponse>(
+      { status: 'error', message: 'That battle is already over.' },
+      400
+    );
 
   const n = await notePaidRevive(me.userId, seed);
   const cost = reviveCost(n - 1);
@@ -527,7 +618,7 @@ api.post('/run/revive', async (c) => {
  * write is a read-modify-write on one profile, which is the same shape every
  * other purchase here uses.
  */
-api.post('/hearts/apply', async (c) => {
+api.post('/hearts/apply', locked, async (c) => {
   const me = who();
   if (!me) return unauthorised(c);
 
@@ -573,7 +664,7 @@ api.post('/hearts/apply', async (c) => {
  * Both costs climb with the level (see engine/upgrade.ts). The card's own copy
  * is never spent, so an upgrade can never take a piece out of a loadout.
  */
-api.post('/gear/upgrade', async (c) => {
+api.post('/gear/upgrade', locked, async (c) => {
   const me = who();
   if (!me) return unauthorised(c);
 
@@ -639,7 +730,7 @@ const profileJson = (profile: Profile, message?: string) => {
   return body;
 };
 
-api.post('/shop/pack', async (c) => {
+api.post('/shop/pack', locked, async (c) => {
   const me = who();
   if (!me) return unauthorised(c);
   const body = (await c.req.json().catch(() => null)) as BuyPackRequest | null;
@@ -682,7 +773,7 @@ api.post('/shop/pack', async (c) => {
   return c.json(profileJson(await loadProfile(me.userId, me.username)));
 });
 
-api.post('/shop/coins', async (c) => {
+api.post('/shop/coins', locked, async (c) => {
   const me = who();
   if (!me) return unauthorised(c);
   const body = (await c.req
@@ -722,20 +813,55 @@ api.post('/shop/coins', async (c) => {
    in routes/payments.ts off an order Reddit has already taken money for - so
    there is deliberately no endpoint a client can call to grant itself any. */
 
+/** A rolled, uncollected pack. Kept with no expiry until COLLECT takes it: a
+ *  roll that could lapse would be a free reroll for anyone who waited. */
 const openKey = (userId: string) => `open:${userId}`;
-/** A pending open lives long enough to watch the reveal animation, and no
- *  longer - an abandoned open must not sit on the pack forever. */
-const OPEN_TTL_SECONDS = 600;
+
+type HeldOpen = { token: string; packId: string; cards: PulledCard[] };
+
+const parseHeld = (raw: string | undefined): HeldOpen | null => {
+  if (!raw) return null;
+  try {
+    const p: unknown = JSON.parse(raw);
+    if (
+      !p ||
+      typeof p !== 'object' ||
+      !('token' in p) ||
+      typeof p.token !== 'string' ||
+      !('packId' in p) ||
+      typeof p.packId !== 'string' ||
+      !('cards' in p) ||
+      !Array.isArray(p.cards)
+    )
+      return null;
+    // The cards were rolled and written by /shop/open itself.
+    return { token: p.token, packId: p.packId, cards: p.cards };
+  } catch {
+    return null;
+  }
+};
 
 /**
  * Roll a pack's contents and hold them UNREVEALED against a one-shot token.
  * The roll happens here, not on the client, and the cards only land in the
  * collection when COLLECT presents the token back - so a half-watched open
  * cannot half-apply, and a replayed collect cannot duplicate a pull.
+ *
+ * A roll already held is handed back as it is, whatever pack was asked for:
+ * re-opening must show the same cards, never deal new ones.
  */
-api.post('/shop/open', async (c) => {
+api.post('/shop/open', locked, async (c) => {
   const me = who();
   if (!me) return unauthorised(c);
+  const pending = parseHeld(await redis.get(openKey(me.userId)));
+  if (pending)
+    return c.json<OpenPackResponse>({
+      type: 'openPack',
+      packId: pending.packId,
+      cards: pending.cards,
+      token: pending.token,
+    });
+
   const body = (await c.req.json().catch(() => null)) as OpenPackRequest | null;
   const pack = packById(body?.packId ?? '');
   if (!pack)
@@ -753,13 +879,8 @@ api.post('/shop/open', async (c) => {
 
   const cards = rollPack(pack, profile.gear, Math.random, profile.gearLevels);
   const token = `${Date.now().toString(36)}-${Math.floor(Math.random() * 0xffffffff).toString(36)}`;
-  await redis.set(
-    openKey(me.userId),
-    JSON.stringify({ token, packId: pack.id, cards }),
-    {
-      expiration: new Date(Date.now() + OPEN_TTL_SECONDS * 1000),
-    }
-  );
+  const held: HeldOpen = { token, packId: pack.id, cards };
+  await redis.set(openKey(me.userId), JSON.stringify(held));
 
   return c.json<OpenPackResponse>({
     type: 'openPack',
@@ -769,37 +890,26 @@ api.post('/shop/open', async (c) => {
   });
 });
 
-api.post('/shop/collect', async (c) => {
+api.post('/shop/collect', locked, async (c) => {
   const me = who();
   if (!me) return unauthorised(c);
   const body = (await c.req
     .json()
     .catch(() => null)) as CollectPackRequest | null;
-  const raw = await redis.get(openKey(me.userId));
-  if (!raw)
+  // Burn the token first, and in one step with reading it: a collect that is
+  // retried (or doubled) finds nothing to apply, which is what stops a
+  // double-grant. A stale token leaves the held roll where it is.
+  const held = parseHeld(
+    await takeOnce(
+      openKey(me.userId),
+      (raw) => !!body && parseHeld(raw)?.token === body.token
+    )
+  );
+  if (!held)
     return c.json<ErrorResponse>(
-      { status: 'error', message: 'that pack open has expired' },
+      { status: 'error', message: 'that pack open was already collected' },
       400
     );
-
-  let held: { token: string; packId: string; cards: PulledCard[] };
-  try {
-    held = JSON.parse(raw) as typeof held;
-  } catch {
-    return c.json<ErrorResponse>(
-      { status: 'error', message: 'bad open state' },
-      400
-    );
-  }
-  if (!body || body.token !== held.token)
-    return c.json<ErrorResponse>(
-      { status: 'error', message: 'stale open token' },
-      400
-    );
-
-  // Burn the token first: a collect that is retried after this point finds
-  // nothing to apply, which is what stops a double-grant.
-  await redis.del(openKey(me.userId));
 
   const profile = await loadProfile(me.userId, me.username);
   if ((profile.packs[held.packId] ?? 0) <= 0)
@@ -843,7 +953,7 @@ api.post('/shop/collect', async (c) => {
  * hero's own class. A listed loadout is what OTHER people's lobbies hand their
  * bot, so a forged one would be a forged opponent for everybody.
  */
-api.post('/duel/loadout', async (c) => {
+api.post('/duel/loadout', locked, async (c) => {
   const me = who();
   if (!me) return unauthorised(c);
   const body = (await c.req
@@ -888,7 +998,7 @@ api.post('/duel/loadout', async (c) => {
 
 /** Opt in or out without rebuilding. Opting out only hides you from other
  *  people's lobbies - it never stops you duelling. */
-api.post('/duel/listed', async (c) => {
+api.post('/duel/listed', locked, async (c) => {
   const me = who();
   if (!me) return unauthorised(c);
   const body = (await c.req
@@ -961,7 +1071,7 @@ api.get('/duel/opponents', async (c) => {
 /** REFRESH: the first DUEL_FREE_REFRESHES a day are free, every one after
  *  costs DUEL_REFRESH_COST coins. A wallet that cannot cover it gets the
  *  refresh handed back and the lobby left where it was. */
-api.post('/duel/refresh', async (c) => {
+api.post('/duel/refresh', locked, async (c) => {
   const me = who();
   if (!me) return unauthorised(c);
   const now = Date.now();
@@ -1036,35 +1146,99 @@ api.post('/duel/challenge', async (c) => {
   }
 });
 
+/** The duel in progress, as /duel/start stamped it. One per player: starting
+ *  another replaces it, so only the latest duel can report. */
+const duelKey = (userId: string) => `duel:${userId}`;
+
+/** One more ranked duel today; returns today's count including it. */
+const countRankedDuel = async (userId: string, now: number) => {
+  const key = `duelday:${userId}:${duelDayOf(now)}`;
+  const n = await redis.incrBy(key, 1);
+  await redis.expire(key, 2 * 86_400);
+  return n;
+};
+
+/** Start a duel: a one-shot token, and the server's own start stamp for the
+ *  result to be timed against. */
+api.post('/duel/start', locked, async (c) => {
+  const me = who();
+  if (!me) return unauthorised(c);
+  const token = `${Date.now().toString(36)}-${Math.floor(Math.random() * 0xffffffff).toString(36)}`;
+  await redis.set(
+    duelKey(me.userId),
+    JSON.stringify({ token, startedAt: Date.now() }),
+    {
+      expiration: new Date(
+        Date.now() + (DUEL_MATCH_SECONDS + DUEL_RESULT_GRACE_SECONDS) * 1000
+      ),
+    }
+  );
+  return c.json<DuelStartResponse>({ type: 'duelStart', token });
+});
+
+/** The start stamp a token was issued with, or null if it is not the one. */
+const parseDuelStart = (
+  raw: string | undefined,
+  token: string
+): number | null => {
+  if (!raw) return null;
+  try {
+    const p: unknown = JSON.parse(raw);
+    return p &&
+      typeof p === 'object' &&
+      'token' in p &&
+      p.token === token &&
+      'startedAt' in p &&
+      typeof p.startedAt === 'number'
+      ? p.startedAt
+      : null;
+  } catch {
+    return null;
+  }
+};
+
 /**
  * Duel outcome. A duel runs against a local AI on a real-time clock, so there
- * is no move list to replay - this is reported, not verified. It is bounded
- * instead: the trophy delta is fixed, and a "win" that arrives faster than a
- * duel can physically be played is refused.
+ * is no move list to replay - `won` is reported, not verified. It is bounded
+ * instead: the trophy delta is fixed, the match is timed by the server from
+ * the token /duel/start issued (each token reports once), a "win" faster than
+ * a duel can physically be played is refused, and only so many ranked duels
+ * a day count.
  */
-const DUEL_MIN_SECONDS = 10;
-
-api.post('/duel/result', async (c) => {
+api.post('/duel/result', locked, async (c) => {
   const me = who();
   if (!me) return unauthorised(c);
   const body = (await c.req
     .json()
     .catch(() => null)) as DuelResultRequest | null;
-  if (!body)
+  if (!body || typeof body.token !== 'string')
     return c.json<ErrorResponse>({ status: 'error', message: 'bad body' }, 400);
+  const token = body.token;
+  const raw = await takeOnce(
+    duelKey(me.userId),
+    (r) => parseDuelStart(r, token) !== null
+  );
+  const startedAt = parseDuelStart(raw, token);
+  if (startedAt === null)
+    return c.json<ErrorResponse>(
+      { status: 'error', message: 'that duel has already been reported' },
+      400
+    );
 
-  const seconds = Number(body.seconds);
+  const now = Date.now();
+  const seconds = (now - startedAt) / 1000;
   const profile = await loadProfile(me.userId, me.username);
-  const credible =
-    Number.isFinite(seconds) &&
-    seconds >= DUEL_MIN_SECONDS &&
-    seconds <= DUEL_MATCH_SECONDS + 30;
+  const credible = duelSecondsCredible(seconds);
   // An implausible win still costs nothing and gains nothing, rather than
   // erroring - the duel is already over on the client either way.
   // Only a player entered in this week's league plays for trophies; anyone
   // else's duel is a friendly one. Otherwise a lead could be kept by duelling from
-  // outside the pool, where nobody can challenge it.
-  const ranked = credible && profile.duelListed;
+  // outside the pool, where nobody can challenge it. Past the day's cap a duel
+  // is friendly too.
+  const ranked =
+    credible &&
+    profile.duelListed &&
+    (await countRankedDuel(me.userId, now)) <= DUEL_RANKED_PER_DAY;
   const delta = !ranked
     ? 0
     : body.won
@@ -1136,7 +1310,7 @@ api.get('/challenge', async (c) => {
 });
 
 /** The weekly prize was paid at the reset; this only clears its notice. */
-api.post('/duel/prize/seen', async (c) => {
+api.post('/duel/prize/seen', locked, async (c) => {
   const me = who();
   if (!me) return unauthorised(c);
   await dismissPrize(me.userId);
@@ -1144,7 +1318,7 @@ api.post('/duel/prize/seen', async (c) => {
 });
 
 /** The two coaching flows are each seen once per ACCOUNT, not once per device. */
-api.post('/ftue/seen', async (c) => {
+api.post('/ftue/seen', locked, async (c) => {
   const me = who();
   if (!me) return unauthorised(c);
   const body = (await c.req.json().catch(() => null)) as {
@@ -1179,7 +1353,7 @@ api.get('/quests', async (c) => {
 
 /** Pay out one finished quest. Progress is the server's own count, so the only
  *  thing the client names is which quest. */
-api.post('/quests/claim', async (c) => {
+api.post('/quests/claim', locked, async (c) => {
   const me = who();
   if (!me) return unauthorised(c);
   const body = (await c.req
@@ -1208,7 +1382,7 @@ api.post('/quests/claim', async (c) => {
 
 /** Pay today's login reward. The day and the streak are the server's own, so
  *  the client names nothing. */
-api.post('/streak/claim', async (c) => {
+api.post('/streak/claim', locked, async (c) => {
   const me = who();
   if (!me) return unauthorised(c);
   const res = await claimDailyStreak(me.userId, me.username);
@@ -1236,7 +1410,7 @@ api.post('/streak/claim', async (c) => {
 
 /** Wear an unlocked flair in the subreddit, or null to take it off. The unlock
  *  is the server's own record, so the only thing the client names is which. */
-api.post('/flair/equip', async (c) => {
+api.post('/flair/equip', locked, async (c) => {
   const me = who();
   if (!me) return unauthorised(c);
   const body = (await c.req
@@ -1262,7 +1436,7 @@ api.post('/flair/equip', async (c) => {
 
 /** Wear an owned outfit. The class is the outfit's own, so the only thing the
  *  client names is which. */
-api.post('/skin/equip', async (c) => {
+api.post('/skin/equip', locked, async (c) => {
   const me = who();
   if (!me) return unauthorised(c);
   const body = (await c.req
@@ -1283,7 +1457,7 @@ api.post('/skin/equip', async (c) => {
 });
 
 /** Buy a shop-exclusive outfit with gems, and wear it straight away. */
-api.post('/skin/buy', async (c) => {
+api.post('/skin/buy', locked, async (c) => {
   const me = who();
   if (!me) return unauthorised(c);
   const body = (await c.req.json().catch(() => null)) as BuySkinRequest | null;
@@ -1318,7 +1492,7 @@ api.get('/warchest', async (c) => {
 
 /** Give coins to the subreddit's war chest. The amount is the only thing the
  *  client names; the wallet and the chest are both the server's. */
-api.post('/warchest/donate', async (c) => {
+api.post('/warchest/donate', locked, async (c) => {
   const me = who();
   if (!me) return unauthorised(c);
   const body: unknown = await c.req.json().catch(() => null);

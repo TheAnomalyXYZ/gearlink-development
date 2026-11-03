@@ -3,7 +3,7 @@
  * data for `DailyStreak.tsx`. The rules are the server's (see
  * `shared/engine/streak.ts`); this only words what it sent.
  */
-import type { GearLinkApp } from '../GearLinkApp.js';
+import type { ViewApp } from './viewApp.js';
 import type { AppState } from '../state/appState.js';
 import { rewardLabel } from '../../shared/engine/index.js';
 import type {
@@ -51,7 +51,7 @@ export type StreakUi = {
 const chips = (rs: QuestReward[]): LbReward[] =>
   rs.map((r) => ({ label: rewardLabel(r), icon: rewardIcon(r) }));
 
-export const streakUi = (st: AppState, app: GearLinkApp): StreakUi => {
+export const streakUi = (st: AppState, app: ViewApp): StreakUi => {
   const s = st.streak;
   const base = {
     open: app.openStreak,

@@ -2,7 +2,7 @@
  * The CONTINUE offer after a death, as plain data for `ReviveOffer.tsx`. The
  * prices and the cap are the engine's (see `shared/engine/revive.ts`).
  */
-import type { GearLinkApp } from '../GearLinkApp.js';
+import type { ViewApp } from './viewApp.js';
 import type { AppState } from '../state/appState.js';
 import { COIN_ICON, REVIVE_COSTS } from '../../shared/engine/index.js';
 
@@ -19,7 +19,7 @@ export type ReviveUi = {
   decline: () => void;
 };
 
-export const reviveUi = (st: AppState, app: GearLinkApp): ReviveUi => {
+export const reviveUi = (st: AppState, app: ViewApp): ReviveUi => {
   const r = st.revive;
   const coins = st.profile.coins;
   return {

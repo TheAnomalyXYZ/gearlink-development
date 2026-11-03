@@ -11,8 +11,6 @@
  * is interactive inside the arena: the scrim lifts, a sample link glows, and
  * the guide waits for the player to draw it for real.
  */
-import { MIN_LINK, areAdjacent, orbTypeOf } from '../shared/engine/index.js';
-import type { Gear } from '../shared/engine/types.js';
 
 export type FtueStep =
   'fight' | 'location' | 'hero' | 'gear' | 'orbs' | 'drag' | 'damage' | 'waves';
@@ -100,47 +98,8 @@ export const FTUE_LEGEND: Record<string, { label: string; blurb: string }> = {
 
 export const FTUE_ARROW_GAP = 6;
 
-/** Depth-first walk for a path of exactly `target` cells of one orb type. */
-const ftueWalk = (
-  board: number[],
-  path: number[],
-  type: number,
-  target: number
-): number[] | null => {
-  if (path.length === target) return path;
-  const last = path[path.length - 1]!;
-  for (let next = 0; next < board.length; next++) {
-    if (path.indexOf(next) >= 0 || !areAdjacent(last, next)) continue;
-    const v = board[next];
-    if (v == null || orbTypeOf(v) !== type) continue;
-    const found = ftueWalk(board, path.concat([next]), type, target);
-    if (found) return found;
-  }
-  return null;
-};
-
-/**
- * The shortest attack link off the WEAKEST attack orb equipped - the smallest
- * legal hit in the game, so the tutorial swing cannot one-shot wave 1 and skip
- * the "watch its HP drop" beat.
- */
-export const findAttackLink = (
-  board: number[],
-  loadout: Gear[]
-): number[] | null => {
-  let best: { path: number[]; power: number } | null = null;
-  for (let start = 0; start < board.length; start++) {
-    const v = board[start];
-    if (v == null) continue;
-    const type = orbTypeOf(v);
-    const orb = loadout[type];
-    if (!orb || orb.effect !== 'attack') continue;
-    if (best !== null && orb.power >= best.power) continue;
-    const path = ftueWalk(board, [start], type, MIN_LINK);
-    if (path) best = { path, power: orb.power };
-  }
-  return best ? best.path : null;
-};
+/** The board walk lives with the engine, which deals the tutorial's seed. */
+export { findAttackLink } from '../shared/engine/index.js';
 
 /**
  * Which phase each duel SETUP step belongs to. The setup card is an overlay on

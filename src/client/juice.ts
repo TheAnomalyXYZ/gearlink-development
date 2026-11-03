@@ -72,9 +72,42 @@ class Juice {
   frozenMs = 0;
   forged: Animation[] = [];
   lastTick = 0;
+  /** Pending later beats, so teardown() can drop them. */
+  private pending = new Set<ReturnType<typeof setTimeout>>();
+  /** Hit-stops still holding page animations paused. */
+  private thaws = new Set<() => void>();
 
   bind(app: JuiceApp): void {
     this.app = app;
+  }
+
+  private later(fn: () => void, ms: number): void {
+    const id = setTimeout(() => {
+      this.pending.delete(id);
+      fn();
+    }, ms);
+    this.pending.add(id);
+  }
+
+  /** The app is unmounting: drop pending beats, let go of any hit-stop, stop
+   *  the shake and the shards, and forget the app. */
+  teardown(): void {
+    for (const id of this.pending) clearTimeout(id);
+    this.pending.clear();
+    for (const thaw of [...this.thaws]) thaw();
+    cancelAnimationFrame(this.shakeRaf);
+    this.shakeRaf = 0;
+    this.trauma = 0;
+    if (this.shakeEl) this.shakeEl.style.transform = '';
+    this.shakeEl = null;
+    cancelAnimationFrame(this.partRaf);
+    this.partRaf = 0;
+    this.parts = [];
+    this.canvas?.remove();
+    this.canvas = null;
+    this.clearForge();
+    this.frozenUntil = 0;
+    this.app = null;
   }
 
   private kindNow(): JuiceBoard {
@@ -142,7 +175,7 @@ class Juice {
       end = Math.max(end, arrive);
     });
     end = Math.max(end, last + 300);
-    setTimeout(() => this.clearForge(), end + 40);
+    this.later(() => this.clearForge(), end + 40);
     return end;
   }
 
@@ -336,7 +369,10 @@ class Juice {
       }
     });
     this.frozenUntil = now() + ms;
-    setTimeout(() => {
+    // A teardown mid-freeze thaws straight away rather than leaving whatever
+    // outlives the app paused.
+    const thaw = (): void => {
+      this.thaws.delete(thaw);
       list.forEach((a) => {
         try {
           if (a.playState === 'paused') a.play();
@@ -344,7 +380,9 @@ class Juice {
           /* removed while frozen */
         }
       });
-    }, ms);
+    };
+    this.thaws.add(thaw);
+    this.later(thaw, ms);
   }
 
   addTrauma(v: number): void {
@@ -460,7 +498,7 @@ class Juice {
       .forEach((t) => {
         if (t - prev < 30) return;
         prev = t;
-        setTimeout(
+        this.later(
           () =>
             audio.play('click', {
               rate: 0.95 + Math.random() * 0.13,

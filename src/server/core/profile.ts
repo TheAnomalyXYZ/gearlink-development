@@ -17,6 +17,7 @@ import {
 import { settlePrize } from '../../shared/engine/season.js';
 import type { SeasonPrize } from '../../shared/engine/season.js';
 import { removeFromPool } from './duelpool.js';
+import { BusyError, withProfileLock } from './lock.js';
 import { finalStanding, groupStanding } from './solo.js';
 import { soloTierById, titleIsLive } from '../../shared/engine/solo.js';
 import type { SoloPrize, SoloTitle } from '../../shared/engine/solo.js';
@@ -246,34 +247,35 @@ const SOLO_LOOKBACK = 4;
 export const peekCoins = async (userId: string): Promise<number> =>
   num(await redis.hGet(profileKey(userId), 'coins'), STARTING_COINS);
 
-export const loadProfile = async (
+/** Whether this hash still has a weekly reset - duel league or solo board -
+ *  waiting to be applied. */
+const needsSettling = (h: Record<string, string>, week: number): boolean =>
+  h['duelWeek'] !== String(week) || h['soloSettled'] !== String(week - 1);
+
+/**
+ * Apply the weekly resets a profile has missed, write them, and return the
+ * hash as it now stands. Runs under the player's lock, on a hash read inside
+ * it: the prizes land on the wallet as absolute numbers, which would otherwise
+ * be written over (or write over) a purchase landing at the same moment.
+ */
+const settleProfile = async (
   userId: string,
-  username: string
-): Promise<Profile> => {
-  const h = await redis.hGetAll(profileKey(userId));
-  const gear = Object.keys(h).length ? obj(h['gear']) : STARTER_GEAR();
-  // Migration: a save written against a smaller card table can leave the picker
-  // holding gear the collection says is unowned. Top the starters back up.
-  for (const [id, n] of Object.entries(STARTER_GEAR()))
-    if (!(gear[id]! > 0)) gear[id] = n;
-
-  const duelCls = parseCls(h['duelCls']);
-
+  h: Record<string, string>,
+  week: number
+): Promise<Record<string, string>> => {
   let coins = num(h['coins'], STARTING_COINS);
   let gems = num(h['gems'], STARTING_GEMS);
   let packs = normalisePacks(obj(h['packs']));
-  let prize = parsePrize(h['duelPrize']);
+  const written: Record<string, string> = {};
 
   // The weekly reset is applied lazily, the first time a profile is read in a
   // new week: the prize for the league the last week ended in, then the
   // promotions, holds and drops for every reset it missed.
-  const week = duelWeekOf(Date.now());
-  const lastWeek = num(h['duelWeek'], week);
-  const stored = num(h['trophies'], STARTING_TROPHIES);
-  const trophies =
-    lastWeek < week ? settleWeeks(stored, week - lastWeek) : stored;
-  let duels = num(h['duelWeekDuels'], 0);
   if (h['duelWeek'] !== String(week)) {
+    const lastWeek = num(h['duelWeek'], week);
+    const stored = num(h['trophies'], STARTING_TROPHIES);
+    const trophies =
+      lastWeek < week ? settleWeeks(stored, week - lastWeek) : stored;
     const fields: Record<string, string> = {
       duelWeek: String(week),
       trophies: String(trophies),
@@ -283,7 +285,7 @@ export const loadProfile = async (
     // weeks were tracked starts counting now.
     const earned =
       h['duelWeek'] !== undefined && lastWeek < week
-        ? settlePrize(lastWeek, stored, duels)
+        ? settlePrize(lastWeek, stored, num(h['duelWeekDuels'], 0))
         : null;
     // Paid once however many reads race the reset: the first to take the
     // week's key pays, the rest only see the result.
@@ -293,34 +295,29 @@ export const loadProfile = async (
         else if (r.kind === 'gems') gems += r.amount;
         else packs = { ...packs, [r.packId]: (packs[r.packId] ?? 0) + 1 };
       }
-      prize = earned;
       fields['coins'] = String(coins);
       fields['gems'] = String(gems);
       fields['packs'] = JSON.stringify(packs);
       fields['duelPrize'] = JSON.stringify(earned);
     }
-    duels = 0;
     // League entry lasts one week and never renews itself: the new week
     // starts everyone out of the pool until they choose to enter again.
     fields['duelListed'] = '0';
     await redis.hSet(profileKey(userId), fields);
     await removeFromPool(userId);
+    Object.assign(written, fields);
   }
-  const listed =
-    h['duelListed'] === '1' && num(h['duelListedWeek'], -1) === week;
 
   /* The solo leaderboard settles the same lazy way: the first read in a new
      week looks up where the player finished every week since the last one it
      checked - subreddit-wide for a title, in their group for the division
      and its prize - pays each week once, and hands out last week's title. */
-  let soloPrize = parseSoloPrize(h['soloPrize']);
-  let soloTitle = parseSoloTitle(h['soloTitle']);
-  let divs: DivState = {
-    div: divisionIndex(h['soloDiv']),
-    idle: Math.max(0, num(h['soloDivIdle'], 0)),
-    best: Math.max(0, num(h['soloDivBest'], 0)),
-  };
   if (h['soloSettled'] !== String(week - 1)) {
+    let divs: DivState = {
+      div: divisionIndex(h['soloDiv']),
+      idle: Math.max(0, num(h['soloDivIdle'], 0)),
+      best: Math.max(0, num(h['soloDivBest'], 0)),
+    };
     const fields: Record<string, string> = { soloSettled: String(week - 1) };
     const settled = num(h['soloSettled'], week - 2);
     const from = Math.max(settled + 1, week - SOLO_LOOKBACK);
@@ -354,7 +351,7 @@ export const loadProfile = async (
         else if (r.kind === 'gems') gems += r.amount;
         else packs = { ...packs, [r.packId]: (packs[r.packId] ?? 0) + 1 };
       }
-      soloPrize = {
+      const soloPrize: SoloPrize = {
         week: w,
         rank: placed?.rank ?? 0,
         tier: placed?.tier.id ?? null,
@@ -376,7 +373,11 @@ export const loadProfile = async (
       fields['packs'] = JSON.stringify(packs);
       fields['soloPrize'] = JSON.stringify(soloPrize);
       if (w === week - 1 && placed) {
-        soloTitle = { tier: placed.tier.id, week: w, rank: placed.rank };
+        const soloTitle: SoloTitle = {
+          tier: placed.tier.id,
+          week: w,
+          rank: placed.rank,
+        };
         fields['soloTitle'] = JSON.stringify(soloTitle);
       }
     }
@@ -384,7 +385,57 @@ export const loadProfile = async (
     fields['soloDivIdle'] = String(divs.idle);
     fields['soloDivBest'] = String(divs.best);
     await redis.hSet(profileKey(userId), fields);
+    Object.assign(written, fields);
   }
+  return { ...h, ...written };
+};
+
+export const loadProfile = async (
+  userId: string,
+  username: string
+): Promise<Profile> => {
+  const week = duelWeekOf(Date.now());
+  let h = await redis.hGetAll(profileKey(userId));
+  if (needsSettling(h, week)) {
+    try {
+      h = await withProfileLock(userId, async () => {
+        const fresh = await redis.hGetAll(profileKey(userId));
+        return needsSettling(fresh, week)
+          ? await settleProfile(userId, fresh, week)
+          : fresh;
+      });
+    } catch (err) {
+      // Another request holds this player and will settle them itself; this
+      // read shows the hash as it stands, with the trophy reset previewed.
+      if (!(err instanceof BusyError)) throw err;
+    }
+  }
+
+  const gear = Object.keys(h).length ? obj(h['gear']) : STARTER_GEAR();
+  // Migration: a save written against a smaller card table can leave the picker
+  // holding gear the collection says is unowned. Top the starters back up.
+  for (const [id, n] of Object.entries(STARTER_GEAR()))
+    if (!(gear[id]! > 0)) gear[id] = n;
+
+  const duelCls = parseCls(h['duelCls']);
+  const coins = num(h['coins'], STARTING_COINS);
+  const gems = num(h['gems'], STARTING_GEMS);
+  const packs = normalisePacks(obj(h['packs']));
+  const prize = parsePrize(h['duelPrize']);
+  const lastWeek = num(h['duelWeek'], week);
+  const stored = num(h['trophies'], STARTING_TROPHIES);
+  const trophies =
+    lastWeek < week ? settleWeeks(stored, week - lastWeek) : stored;
+  const duels = h['duelWeek'] === String(week) ? num(h['duelWeekDuels'], 0) : 0;
+  const listed =
+    h['duelListed'] === '1' && num(h['duelListedWeek'], -1) === week;
+  const soloPrize = parseSoloPrize(h['soloPrize']);
+  let soloTitle = parseSoloTitle(h['soloTitle']);
+  const divs: DivState = {
+    div: divisionIndex(h['soloDiv']),
+    idle: Math.max(0, num(h['soloDivIdle'], 0)),
+    best: Math.max(0, num(h['soloDivBest'], 0)),
+  };
   if (!titleIsLive(soloTitle, week)) soloTitle = null;
   const titleFlair = soloTitle ? weeklyFlairFor(soloTitle.tier) : null;
 

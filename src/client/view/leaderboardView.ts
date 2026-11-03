@@ -3,7 +3,7 @@
  * plain data for `Leaderboard.tsx`. Kept out of buildView so the ladder's
  * wording and numbers can be read (and tested) on their own.
  */
-import type { GearLinkApp } from '../GearLinkApp.js';
+import type { ViewApp } from './viewApp.js';
 import type { AppState, BoardTab } from '../state/appState.js';
 import type {
   LeaderboardEntry,
@@ -35,7 +35,7 @@ import {
 } from '../../shared/engine/index.js';
 import type {
   GroupBand,
-  HeroClass,
+  HeroPerk,
   QuestReward,
   SoloTier,
 } from '../../shared/engine/index.js';
@@ -146,8 +146,10 @@ export type LbView = {
 
 const fmt = (n: number) => n.toLocaleString('en-US');
 
-const avatarOf = (hero: string): string =>
-  (HERO_PERKS[hero as HeroClass] ?? HERO_PERKS.Hero).img;
+/** Widened so a hero name off the wire indexes it without a cast; an
+ *  unknown one falls through to the Hero. */
+const PERKS: Record<string, HeroPerk> = HERO_PERKS;
+const avatarOf = (hero: string): string => (PERKS[hero] ?? HERO_PERKS.Hero).img;
 
 export const rewardIcon = (r: QuestReward): string =>
   r.kind === 'coins'
@@ -362,7 +364,7 @@ const tierCard = (t: SoloTier, heldTier: string | null): LbTierCard => {
   };
 };
 
-export const leaderboardView = (st: AppState, app: GearLinkApp): LbView => {
+export const leaderboardView = (st: AppState, app: ViewApp): LbView => {
   const tab: BoardTab =
     st.boardTab === 'today' && !st.daily ? 'group' : st.boardTab;
   const current = st.soloBoards?.current ?? st.solo;

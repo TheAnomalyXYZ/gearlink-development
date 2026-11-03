@@ -58,6 +58,13 @@ The `buildView` / `Screen` split is the design's own `renderVals` / template
 seam, kept deliberately: a layout change happens in `Screen`, a behaviour change
 in `GearLinkApp`, and neither has to know about the other.
 
+One exception keeps a drag smooth: a drag writes state once per cell it
+crosses, and only the chain and its preview change. When that is all that
+moved, `GearLinkApp` rebuilds just the board on top of the last view
+(`dragView`), and `Screen` skips its body - the board blocks read the newest
+view from a context instead. `view.test.tsx` checks both against a full
+rebuild.
+
 `GearLinkApp` is a class component on purpose. Its flow is chained timers — a
 link clears, the board settles, the monster winds up, the swing lands — and each
 beat owns its own timer handle. Hooks would scatter that across refs without

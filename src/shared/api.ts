@@ -213,7 +213,13 @@ export type InitResponse = {
   soloAlert: SoloAlert | null;
   /** The daily login streak, and whether today's reward is waiting. */
   streak: StreakView;
+  /** The seed the next battle must be fought on. The server owns it, so it is
+   *  handed over ahead of time and a battle starts without a round trip. */
+  nextSeed: number;
 };
+
+/** The pending battle seed, for a client that does not hold one. */
+export type RunSeedResponse = { type: 'runSeed'; seed: number };
 
 /** A finished run, as the client played it. The server re-runs the moves; the
  *  client never reports its own score. */
@@ -271,7 +277,13 @@ export type SubmitRunResponse = {
   solo: SoloRunResult;
   soloBoard: SoloBoard;
   soloGroup: SoloGroupBoard | null;
+  /** The seed for the battle after this one. */
+  nextSeed: number;
 };
+
+/** A run refused because its seed is not the pending one - banked already
+ *  (another window, a retry) or expired. Carries the seed to fight on next. */
+export type RunSeedErrorResponse = ErrorResponse & { nextSeed: number };
 
 /** Spend three pieces on one more container for this class. */
 export type ApplyHeartRequest = { cls: HeroClass };
@@ -410,8 +422,9 @@ export type DuelResultRequest = {
   /** Reddit user id of the opponent, when it was a listed player. */
   foeId?: string;
   won: boolean;
-  /** Seconds the match lasted, used to reject instantly-reported wins. */
-  seconds: number;
+  /** The one-shot token /duel/start issued. The server times the match from
+   *  its own start stamp, so nothing about the clock is the client's. */
+  token: string;
 };
 
 export type ProfileResponse = {
@@ -529,3 +542,6 @@ export type EquipSkinRequest = { skinId: string };
 export type BuySkinRequest = { skinId: string };
 
 export type ErrorResponse = { status: 'error'; message: string };
+
+/** A duel is about to start: the token its result must carry back. */
+export type DuelStartResponse = { type: 'duelStart'; token: string };

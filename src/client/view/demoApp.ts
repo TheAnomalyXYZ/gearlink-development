@@ -3,12 +3,14 @@
  * Devvit host: the render test walks every screen with it, and the design
  * system previews draw the real Screen from it.
  */
-import type { GearLinkApp } from '../GearLinkApp.js';
+import type { ViewApp } from './viewApp.js';
+import { INITIAL_STATE, type AppState } from '../state/appState.js';
 import {
   FIRST_LOCATION,
   enemyDisplayFor,
   Run,
   defaultLoadout,
+  HERO_CLASSES,
   mulberry32,
   QUESTS,
   questStatus,
@@ -21,9 +23,7 @@ export const profile: Profile = {
   gems: 60,
   trophies: 1000,
   gear: Object.fromEntries(
-    ['Hero', 'Archer', 'Mage'].flatMap((c) =>
-      defaultLoadout(c as 'Hero').map((id) => [id, 1])
-    )
+    HERO_CLASSES.flatMap((c) => defaultLoadout(c).map((id) => [id, 1]))
   ),
   gearLevels: {},
   packs: { base: 2, gold: 1 },
@@ -94,10 +94,11 @@ export const rng = mulberry32(7);
 /** Enough of the app's surface for the view model: state plus the handful of
  *  methods it calls, all inert. `over` replaces any slice of state - `phase`
  *  picks the screen. */
-export const demoApp = (over: Record<string, unknown>): GearLinkApp => {
+export const demoApp = (over: Partial<AppState>): ViewApp => {
   const noop = () => undefined;
   const curried = () => noop;
-  const state = {
+  const state: AppState = {
+    ...INITIAL_STATE,
     profile,
     leaderboard: [
       {
@@ -247,11 +248,8 @@ export const demoApp = (over: Record<string, unknown>): GearLinkApp => {
       glassKnight: false,
     }),
     enemyAt: (_b: unknown, w: number) => run.enemyForWave(w),
-    blockCapFor: (e: { strength: number }) => run.blockCapFor(e as never),
-    swingStrength: (e: { strength: number }, h: number) =>
-      run.swingStrength(e as never, h),
-    intentFor: (e: unknown, m: number, h: number) =>
-      run.intentFor(e as never, m, h),
+    swingStrength: (e, h) => run.swingStrength(e, h),
+    intentFor: (e, m, h) => run.intentFor(e, m, h),
     scoreOf: (s: typeof bs) => s.damageDealt,
     versionInfo: () => ({ app: '0.0.7', build: 'abc1234 2026-10-01' }),
     waveCount: () => run.waveCount,
@@ -260,11 +258,8 @@ export const demoApp = (over: Record<string, unknown>): GearLinkApp => {
     locationName: () => run.location.name,
     isBossWave: (w: number) => run.isBossWave(w),
     isKingWave: () => false,
-    heartsOfClass: () => 2,
-    canUpgradeHp: () => true,
     upgradeHp: curried,
     gearLevel: () => 1,
-    levelsOf: (picked: string[]) => picked.map(() => 1),
     canUpgradeGear: () => false,
     upgradeGear: curried,
     ftueHint: () => null,
@@ -284,8 +279,6 @@ export const demoApp = (over: Record<string, unknown>): GearLinkApp => {
     goMap: noop,
     goKnights: noop,
     replayDaily: noop,
-    endAction: noop,
-    startDuel: curried,
     pickFoe: curried,
     pickShopTab: curried,
     pickQuestTab: curried,
@@ -373,5 +366,46 @@ export const demoApp = (over: Record<string, unknown>): GearLinkApp => {
     setFtueHomeNav: noop,
     setFtueHeroCta: noop,
     setFtueGearCta: noop,
-  } as unknown as GearLinkApp;
+    acceptRevive: () => Promise.resolve(),
+    backToLobby: noop,
+    buySkin: curried,
+    cancelEnter: noop,
+    claimStreak: noop,
+    closeDuelRules: noop,
+    closeStreak: noop,
+    confirmDuel: noop,
+    confirmEnter: noop,
+    declineRevive: noop,
+    dismissPrize: noop,
+    dismissSoloAlert: noop,
+    editDuelForFoe: noop,
+    enterPost: noop,
+    equipSkin: curried,
+    goFight: noop,
+    intentEnter: noop,
+    intentLeave: noop,
+    intentTap: noop,
+    openAdmin: noop,
+    openDuelRules: noop,
+    openFlairFromMenu: noop,
+    openFullGame: noop,
+    openSkins: noop,
+    openSoloAlert: noop,
+    openStack: noop,
+    openStreak: noop,
+    openWarChestFromMenu: noop,
+    postIntroDone: false,
+    setState: noop,
+    postMode: false,
+    tearPack: noop,
+    runDone: null,
+    enterEnd: noop,
+    retryRun: noop,
+    postSizing: false,
+    setPostRoot: noop,
+    clearChain: noop,
+    dailyDone: null,
+    openBooks: noop,
+    afterBooks: null,
+  };
 };

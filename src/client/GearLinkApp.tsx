@@ -101,7 +101,7 @@ import type {
   Profile,
   SubmitRunRequest,
 } from '../shared/api.js';
-import { api } from './api.js';
+import { ApiError, api } from './api.js';
 import {
   DEFAULT_VOLUMES,
   audio,
@@ -166,9 +166,10 @@ import {
 import { DRAG_SLOP, clampPan, panBounds } from './state/mapPan.js';
 import { packSummary, toOpenCards } from './state/packs.js';
 import { Timers } from './state/timers.js';
-import { buildView } from './view/buildView.js';
+import { buildView, dragOnly, dragView, type View } from './view/buildView.js';
 import { Screen } from './view/Screen.js';
 import type { FxRect } from './fx/fx.js';
+import { teardown as teardownFx } from './fx/fx.js';
 import type { GearUpFx } from './fx/gearUpgrade.js';
 import {
   capture as capturePage,
@@ -176,7 +177,7 @@ import {
 } from './fx/pageTransition.js';
 import type { PageSnap } from './fx/pageTransition.js';
 import { juice } from './juice.js';
-import * as victory from './fx/victory.js';
+import * as victory from './fx/scenes.js';
 import {
   clearLiveRun,
   isPostMode,
@@ -254,7 +255,10 @@ type TimerKey =
   | 'foeClear'
   | 'foeLand'
   // chrome
-  | 'shopMsg';
+  | 'shopMsg'
+  // pack hand-offs: the next queued book, or back to the victory screen
+  | 'nextPack'
+  | 'books';
 
 /** Every timer that drives the duel's clock and its bot. */
 const DUEL_TIMERS: TimerKey[] = [
@@ -303,8 +307,15 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
   private postRo: ResizeObserver | null = null;
   private moves: number[][] = [];
 
+  /** The seed the server is holding for the next battle, handed over with the
+   *  profile and with every run result. Null while one is on its way. */
+  private seed: number | null = null;
+  private seedReq: Promise<number> | null = null;
+  private starting = false;
+
   private duelRngs: Record<string, () => number> = {};
-  private duelStartedAt = 0;
+  /** The server's token for the duel in flight; its result must carry it. */
+  private duelToken: Promise<string | null> | null = null;
   private pendingMe = false;
 
   private timers = new Timers<TimerKey>();
@@ -402,6 +413,10 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
 
   override componentWillUnmount(): void {
     this.timers.clearAll();
+    // The effect layers are module singletons: drop their pending beats and
+    // document listeners so nothing lands on an unmounted app.
+    juice.teardown();
+    teardownFx();
     audio.detach();
     document.removeEventListener('click', this.onUiClick);
     for (const o of [this.ro, this.fro, this.aro, this.cardObs, this.mro])
@@ -415,6 +430,8 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
   private async boot({ init, quests } = bootData()): Promise<void> {
     try {
       const res = await init;
+      this.seed = res.nextSeed;
+      this.seedReq = null;
       this.setState(
         (s) => ({
           ready: true,
@@ -1366,10 +1383,54 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
     return this.run.start();
   }
 
+  /** Wait on `next` for the seed of the next battle. A run refused for its
+   *  seed carries the next one; any other failure asks for it outright. */
+  private awaitSeed(next: Promise<number>): Promise<number> {
+    this.seed = null;
+    const req = next.catch((e: unknown) =>
+      e instanceof ApiError && e.nextSeed !== null
+        ? e.nextSeed
+        : api.runSeed().then((r) => r.seed)
+    );
+    this.seedReq = req;
+    void req.then(
+      (s) => {
+        if (this.seedReq !== req) return;
+        this.seed = s;
+        this.seedReq = null;
+      },
+      () => {
+        if (this.seedReq === req) this.seedReq = null;
+      }
+    );
+    return req;
+  }
+
+  /** The battle is dealt from the server's seed - held already almost always,
+   *  so the fight starts at once; otherwise it starts when the seed lands. */
   startRun = (): void => {
+    if (this.state.picked.length !== 5 || this.starting) return;
+    if (this.seed !== null) {
+      this.beginRun(this.seed);
+      return;
+    }
+    this.starting = true;
+    (this.seedReq ?? this.awaitSeed(api.runSeed().then((r) => r.seed))).then(
+      (seed) => {
+        this.starting = false;
+        this.beginRun(seed);
+      },
+      (e: unknown) => {
+        this.starting = false;
+        this.fail(e);
+      }
+    );
+  };
+
+  private beginRun(seed: number): void {
     if (this.state.picked.length !== 5) return;
     this.moves = [];
-    const bs = this.adoptRun(this.currentRunSpec(newSeed()));
+    const bs = this.adoptRun(this.currentRunSpec(seed));
     this.setState({
       ...BATTLE_RESET,
       phase: 'battle',
@@ -1378,7 +1439,7 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
     });
     // Starting a fight off the gear step is the end of the build lessons.
     if (this.state.ftueStep === 'gear') this.markFtueSeen();
-  };
+  }
 
   quitRun = (): void => {
     if (!this.state.bs) return;
@@ -1407,8 +1468,11 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
     }
     const moves = this.moves;
     this.moves = [];
+    // Submitting burns the seed on the server; the answer carries the next.
+    const req = api.submitRun({ ...spec, moves });
+    void this.awaitSeed(req.then((r) => r.nextSeed));
     try {
-      const res = await api.submitRun({ ...spec, moves });
+      const res = await req;
       this.noteFlairs(res.profile);
       this.setState({
         profile: res.profile,
@@ -2479,7 +2543,12 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
       return;
     }
     this.duelRngs = {};
-    this.duelStartedAt = Date.now();
+    // The server times the match from its own stamp; a failed start only
+    // means this duel cannot report.
+    this.duelToken = api.duelStart().then(
+      (r) => r.token,
+      () => null
+    );
     const p = this.state.profile;
     this.setState(
       {
@@ -2709,7 +2778,8 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
     this.timers.clear(...DUEL_TIMERS);
     const won = kind === 'win' || kind === 'time-win' || kind === 'win-buried';
     audio.play(won ? 'victory' : 'defeat');
-    const seconds = Math.round((Date.now() - this.duelStartedAt) / 1000);
+    const token = this.duelToken;
+    this.duelToken = null;
     const ranked = this.state.profile.duelListed;
     // Shown immediately off the local result; the server's number replaces it
     // the moment it answers, so a slow network never holds up the panel.
@@ -2723,13 +2793,18 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
       busy: false,
     });
     const foe = this.state.duelFoe;
-    void api
-      .duelResult({
-        foe: foe?.name ?? '',
-        ...(foe && foe.kind === 'player' ? { foeId: foe.id } : {}),
-        won,
-        seconds,
-      })
+    if (!token) return;
+    void token
+      .then((t) =>
+        t === null
+          ? Promise.reject(new Error('duel was never started'))
+          : api.duelResult({
+              foe: foe?.name ?? '',
+              ...(foe && foe.kind === 'player' ? { foeId: foe.id } : {}),
+              won,
+              token: t,
+            })
+      )
       .then((r) => {
         const before = this.state.profile.trophies;
         this.adopt(r.profile);
@@ -2944,7 +3019,9 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
         this.setState({
           phase: 'opening',
           openPack: {
-            id,
+            // An uncollected roll comes back in place of a new one, and it
+            // may be a different pack from the one tapped.
+            id: r.packId,
             token: r.token,
             cards: toOpenCards(r.cards),
             shown: 0,
@@ -2991,7 +3068,7 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
     if (op.mock) {
       this.setState({ phase, invTab: 'gear', openPack: null });
       h?.after?.();
-      if (toVictory) setTimeout(() => this.afterBooks?.(), 30);
+      if (toVictory) this.timers.after('books', 30, () => this.afterBooks?.());
       return;
     }
     const summary = packSummary(op);
@@ -3004,8 +3081,12 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
         this.adopt(r.profile, back ? summary : undefined);
         this.refreshQuests();
         h?.after?.(r);
-        if (next) setTimeout(() => this.openPackFrom(next, op.from), 60);
-        else if (toVictory) setTimeout(() => this.afterBooks?.(), 30);
+        if (next)
+          this.timers.after('nextPack', 60, () =>
+            this.openPackFrom(next, op.from)
+          );
+        else if (toVictory)
+          this.timers.after('books', 30, () => this.afterBooks?.());
       })
       .catch(this.fail);
   };
@@ -3088,29 +3169,6 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
     this.setState({ ftueStep: null, ftuePlace: null });
   };
 
-  /** Deal a board that HAS an attack link, rather than skipping the drag lesson
-   *  because this particular deal had none. Only reachable before the player's
-   *  first move, so nothing recorded is disturbed. */
-  private dealTeachableBoard(): boolean {
-    const spec = this.runSpec;
-    if (!this.state.bs || !this.run || !spec || this.moves.length) return false;
-    const loadout = this.loadout();
-    if (!loadout.some((o) => o.effect === 'attack')) return false;
-    // A re-deal consumes the run's RNG, so the seed must be re-rolled with it -
-    // otherwise the server would replay the board the player never saw. Only
-    // the seed changes: location, ascension and hearts must match what is
-    // submitted.
-    for (let tries = 0; tries < 80; tries++) {
-      const candidate = { ...spec, seed: newSeed() };
-      const start = new Run({ ...candidate, mutators: MUTATORS }).start();
-      if (findAttackLink(start.board, loadout)) {
-        this.setState({ bs: this.adoptRun(candidate) });
-        return true;
-      }
-    }
-    return false;
-  }
-
   advanceFtue = (): void => {
     const cur = this.state.ftueStep;
     if (!cur) return;
@@ -3122,13 +3180,9 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
       return;
     }
     let next: FtueStep | null = FTUE_ORDER[FTUE_ORDER.indexOf(cur) + 1] ?? null;
-    // Linking is the whole game, so re-deal instead of skipping it.
-    if (
-      next === 'drag' &&
-      this.ftueHint() === null &&
-      !this.dealTeachableBoard()
-    )
-      next = 'waves';
+    // A board with no attack link to point at skips the drag lesson. It cannot
+    // be re-dealt: the seed is the server's, and the board is what it replays.
+    if (next === 'drag' && this.ftueHint() === null) next = 'waves';
     if (next === null) this.markFtueSeen();
     this.setState({ ftueStep: next, ftuePlace: null });
   };
@@ -3239,12 +3293,32 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
     this.setState({ ftuePlace: next });
   };
 
+  /** The view last rendered and what it was built from. A drag step that
+   *  moved only the chain rebuilds just the board on top of it (see
+   *  `dragView`), which also lets `Screen` skip everything off the board. */
+  private lastView: {
+    v: View;
+    st: AppState;
+    props: GearLinkProps;
+  } | null = null;
+
+  private view(): View {
+    const st = this.state;
+    const last = this.lastView;
+    const v =
+      last && last.props === this.props && dragOnly(last.st, st)
+        ? dragView(this, last.v)
+        : buildView(this);
+    this.lastView = { v, st, props: this.props };
+    return v;
+  }
+
   override render() {
     if (this.state.fatal) return <Fatal message={this.state.fatal} />;
     if (!this.state.ready) return <Booting />;
     return (
       <>
-        <Screen v={buildView(this)} />
+        <Screen v={this.view()} />
         {this.state.adminOpen && (
           <Suspense fallback={null}>
             <AdminPanel

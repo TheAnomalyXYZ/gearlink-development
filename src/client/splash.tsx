@@ -8,8 +8,9 @@ import type {
   DailyPoster,
   WarChestPost,
 } from '../shared/api.js';
-import { requestExpandedMode, showToast } from '@devvit/web/client';
+import { context, requestExpandedMode, showToast } from '@devvit/web/client';
 import { Booting } from './components/BootScreens.js';
+import { bootData } from './state/boot.js';
 import { Challenge } from './splash-card.js';
 import { Chest } from './splash-chest.js';
 import { Daily } from './splash-daily.js';
@@ -19,9 +20,34 @@ import { SHELL } from './splash-style.js';
 
 /** The general post is a playable battle for a signed-in reader. The game is
  *  its own chunk, fetched only here, so the other post types stay light. */
+const loadPostGame = () => import('./postGame.js');
 const PostGame = lazy(() =>
-  import('./postGame.js').then((m) => ({ default: m.PostGame }))
+  loadPostGame().then((m) => ({ default: m.PostGame }))
 );
+
+/** Will this inline view turn into the game? Only a signed-in reader plays,
+ *  and a challenge or War Chest post never does. The client context knows
+ *  both before the server's answer lands, so a reader who will play has the
+ *  game chunk and its first reads on the wire alongside that lookup instead
+ *  of after it. A Daily Battle post counts: it plays while its day is live,
+ *  which is nearly always when it is in the feed. */
+const willPlay = (): boolean => {
+  try {
+    const d = context.postData;
+    return !!context.userId && !d?.challenge && !d?.warchest;
+  } catch {
+    // No host context (a render test): nothing to prefetch for.
+    return false;
+  }
+};
+
+/** Starts the game chunk and the reads GearLinkApp boots on. Both are
+ *  memoised, so the app's own mount picks these up rather than asking again;
+ *  a failure here is left for that mount to meet and report. */
+const prefetchGame = (): void => {
+  loadPostGame().catch(() => {});
+  bootData().init.catch(() => {});
+};
 
 /** The claim button, wired to open the post: that is a host call, so it
  *  lives with the entry point rather than with the button. */
@@ -217,9 +243,11 @@ export const Splash = () => {
    where there is no document to mount into. */
 const root =
   typeof document === 'undefined' ? null : document.getElementById('root');
-if (root)
+if (root) {
+  if (willPlay()) prefetchGame();
   createRoot(root).render(
     <StrictMode>
       <Splash />
     </StrictMode>
   );
+}

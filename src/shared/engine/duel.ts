@@ -71,6 +71,23 @@ export const DUEL_ENABLED = false;
 
 export const DUEL_WIN_TROPHIES = 22;
 export const DUEL_LOSS_TROPHIES = 12;
+/** The quickest a duel can honestly be over. A result timed by the server
+ *  from its own start stamp below this is not a duel that was played. */
+export const DUEL_MIN_SECONDS = 10;
+/** Slack past the match clock for the result to arrive over a slow network. */
+export const DUEL_RESULT_GRACE_SECONDS = 30;
+/** Ranked duels a player may bank in one UTC day. The outcome is reported,
+ *  not replayed, so this caps how far a forged win streak can climb. */
+export const DUEL_RANKED_PER_DAY = 25;
+
+/** Whether a duel the server timed at `seconds` is one that could be played. */
+export const duelSecondsCredible = (seconds: number): boolean =>
+  Number.isFinite(seconds) &&
+  seconds >= DUEL_MIN_SECONDS &&
+  seconds <= DUEL_MATCH_SECONDS + DUEL_RESULT_GRACE_SECONDS;
+
+/** The UTC day a moment falls in, as a day number, for the ranked cap. */
+export const duelDayOf = (now: number): number => Math.floor(now / 86_400_000);
 /** Below this arena height two equal boards would both be tiny, so the duel
  *  falls back to one full-size player board and a thumbnail of theirs. */
 export const DUEL_STACK_MIN_H = 576;

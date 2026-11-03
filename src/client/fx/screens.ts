@@ -3,7 +3,7 @@
  * Duties pips and bars that fill from where you last saw them. */
 import * as fx from './fx.js';
 import type { FxHelpers, FxRect } from './fx.js';
-import { popBag } from './packStage.js';
+import { popBag } from './scenes.js';
 
 /** A quest reward, as the quest board sends it. */
 export type FxQuestReward =
@@ -331,7 +331,7 @@ export const questSync = (app: ScreensApp): QuestVisit | null => {
       /* storage blocked */
     }
   }
-  setTimeout(() => questEffects(app), 0);
+  fx.later(() => questEffects(app), 0);
   return visit;
 };
 
@@ -450,14 +450,14 @@ const questEffects = (app: ScreensApp): void => {
       Math.floor((Math.min(p, q.target) / Math.max(1, q.target)) * segs + 1e-9);
     const fresh = fill(q.progress) - fill(v.from[q.id] ?? q.progress);
     for (let i = 0; i < fresh; i++)
-      setTimeout(() => fx.sfx.tick(i), fx.ms(320 + k * 40 + i * 70));
+      fx.later(() => fx.sfx.tick(i), fx.ms(320 + k * 40 + i * 70));
     if (v.away.includes(q.id))
-      setTimeout(() => complete(q.id), fx.ms(420 + k * 40 + fresh * 70));
+      fx.later(() => complete(q.id), fx.ms(420 + k * 40 + fresh * 70));
   });
   if (meta && meta.fanfare) {
     meta.fanfare = false;
     fx.sfx.fanfare();
-    setTimeout(() => complete('d_all'), 200);
+    fx.later(() => complete('d_all'), 200);
   }
 };
 
@@ -514,7 +514,7 @@ const stampDone = (row: Element): void => {
     )
   );
   a.onfinish = () => s.remove();
-  setTimeout(() => {
+  fx.later(() => {
     fx.sfx.thud();
     fx.burst(x, y + 12, {
       colors: ['#C9B79C', '#8A7A66', '#E6D7BF'],

@@ -272,7 +272,7 @@ const burstScene = (
   );
   const gain = info.toPower - info.fromPower;
   if (gain > 0)
-    setTimeout(
+    fx.later(
       () => fx.floatText(icon, '+' + gain + ' POWER', '#AEE45D', 18),
       fx.ms(420)
     );
@@ -330,7 +330,7 @@ export const upgradeGear = (
       );
     },
   });
-  setTimeout(
+  fx.later(
     () =>
       fx.flyTo(el(panel, '[data-fx-upcoins]'), icon, {
         icon: h.coinIcon,
@@ -373,7 +373,7 @@ export const upgradeGear = (
     1100,
     { delay: fx.ms(300), fill: 'forwards' }
   );
-  setTimeout(() => {
+  fx.later(() => {
     spinRays(art, 7);
     closingRings(art, info.color, 3);
   }, fx.ms(300));
@@ -384,7 +384,12 @@ export const upgradeGear = (
     if (tick < 16) fx.sfx.tick(tick++);
   }, fx.ms(80));
 
+  // Settled once: by the server's answer, or by the app unmounting first.
+  let settled = false;
   const settle = (): void => {
+    if (settled) return;
+    settled = true;
+    unregister();
     clearInterval(ticker);
     stopMotes();
     if (charge) charge.cancel();
@@ -392,6 +397,7 @@ export const upgradeGear = (
     spinRays(art, 1);
     busy = false;
   };
+  const unregister = fx.onTeardown(settle);
 
   app.upgradeGear(info.id, {
     charged: fx.wait(1400),

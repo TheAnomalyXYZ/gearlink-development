@@ -13,12 +13,12 @@
  * of `buildView`, which is where the state lives - so a layout change is made
  * here and a behaviour change is made there, never both at once.
  */
-import { Fragment } from 'react';
+import { Fragment, Suspense, createContext, memo, useContext } from 'react';
 import type { ReactNode } from 'react';
-import type { View } from './buildView.js';
+import { DRAG_KEYS, type View } from './buildView.js';
 import type { PostView } from './postLayout.js';
 import { MenuIcon, SpeakerIcon, VolumeSlider } from './SettingsControls.js';
-import { WorldMap } from './WorldMap.js';
+import { WorldMap } from './worldMapChunk.js';
 import { AscensionIcon } from './AscensionIcon.js';
 import { StreakChip, StreakNotice, StreakStrip } from './DailyStreak.js';
 import { ReviveOffer } from './ReviveOffer.js';
@@ -30,6 +30,12 @@ import {
   SoloPrizeNotice,
 } from './Leaderboard.js';
 import { GENERAL_GEAR } from '../splash-style.js';
+
+/** The newest view, for the parts of the screen a drag step changes. The rest
+ *  of the tree is memoised against everything else (see `Screen`), so those
+ *  parts read the board's keys from here, never from a `v` that may be stale. */
+const LiveView = createContext<View | null>(null);
+const useLive = (v: View): View => useContext(LiveView) ?? v;
 
 const PIXEL = 'VolterTitle,Volter,monospace';
 
@@ -49,179 +55,478 @@ const withHash = (text: string | number): ReactNode =>
 
 /** The main battle board: tiles, the link line and the damage pops. The full
  *  game's battle and the inline post's battle draw the same one. */
-const MainBoard = ({ v }: { v: View }) => (
-  <div
-    data-juice-board="main"
-    ref={v.setFtueBoard}
-    onPointerDown={v.onDown}
-    onPointerMove={v.onMove}
-    onPointerUp={v.onUp}
-    onPointerCancel={v.onCancel}
-    style={{
-      position: 'relative',
-      width: `${v.boardW}px`,
-      height: `${v.boardH}px`,
-      display: 'grid',
-      gridTemplateColumns: 'repeat(6,minmax(0,1fr))',
-      gridTemplateRows: 'repeat(5,minmax(0,1fr))',
-      gap: '4px',
-      touchAction: 'none',
-      userSelect: 'none',
-      animation: v.boardAnim,
-    }}
-  >
-    {(v.cells || []).map((c: any, cI: number) => (
-      <Fragment key={cI}>
-        <div
-          data-cell={c.i}
-          style={{
-            position: 'relative',
-            minHeight: '0',
-            transform: c.scale,
-            transition: 'transform 160ms cubic-bezier(.34,1.8,.64,1)',
-            zIndex: c.z,
-            opacity: c.cellOpacity,
-            animation: c.anim,
-          }}
-        >
+const MainBoard = ({ v: stale }: { v: View }) => {
+  const v = useLive(stale);
+  return (
+    <div
+      data-juice-board="main"
+      ref={v.setFtueBoard}
+      onPointerDown={v.onDown}
+      onPointerMove={v.onMove}
+      onPointerUp={v.onUp}
+      onPointerCancel={v.onCancel}
+      style={{
+        position: 'relative',
+        width: `${v.boardW}px`,
+        height: `${v.boardH}px`,
+        display: 'grid',
+        gridTemplateColumns: 'repeat(6,minmax(0,1fr))',
+        gridTemplateRows: 'repeat(5,minmax(0,1fr))',
+        gap: '4px',
+        touchAction: 'none',
+        userSelect: 'none',
+        animation: v.boardAnim,
+      }}
+    >
+      {(v.cells || []).map((c: any, cI: number) => (
+        <Fragment key={cI}>
           <div
+            data-cell={c.i}
             style={{
-              position: 'absolute',
-              inset: '0',
-              borderRadius: '8px',
-              border: `2px solid ${c.bd}`,
-              background: c.face,
-            }}
-          ></div>
-          <div
-            style={{
-              position: 'absolute',
-              inset: '0',
-              borderRadius: '8px',
-              pointerEvents: 'none',
-              animation: c.glowAnim,
-            }}
-          ></div>
-          <div
-            style={{
-              position: 'absolute',
-              inset: '-3px',
-              borderRadius: '10px',
-              pointerEvents: 'none',
-              boxShadow:
-                '0 0 0 2px #FFF2B0, 0 0 14px 4px rgba(255,242,176,.75)',
-              opacity: c.hintOpacity,
-              animation: c.hintAnim,
-            }}
-          ></div>
-          <div
-            style={{
-              position: 'absolute',
-              inset: '-6px',
-              borderRadius: '9999px',
-              border: '3px solid rgba(255,240,200,.95)',
-              boxShadow: '0 0 18px 6px rgba(255,150,60,.85)',
-              pointerEvents: 'none',
-              opacity: c.ringOpacity,
-              animation: c.ring,
-            }}
-          ></div>
-          <div
-            style={{
-              position: 'absolute',
-              inset: '2px',
-              pointerEvents: 'none',
+              position: 'relative',
+              minHeight: '0',
+              transform: c.scale,
+              transition: 'transform 160ms cubic-bezier(.34,1.8,.64,1)',
+              zIndex: c.z,
+              opacity: c.cellOpacity,
+              animation: c.anim,
             }}
           >
             <div
               style={{
                 position: 'absolute',
-                inset: '13%',
-                background: `url(${c.icon}) center/contain no-repeat`,
-                filter: 'drop-shadow(0 2px 0 rgba(0,0,0,.45))',
+                inset: '0',
+                borderRadius: '8px',
+                border: `2px solid ${c.bd}`,
+                background: c.face,
               }}
             ></div>
+            <div
+              style={{
+                position: 'absolute',
+                inset: '0',
+                borderRadius: '8px',
+                pointerEvents: 'none',
+                animation: c.glowAnim,
+              }}
+            ></div>
+            <div
+              style={{
+                position: 'absolute',
+                inset: '-3px',
+                borderRadius: '10px',
+                pointerEvents: 'none',
+                boxShadow:
+                  '0 0 0 2px #FFF2B0, 0 0 14px 4px rgba(255,242,176,.75)',
+                opacity: c.hintOpacity,
+                animation: c.hintAnim,
+              }}
+            ></div>
+            <div
+              style={{
+                position: 'absolute',
+                inset: '-6px',
+                borderRadius: '9999px',
+                border: '3px solid rgba(255,240,200,.95)',
+                boxShadow: '0 0 18px 6px rgba(255,150,60,.85)',
+                pointerEvents: 'none',
+                opacity: c.ringOpacity,
+                animation: c.ring,
+              }}
+            ></div>
+            <div
+              style={{
+                position: 'absolute',
+                inset: '2px',
+                pointerEvents: 'none',
+              }}
+            >
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: '13%',
+                  background: `url(${c.icon}) center/contain no-repeat`,
+                  filter: 'drop-shadow(0 2px 0 rgba(0,0,0,.45))',
+                }}
+              ></div>
+            </div>
+            <div
+              style={{
+                position: 'absolute',
+                top: '1px',
+                left: '3px',
+                fontSize: '9px',
+                color: '#FFFFFF',
+                pointerEvents: 'none',
+              }}
+            >
+              {c.order}
+            </div>
           </div>
+        </Fragment>
+      ))}
+      <svg
+        viewBox={'0 0 100 100'}
+        preserveAspectRatio={'none'}
+        style={{
+          position: 'absolute',
+          inset: '0',
+          width: '100%',
+          height: '100%',
+          pointerEvents: 'none',
+          zIndex: '6',
+          opacity: v.lineOpacity,
+        }}
+      >
+        <polyline
+          points={v.chainPoints}
+          fill={'none'}
+          stroke={'#0B0D1A'}
+          strokeWidth={v.chainUnderW}
+          strokeLinecap={'square'}
+          strokeLinejoin={'miter'}
+          vectorEffect={'non-scaling-stroke'}
+        />
+        <polyline
+          points={v.chainPoints}
+          fill={'none'}
+          stroke={v.chainColor}
+          strokeWidth={v.chainW}
+          strokeLinecap={'square'}
+          strokeLinejoin={'miter'}
+          strokeDasharray={v.chainDash}
+          vectorEffect={'non-scaling-stroke'}
+          style={{
+            animation: 'glDashFlow 520ms linear infinite',
+            filter: v.chainGlow,
+          }}
+        />
+      </svg>
+      {(v.pops || []).map((p: any, pI: number) => (
+        <Fragment key={pI}>
           <div
             style={{
               position: 'absolute',
-              top: '1px',
-              left: '3px',
-              fontSize: '9px',
-              color: '#FFFFFF',
+              left: '0',
+              right: '0',
+              top: p.top,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               pointerEvents: 'none',
+              fontFamily: 'VolterTitle,Volter,monospace',
+              fontSize: p.size,
+              color: p.color,
+              textShadow: '0 2px 0 #141D2E',
+              WebkitTextStroke: '4px #141D2E',
+              paintOrder: 'stroke fill',
+              animation: p.anim,
             }}
           >
-            {c.order}
+            {p.text}
           </div>
-        </div>
-      </Fragment>
-    ))}
-    <svg
-      viewBox={'0 0 100 100'}
-      preserveAspectRatio={'none'}
-      style={{
-        position: 'absolute',
-        inset: '0',
-        width: '100%',
-        height: '100%',
-        pointerEvents: 'none',
-        zIndex: '6',
-        opacity: v.lineOpacity,
-      }}
-    >
-      <polyline
-        points={v.chainPoints}
-        fill={'none'}
-        stroke={'#0B0D1A'}
-        strokeWidth={v.chainUnderW}
-        strokeLinecap={'square'}
-        strokeLinejoin={'miter'}
-        vectorEffect={'non-scaling-stroke'}
-      />
-      <polyline
-        points={v.chainPoints}
-        fill={'none'}
-        stroke={v.chainColor}
-        strokeWidth={v.chainW}
-        strokeLinecap={'square'}
-        strokeLinejoin={'miter'}
-        strokeDasharray={v.chainDash}
-        vectorEffect={'non-scaling-stroke'}
+        </Fragment>
+      ))}
+    </div>
+  );
+};
+
+/** The campaign board and the readout above it: what a link will do, then
+ *  the board itself. Reads the live view, as a drag step redraws only this. */
+const BattleBoardBlock = ({ v: stale }: { v: View }) => {
+  const v = useLive(stale);
+  return (
+    <>
+      <div
         style={{
-          animation: 'glDashFlow 520ms linear infinite',
-          filter: v.chainGlow,
+          height: '20px',
+          flexShrink: '0',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
         }}
-      />
-    </svg>
-    {(v.pops || []).map((p: any, pI: number) => (
-      <Fragment key={pI}>
+      >
         <div
           style={{
-            position: 'absolute',
-            left: '0',
-            right: '0',
-            top: p.top,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            pointerEvents: 'none',
-            fontFamily: 'VolterTitle,Volter,monospace',
-            fontSize: p.size,
-            color: p.color,
-            textShadow: '0 2px 0 #141D2E',
-            WebkitTextStroke: '4px #141D2E',
-            paintOrder: 'stroke fill',
-            animation: p.anim,
+            display: v.previewDisplay,
+            fontSize: '11px',
+            color: v.previewColor,
+            transition: 'color .2s',
           }}
         >
-          {p.text}
+          {v.previewText}
         </div>
-      </Fragment>
-    ))}
-  </div>
-);
+        {/* Chain maths as chips: power x mult = value, plus a bomb
+            badge when the chain will forge one. */}
+        <div
+          style={{
+            display: v.chipsDisplay,
+            alignItems: 'center',
+            gap: '6px',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            rowGap: '4px',
+            fontFamily: 'VolterTitle,Volter,monospace',
+            lineHeight: '1',
+          }}
+        >
+          <div
+            style={{
+              padding: '3px 8px 4px',
+              border: '2px solid #000000',
+              borderRadius: '6px 2px 6px 2px',
+              background: '#3459C2',
+              boxShadow: 'inset 0 -3px 0 #142663',
+              color: '#FFFFFF',
+              fontSize: '15px',
+              animation: v.chipPowerAnim,
+            }}
+          >
+            {v.chipPower}
+          </div>
+          <div
+            style={{
+              padding: '3px 8px 4px',
+              border: '2px solid #000000',
+              borderRadius: '6px 2px 6px 2px',
+              background: '#B23A44',
+              boxShadow: 'inset 0 -3px 0 #561520',
+              color: '#FFFFFF',
+              fontSize: '15px',
+              animation: v.chipMultAnim,
+            }}
+          >
+            {v.chipMult}
+          </div>
+          <div style={{ fontSize: '13px', color: v.previewColor }}>
+            {v.chipRest}
+          </div>
+          <div
+            style={{
+              display: v.chipBombDisplay,
+              alignItems: 'center',
+              gap: '4px',
+              padding: '2px 7px 3px 4px',
+              border: '2px solid #000000',
+              borderRadius: '6px 2px 6px 2px',
+              background: '#FFC24B',
+              boxShadow: 'inset 0 -3px 0 #B5701A',
+              color: '#000000',
+              fontSize: '13px',
+              animation: 'glBombBadge 700ms ease-in-out infinite',
+            }}
+          >
+            <div
+              style={{
+                width: '17px',
+                height: '17px',
+                background: 'url(/fx/icons/bomb.png) 0 0/17px 17px no-repeat',
+                imageRendering: 'pixelated',
+              }}
+            ></div>
+            +BOMB
+          </div>
+          <div
+            style={{
+              display: v.chipExtraDisplay,
+              fontSize: '11px',
+              color: '#CBD9EC',
+            }}
+          >
+            {v.chipExtra}
+          </div>
+        </div>
+      </div>
+      <div
+        ref={v.boardWrapRef}
+        style={{
+          height: `${v.boardH}px`,
+          flexShrink: '0',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: v.boardOpacity,
+          transition: 'opacity .2s',
+        }}
+      >
+        <MainBoard v={v} />
+      </div>
+    </>
+  );
+};
 
+/** Your duel board and the readout above it. Reads the live view, as a
+ *  drag step redraws only this. */
+const DuelBoardBlock = ({ v: stale }: { v: View }) => {
+  const v = useLive(stale);
+  return (
+    <>
+      <div
+        style={{
+          height: '16px',
+          flexShrink: '0',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <div style={{ fontSize: '11px', color: v.duelPreviewColor }}>
+          {v.duelPreview}
+        </div>
+      </div>
+      <div
+        ref={v.boardWrapRef}
+        style={{
+          flex: '1',
+          minHeight: '0',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <div
+          data-juice-board="duel"
+          onPointerDown={v.onDown}
+          onPointerMove={v.onMove}
+          onPointerUp={v.onUp}
+          onPointerCancel={v.onCancel}
+          style={{
+            position: 'relative',
+            width: `${v.duelBoardW}px`,
+            height: `${v.duelBoardH}px`,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(6,minmax(0,1fr))',
+            gridTemplateRows: 'repeat(5,minmax(0,1fr))',
+            gap: '3px',
+            touchAction: 'none',
+            userSelect: 'none',
+          }}
+        >
+          {(v.duelCells || []).map((c: any, cI: number) => (
+            <Fragment key={cI}>
+              <div
+                data-cell={c.i}
+                style={{
+                  position: 'relative',
+                  minHeight: '0',
+                  transform: c.scale,
+                  transition: 'transform 160ms cubic-bezier(.34,1.8,.64,1)',
+                  opacity: c.opacity,
+                  animation: c.anim,
+                }}
+              >
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: '0',
+                    borderRadius: '8px',
+                    border: `2px solid ${c.bd}`,
+                    background: c.face,
+                  }}
+                ></div>
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: '0',
+                    borderRadius: '8px',
+                    pointerEvents: 'none',
+                    animation: c.glowAnim,
+                  }}
+                ></div>
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: '0',
+                    display: c.crackDisplay,
+                    pointerEvents: 'none',
+                    background:
+                      'linear-gradient(115deg,transparent 44%,rgba(0,0,0,.55) 46%,transparent 48%),linear-gradient(65deg,transparent 60%,rgba(0,0,0,.45) 62%,transparent 64%)',
+                  }}
+                ></div>
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: '2px',
+                    pointerEvents: 'none',
+                  }}
+                >
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: '13%',
+                      background: `url(${c.icon}) center/contain no-repeat`,
+                      filter: 'drop-shadow(0 2px 0 rgba(0,0,0,.45))',
+                    }}
+                  ></div>
+                </div>
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '1px',
+                    left: '3px',
+                    fontSize: '9px',
+                    color: '#FFFFFF',
+                    pointerEvents: 'none',
+                  }}
+                >
+                  {c.order}
+                </div>
+              </div>
+            </Fragment>
+          ))}
+          <svg
+            viewBox={'0 0 100 100'}
+            preserveAspectRatio={'none'}
+            style={{
+              position: 'absolute',
+              inset: '0',
+              width: '100%',
+              height: '100%',
+              pointerEvents: 'none',
+              zIndex: '6',
+              opacity: v.duelLineOpacity,
+            }}
+          >
+            <polyline
+              points={v.duelChainPoints}
+              fill={'none'}
+              stroke={'#FFFFFF'}
+              strokeWidth={'9'}
+              strokeLinecap={'round'}
+              strokeLinejoin={'round'}
+              vectorEffect={'non-scaling-stroke'}
+              opacity={'0.95'}
+            />
+          </svg>
+          {(v.pops || []).map((p: any, pI: number) => (
+            <Fragment key={pI}>
+              <div
+                style={{
+                  position: 'absolute',
+                  left: '0',
+                  right: '0',
+                  top: p.top,
+                  textAlign: 'center',
+                  pointerEvents: 'none',
+                  zIndex: '8',
+                  fontFamily: 'VolterTitle,Volter,monospace',
+                  fontSize: '16px',
+                  color: p.color,
+                  WebkitTextStroke: '4px #000000',
+                  paintOrder: 'stroke fill',
+                  animation: 'glFloat 900ms ease-out forwards',
+                }}
+              >
+                {p.text}
+              </div>
+            </Fragment>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+};
 const PX = 'VolterTitle,Volter,monospace';
 const POST_PANEL = {
   border: '1px solid #213854',
@@ -1117,6 +1422,12 @@ type HeroSceneView = {
   stars: string;
 };
 
+/** The inline post's battle, off the live view: its board is the one a drag
+ *  step redraws. */
+const LivePostBattle = ({ v: stale }: { v: View }) => {
+  const v = useLive(stale);
+  return v.post ? <PostBattle v={v} p={v.post} /> : null;
+};
 /** The night sky, the world map tilted back like a table, and the chosen
  *  location's sticker standing on it - behind the hero pick and the loadout. */
 const HeroBackdrop = ({ s }: { s: HeroSceneView }) => {
@@ -1615,7 +1926,7 @@ const SPLASH_MOTES = [
   { left: '81%', delay: '2.5s', tint: '#5CC45A' },
 ];
 
-export const Screen = ({ v }: { v: View }) => (
+const ScreenBody = ({ v }: { v: View }) => (
   <div
     className="gl-page"
     style={{
@@ -1845,14 +2156,16 @@ export const Screen = ({ v }: { v: View }) => (
                 ref={v.setFtueMap}
                 style={{ position: 'absolute', inset: '0' }}
               >
-                <WorldMap
-                  embedded
-                  lockedIds={v.wmLocked}
-                  nextId={v.wmNext}
-                  focusRequest={v.wmFocusReq}
-                  onEnter={v.wmEnter}
-                  onFocusChange={v.wmFocus}
-                />
+                <Suspense fallback={null}>
+                  <WorldMap
+                    embedded
+                    lockedIds={v.wmLocked}
+                    nextId={v.wmNext}
+                    focusRequest={v.wmFocusReq}
+                    onEnter={v.wmEnter}
+                    onFocusChange={v.wmFocus}
+                  />
+                </Suspense>
               </div>
 
               {/* Top HUD, floating over the map rather than pushing it down. */}
@@ -3841,7 +4154,7 @@ export const Screen = ({ v }: { v: View }) => (
           </>
         ) : null}
 
-        {v.isPostBattle && v.post ? <PostBattle v={v} p={v.post} /> : null}
+        {v.isPostBattle ? <LivePostBattle v={v} /> : null}
 
         {v.isBattleStd ? (
           <>
@@ -4590,122 +4903,7 @@ export const Screen = ({ v }: { v: View }) => (
                   gap: '8px',
                 }}
               >
-                <div
-                  style={{
-                    height: '20px',
-                    flexShrink: '0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                  }}
-                >
-                  <div
-                    style={{
-                      display: v.previewDisplay,
-                      fontSize: '11px',
-                      color: v.previewColor,
-                      transition: 'color .2s',
-                    }}
-                  >
-                    {v.previewText}
-                  </div>
-                  {/* Chain maths as chips: power x mult = value, plus a bomb
-                      badge when the chain will forge one. */}
-                  <div
-                    style={{
-                      display: v.chipsDisplay,
-                      alignItems: 'center',
-                      gap: '6px',
-                      flexWrap: 'wrap',
-                      justifyContent: 'center',
-                      rowGap: '4px',
-                      fontFamily: 'VolterTitle,Volter,monospace',
-                      lineHeight: '1',
-                    }}
-                  >
-                    <div
-                      style={{
-                        padding: '3px 8px 4px',
-                        border: '2px solid #000000',
-                        borderRadius: '6px 2px 6px 2px',
-                        background: '#3459C2',
-                        boxShadow: 'inset 0 -3px 0 #142663',
-                        color: '#FFFFFF',
-                        fontSize: '15px',
-                        animation: v.chipPowerAnim,
-                      }}
-                    >
-                      {v.chipPower}
-                    </div>
-                    <div
-                      style={{
-                        padding: '3px 8px 4px',
-                        border: '2px solid #000000',
-                        borderRadius: '6px 2px 6px 2px',
-                        background: '#B23A44',
-                        boxShadow: 'inset 0 -3px 0 #561520',
-                        color: '#FFFFFF',
-                        fontSize: '15px',
-                        animation: v.chipMultAnim,
-                      }}
-                    >
-                      {v.chipMult}
-                    </div>
-                    <div style={{ fontSize: '13px', color: v.previewColor }}>
-                      {v.chipRest}
-                    </div>
-                    <div
-                      style={{
-                        display: v.chipBombDisplay,
-                        alignItems: 'center',
-                        gap: '4px',
-                        padding: '2px 7px 3px 4px',
-                        border: '2px solid #000000',
-                        borderRadius: '6px 2px 6px 2px',
-                        background: '#FFC24B',
-                        boxShadow: 'inset 0 -3px 0 #B5701A',
-                        color: '#000000',
-                        fontSize: '13px',
-                        animation: 'glBombBadge 700ms ease-in-out infinite',
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: '17px',
-                          height: '17px',
-                          background:
-                            'url(/fx/icons/bomb.png) 0 0/17px 17px no-repeat',
-                          imageRendering: 'pixelated',
-                        }}
-                      ></div>
-                      +BOMB
-                    </div>
-                    <div
-                      style={{
-                        display: v.chipExtraDisplay,
-                        fontSize: '11px',
-                        color: '#CBD9EC',
-                      }}
-                    >
-                      {v.chipExtra}
-                    </div>
-                  </div>
-                </div>
-                <div
-                  ref={v.boardWrapRef}
-                  style={{
-                    height: `${v.boardH}px`,
-                    flexShrink: '0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    opacity: v.boardOpacity,
-                    transition: 'opacity .2s',
-                  }}
-                >
-                  <MainBoard v={v} />
-                </div>
+                <BattleBoardBlock v={v} />
                 <div
                   style={{
                     flexShrink: '0',
@@ -9664,169 +9862,7 @@ export const Screen = ({ v }: { v: View }) => (
                   gap: '4px',
                 }}
               >
-                <div
-                  style={{
-                    height: '16px',
-                    flexShrink: '0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <div style={{ fontSize: '11px', color: v.duelPreviewColor }}>
-                    {v.duelPreview}
-                  </div>
-                </div>
-                <div
-                  ref={v.boardWrapRef}
-                  style={{
-                    flex: '1',
-                    minHeight: '0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <div
-                    data-juice-board="duel"
-                    onPointerDown={v.onDown}
-                    onPointerMove={v.onMove}
-                    onPointerUp={v.onUp}
-                    onPointerCancel={v.onCancel}
-                    style={{
-                      position: 'relative',
-                      width: `${v.duelBoardW}px`,
-                      height: `${v.duelBoardH}px`,
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(6,minmax(0,1fr))',
-                      gridTemplateRows: 'repeat(5,minmax(0,1fr))',
-                      gap: '3px',
-                      touchAction: 'none',
-                      userSelect: 'none',
-                    }}
-                  >
-                    {(v.duelCells || []).map((c: any, cI: number) => (
-                      <Fragment key={cI}>
-                        <div
-                          data-cell={c.i}
-                          style={{
-                            position: 'relative',
-                            minHeight: '0',
-                            transform: c.scale,
-                            transition:
-                              'transform 160ms cubic-bezier(.34,1.8,.64,1)',
-                            opacity: c.opacity,
-                            animation: c.anim,
-                          }}
-                        >
-                          <div
-                            style={{
-                              position: 'absolute',
-                              inset: '0',
-                              borderRadius: '8px',
-                              border: `2px solid ${c.bd}`,
-                              background: c.face,
-                            }}
-                          ></div>
-                          <div
-                            style={{
-                              position: 'absolute',
-                              inset: '0',
-                              borderRadius: '8px',
-                              pointerEvents: 'none',
-                              animation: c.glowAnim,
-                            }}
-                          ></div>
-                          <div
-                            style={{
-                              position: 'absolute',
-                              inset: '0',
-                              display: c.crackDisplay,
-                              pointerEvents: 'none',
-                              background:
-                                'linear-gradient(115deg,transparent 44%,rgba(0,0,0,.55) 46%,transparent 48%),linear-gradient(65deg,transparent 60%,rgba(0,0,0,.45) 62%,transparent 64%)',
-                            }}
-                          ></div>
-                          <div
-                            style={{
-                              position: 'absolute',
-                              inset: '2px',
-                              pointerEvents: 'none',
-                            }}
-                          >
-                            <div
-                              style={{
-                                position: 'absolute',
-                                inset: '13%',
-                                background: `url(${c.icon}) center/contain no-repeat`,
-                                filter: 'drop-shadow(0 2px 0 rgba(0,0,0,.45))',
-                              }}
-                            ></div>
-                          </div>
-                          <div
-                            style={{
-                              position: 'absolute',
-                              top: '1px',
-                              left: '3px',
-                              fontSize: '9px',
-                              color: '#FFFFFF',
-                              pointerEvents: 'none',
-                            }}
-                          >
-                            {c.order}
-                          </div>
-                        </div>
-                      </Fragment>
-                    ))}
-                    <svg
-                      viewBox={'0 0 100 100'}
-                      preserveAspectRatio={'none'}
-                      style={{
-                        position: 'absolute',
-                        inset: '0',
-                        width: '100%',
-                        height: '100%',
-                        pointerEvents: 'none',
-                        zIndex: '6',
-                        opacity: v.duelLineOpacity,
-                      }}
-                    >
-                      <polyline
-                        points={v.duelChainPoints}
-                        fill={'none'}
-                        stroke={'#FFFFFF'}
-                        strokeWidth={'9'}
-                        strokeLinecap={'round'}
-                        strokeLinejoin={'round'}
-                        vectorEffect={'non-scaling-stroke'}
-                        opacity={'0.95'}
-                      />
-                    </svg>
-                    {(v.pops || []).map((p: any, pI: number) => (
-                      <Fragment key={pI}>
-                        <div
-                          style={{
-                            position: 'absolute',
-                            left: '0',
-                            right: '0',
-                            top: p.top,
-                            textAlign: 'center',
-                            pointerEvents: 'none',
-                            zIndex: '8',
-                            fontFamily: 'VolterTitle,Volter,monospace',
-                            fontSize: '16px',
-                            color: p.color,
-                            WebkitTextStroke: '4px #000000',
-                            paintOrder: 'stroke fill',
-                            animation: 'glFloat 900ms ease-out forwards',
-                          }}
-                        >
-                          {p.text}
-                        </div>
-                      </Fragment>
-                    ))}
-                  </div>
-                </div>
+                <DuelBoardBlock v={v} />
               </div>
 
               <div
@@ -11219,4 +11255,27 @@ export const Screen = ({ v }: { v: View }) => (
       </div>
     </div>
   </div>
+);
+
+/** Whether the body can be skipped: nothing moved but what a drag step
+ *  rebuilds, which only the live components read. */
+const offBoardSame = (a: { v: View }, b: { v: View }): boolean => {
+  for (const k in b.v) if (a.v[k] !== b.v[k] && !DRAG_KEYS.has(k)) return false;
+  for (const k in a.v) if (!(k in b.v)) return false;
+  return true;
+};
+const MemoBody = memo(ScreenBody, offBoardSame);
+
+export const Screen = ({ v }: { v: View }) => (
+  <LiveView.Provider value={v}>
+    <MemoBody v={v} />
+  </LiveView.Provider>
+);
+
+/** For the render test: the body drawn off one view while the live context
+ *  holds another, as when a drag step skips the body. */
+export const ScreenStale = ({ body, live }: { body: View; live: View }) => (
+  <LiveView.Provider value={live}>
+    <ScreenBody v={body} />
+  </LiveView.Provider>
 );

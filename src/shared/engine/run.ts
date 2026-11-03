@@ -118,6 +118,15 @@ const basePeriodForWave = (w: number): number => {
   return PERIOD_FLOOR;
 };
 
+/** A seed the engine can be dealt: an unsigned 32-bit integer. The server
+ *  hands these out one battle at a time, so the client never picks its own. */
+export const isRunSeed = (x: unknown): x is number =>
+  typeof x === 'number' && Number.isInteger(x) && x >= 0 && x <= 0xffffffff;
+
+/** A fresh seed for the server to hand out. */
+export const randomRunSeed = (rand: () => number = Math.random): number =>
+  Math.floor(rand() * 0x100000000) >>> 0;
+
 export type RunConfig = {
   seed: number;
   heroClass: HeroClass;

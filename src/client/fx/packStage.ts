@@ -142,6 +142,13 @@ const make = (
 };
 
 let cur: Stage | null = null;
+// The app unmounting mid-open takes the stage with it, as leaving the screen
+// would: its retries and waits all stop on `dead`.
+fx.onTeardown(() => {
+  const was = cur;
+  cur = null;
+  was?.destroy();
+});
 /** Called on every render: starts a stage for a fresh open, tears it down when
  *  the opening screen goes away. `h` carries view helpers from buildView. */
 export const syncPackStage = (app: PackStageApp, h: FxHelpers): void => {
@@ -1033,7 +1040,7 @@ class Stage {
           r && r.profile ? r.profile.coins : this.app.state.profile.coins
         ),
       after: () => {
-        setTimeout(() => popBag(newCount), 60);
+        fx.later(() => popBag(newCount), 60);
       },
     });
   }

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * The view model: every string, colour, flag and handler the UI renders.
  *
@@ -6,10 +5,17 @@
  * owns state and behaviour, `Screen` owns markup, and this is the single seam
  * between them, so neither side has to know anything about the other.
  */
-import type { GearLinkApp } from '../GearLinkApp.js';
+import type { ViewApp } from './viewApp.js';
 import type { QuestReward } from '../../shared/engine/quests.js';
-import type { Gear, SkinDef } from '../../shared/engine/index.js';
-import type { AppState, GearFilter } from '../state/appState.js';
+import type {
+  Gear,
+  HeroPerk,
+  RiderKind,
+  DuelState,
+  RunState,
+  SkinDef,
+} from '../../shared/engine/index.js';
+import type { AppState, GearFilter, ShopTab } from '../state/appState.js';
 import type { WarChest } from '../../shared/api.js';
 import type { FxEvent } from '../fx/screens.js';
 import {
@@ -40,6 +46,7 @@ import {
   maxHpFor,
   GRID_COLS,
   GRID_ROWS,
+  HERO_CLASSES,
   HERO_PERKS,
   HERO_STATUS,
   INTENT_ICON,
@@ -109,7 +116,6 @@ import {
   DUEL_ENABLED,
 } from '../../shared/engine/index.js';
 import { DEFAULT_SNOO, GEARLINK_ICON, NAV_ICON } from './assets.js';
-import { syncVictory } from '../fx/victory.js';
 import { postVm } from './postLayout.js';
 import { leaderboardView } from './leaderboardView.js';
 import { streakUi } from './streakView.js';
@@ -129,7 +135,7 @@ import {
 } from './tilePalette.js';
 import { crisp, preloadCrisp, setCrispNotify } from './crispIcon.js';
 import * as fx from '../fx/fx.js';
-import { syncPackStage } from '../fx/packStage.js';
+import { setScenesNotify, syncPackStage, syncVictory } from '../fx/scenes.js';
 import * as fxs from '../fx/screens.js';
 import * as gearUp from '../fx/gearUpgrade.js';
 import { reviveUi } from './reviveView.js';
@@ -305,6 +311,288 @@ const chipsFor = (st: AppState) => {
     chipMultAnim: on ? pop(st.chain.length) : 'none',
   };
 };
+/* ---------- the board under a finger ----------
+   A drag step moves only the chain and its preview. Everything those two feed
+   is built by the functions below, which buildView spreads in and `dragView`
+   rebuilds on its own on top of the last full view. */
+
+/** The wave the HUD shows: the fallen monster's, through its death beat. */
+const shownWave = (st: AppState, bs: RunState): number =>
+  (st.monPhase === 'dying' || st.monPhase === 'combo') && !!st.dying
+    ? Math.max(1, bs.wave - 1)
+    : bs.wave;
+
+/** Where the link line runs, in the board's 0-100 viewBox. */
+const chainPoints = (chain: number[]): string =>
+  chain
+    .map((i) => {
+      const x = ((colOf(i) + 0.5) / GRID_COLS) * 100;
+      const y = ((rowOf(i) + 0.5) / GRID_ROWS) * 100;
+      return x + ',' + y;
+    })
+    .join(' ');
+
+/** One tile of a duel board, before its animation. Yours and your foe's are
+ *  drawn the same way, off each side's own loadout. */
+const duelCell = (v: number, i: number, loadout: Gear[], chainIdx: number) => {
+  const junk = isJunk(v);
+  const sup = isSuper(v);
+  const type = orbTypeOf(v);
+  const orb = (loadout[type] || loadout[0])!;
+  let ord = 0;
+  for (let k = 0; k < type; k++)
+    if (loadout[k] && loadout[k]!.effect === orb.effect) ord++;
+  const jd = junk ? junkDamage(v) : 0;
+  return {
+    i,
+    ...tileVars(
+      junk
+        ? jd > 0
+          ? JUNK_CRACKED
+          : JUNK_PAL
+        : sup
+          ? BOMB_PAL
+          : paletteFor(loadout)[type] || EMPTY_PAL,
+      chainIdx >= 0
+    ),
+    crackDisplay: jd > 0 ? 'block' : 'none',
+    icon: crisp(
+      tileIcon(
+        junk
+          ? JUNK_ICON
+          : sup
+            ? ''
+            : getGearImageUrl(orb.id) || EFFECT_ICON[orb.effect] || '',
+        sup && !junk
+      )[0]
+    ),
+    bd: chainIdx >= 0 ? '#FFFFFF' : junk ? '#20262F' : 'rgba(0,0,0,.3)',
+    scale: chainIdx >= 0 ? liftT(i) : 'none',
+    order: chainIdx >= 0 ? String(chainIdx + 1) : '',
+    opacity: junk ? (jd > 0 ? 0.7 : 0.85) : 1,
+    glowAnim: 'none',
+  };
+};
+
+/** Your side of a duel: the board, its link line and the readout under it. */
+const duelBoard = (app: ViewApp, d: DuelState) => {
+  const st = app.state;
+  const clearDd = clearDelays(st.clearOrder || []);
+  const drop = st.drop;
+  const suffix = drop && drop.gen % 2 === 0 ? 'B' : 'A';
+  const duelCells = d.me.board.map((v: number, i: number) => {
+    const idx = st.chain.indexOf(i);
+    const c = duelCell(v, i, d.me.loadout, idx);
+    const fell = drop ? drop.dist[i] || 0 : 0;
+    const anim =
+      st.clearing.indexOf(i) >= 0
+        ? 'glClearW 420ms ease-in ' + (clearDd[i] ?? clearDd.last) + 'ms both'
+        : st.rejecting.indexOf(i) >= 0
+          ? 'glReject 300ms ease-in-out'
+          : drop && drop.spawn === i
+            ? 'glSpawn' + suffix + ' 520ms ease-out forwards'
+            : fell > 0
+              ? 'glDrop' +
+                suffix +
+                Math.min(fell, 5) +
+                ' ' +
+                (150 + fell * 55) +
+                'ms linear ' +
+                colOf(i) * 18 +
+                'ms both'
+              : isSuper(v)
+                ? 'glSuper 1.4s ease-in-out infinite'
+                : 'none';
+    return { ...c, anim, glowAnim: glowOf(anim) };
+  });
+  return {
+    duelCells,
+    duelChainPoints: chainPoints(st.chain),
+    duelLineOpacity: st.chain.length >= 2 ? 1 : 0,
+    duelPreview: st.preview
+      ? st.preview.text
+      : st.busy
+        ? 'RESOLVING...'
+        : 'DRAG TO LINK 3+  -  NO TURNS, LINK ANY TIME',
+    duelPreviewColor: st.preview
+      ? st.preview.color
+      : st.busy
+        ? '#FFC24B'
+        : '#9DB4D4',
+  };
+};
+
+/** The campaign board, its link line, and the readout and chips under it. */
+const battleBoard = (app: ViewApp, bs: RunState) => {
+  const st = app.state;
+  const loadout = app.loadout();
+  const disp = app.waveDisplay(shownWave(st, bs));
+  const ftueHint = app.ftueHint();
+  const dragging = st.ftueStep === 'drag' && ftueHint !== null;
+  const pal3 = paletteFor(loadout);
+  const clearD = clearDelays(st.clearOrder || []);
+  const cells = bs.board.map((v: number, i: number) => {
+    const type = orbTypeOf(v);
+    const orb = (loadout[type] || loadout[0])!;
+    let ordinal = 0;
+    for (let k = 0; k < type; k++)
+      if (loadout[k] && loadout[k]!.effect === orb.effect) ordinal++;
+    const inChain = st.chain.indexOf(i);
+    const sup = isSuper(v);
+    const fell = st.drop ? st.drop.dist[i] || 0 : 0;
+    const suffix = st.drop && st.drop.gen % 2 === 0 ? 'B' : 'A';
+    let anim = 'none';
+    let ring = 'none';
+    if (st.clearing.indexOf(i) >= 0)
+      anim = 'glClearW 420ms ease-in ' + (clearD[i] ?? clearD.last) + 'ms both';
+    else if (st.arming.indexOf(i) >= 0) anim = 'glArm 360ms ease-in forwards';
+    else if (st.detonating.indexOf(i) >= 0) {
+      anim = 'glDetonate 460ms ease-out forwards';
+      ring = 'glShock 460ms ease-out forwards';
+    } else if (st.blasting.indexOf(i) >= 0)
+      anim = 'glBlast 460ms ease-in forwards';
+    else if (st.rejecting.indexOf(i) >= 0) anim = 'glReject 300ms ease-in-out';
+    else if (st.drop && st.drop.spawn === i)
+      anim = 'glSpawn' + suffix + ' 520ms ease-out forwards';
+    else if (fell > 0)
+      anim =
+        'glDrop' +
+        suffix +
+        Math.min(fell, 5) +
+        ' ' +
+        (150 + fell * 55) +
+        'ms linear ' +
+        colOf(i) * 18 +
+        'ms both';
+    else if (sup) anim = 'glSuper 1.4s ease-in-out infinite';
+    // The newest link pops; alternating the name restarts the animation.
+    if (
+      anim === 'none' &&
+      inChain >= 0 &&
+      inChain === st.chain.length - 1 &&
+      st.chain.length > 1
+    )
+      anim =
+        'glLinkPop' +
+        (st.chain.length % 2 ? 'A' : 'B') +
+        ' 200ms cubic-bezier(.3,1.6,.5,1)';
+    const isHint = dragging && ftueHint.indexOf(i) >= 0;
+    return {
+      i,
+      ...tileVars(sup ? BOMB_PAL : pal3[type] || EMPTY_PAL, inChain >= 0),
+      glowAnim: glowOf(anim),
+      icon: crisp(
+        tileIcon(
+          sup ? '' : getGearImageUrl(orb.id) || EFFECT_ICON[orb.effect] || '',
+          sup
+        )[0]
+      ),
+      bd: inChain >= 0 ? '#FFFFFF' : isHint ? '#FFF2B0' : 'rgba(0,0,0,.3)',
+      scale: inChain >= 0 ? liftT(i) : 'none',
+      order: inChain >= 0 ? String(inChain + 1) : '',
+      z:
+        st.detonating.indexOf(i) >= 0 || st.arming.indexOf(i) >= 0
+          ? 5
+          : st.clearing.indexOf(i) >= 0 || st.blasting.indexOf(i) >= 0
+            ? 3
+            : isHint
+              ? 4
+              : 1,
+      ring,
+      ringOpacity: ring === 'none' ? 0 : 1,
+      cellOpacity: dragging && !isHint ? 0.35 : 1,
+      hintAnim: isHint ? 'glHint 1.1s ease-in-out infinite' : 'none',
+      hintOpacity: isHint ? 1 : 0,
+      anim,
+    };
+  });
+
+  return {
+    cells,
+    chainPoints: chainPoints(st.chain),
+    // The link line takes the chain's colour and thickens as it grows; at
+    // six (a bomb) it goes white-hot and dashed.
+    ...(() => {
+      const n = st.chain.length;
+      const h = n
+        ? pal3[orbTypeOf(bs.board[st.chain[0]!]!)] || EMPTY_PAL
+        : EMPTY_PAL;
+      const hot = n >= 6;
+      const w = 8 + Math.min(6, n);
+      return {
+        chainColor: hot ? '#FFFFFF' : h.rim,
+        chainW: String(w),
+        chainUnderW: String(w + 4),
+        chainGlow: hot
+          ? 'drop-shadow(0 0 6px ' + h.rim + ') drop-shadow(0 0 2px #FFFFFF)'
+          : 'none',
+        chainDash: hot ? '6 4' : '10 6',
+      };
+    })(),
+    lineOpacity: st.chain.length >= 2 ? 1 : 0,
+    /* One readout for the whole turn: what a link will do, or WHY the board
+         is not taking input. Silence during a resolve read as a dead board. */
+    ...(() => {
+      const sw = st.swing;
+      if (sw === 'attack' || sw === 'heavy') {
+        return {
+          previewText:
+            sw === 'heavy'
+              ? 'HEAVY BLOW INCOMING'
+              : disp.name.toUpperCase() + ' IS STRIKING',
+          previewColor: sw === 'heavy' ? '#FFC24B' : '#FF9EA1',
+          boardOpacity: 0.45,
+        };
+      }
+      if (sw === 'landed') {
+        const dmg = st.lastSwing || { damage: 0, blocked: 0 };
+        return {
+          previewText:
+            dmg.damage > 0
+              ? 'YOU TOOK ' +
+                dmg.damage +
+                (dmg.blocked > 0 ? '  (' + dmg.blocked + ' BLOCKED)' : '')
+              : 'YOUR BLOCK HELD',
+          previewColor: dmg.damage > 0 ? '#FF9EA1' : '#89BCFF',
+          boardOpacity: 0.45,
+        };
+      }
+      if (st.preview)
+        return {
+          previewText: st.preview.text,
+          previewColor: st.preview.color,
+          boardOpacity: 1,
+        };
+      // The three death beats read as one sentence: the kill, then the wait.
+      if (st.monPhase === 'dying')
+        return {
+          previewText: 'WAVE CLEARED',
+          previewColor: '#AEE45D',
+          boardOpacity: 0.45,
+        };
+      if (st.monPhase === 'empty' || st.monPhase === 'spawning') {
+        return {
+          previewText: 'WAVE ' + bs.wave + ' INCOMING...',
+          previewColor: '#FFC24B',
+          boardOpacity: 0.45,
+        };
+      }
+      if (st.busy)
+        return {
+          previewText: 'RESOLVING...',
+          previewColor: '#9DB4D4',
+          boardOpacity: 0.55,
+        };
+      return {
+        previewText: 'DRAG TO LINK 3+',
+        previewColor: '#9DB4D4',
+        boardOpacity: 1,
+      };
+    })(),
+    ...chipsFor(st),
+  };
+};
+
 /** Combo colours climb with the count: gold, then amber, then hot red. */
 const comboTint = (n: number): string =>
   n >= 6 ? '#FF6B6B' : n >= 4 ? '#FFC24B' : '#FFF2B0';
@@ -379,7 +667,38 @@ const clearDelays = (
   return Object.assign(m, { last: d[d.length - 1] ?? 0 });
 };
 
+/* The bag is as wide as Screen reads it: Screen indexes it by name and owns
+   its markup, so a typed key list here would only restate that file. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type View = Record<string, any>;
+
+/** One line of a modal's list: a row, or a heading between groups of rows. */
+type ModalRow =
+  | {
+      title: string;
+      detail: string;
+      meta: string;
+      metaColor: string;
+      run?: (() => void) | undefined;
+    }
+  | { heading: string };
+type ModalSlider = { label: string; value: number; set: (v: number) => void };
+type ModalBar = {
+  art: string;
+  w: string;
+  label: string;
+  status: string;
+  statusColor: string;
+  ticks: { left: string; reached: boolean }[];
+};
+type ModalChip = {
+  label: string;
+  icon: string;
+  run: (() => void) | undefined;
+  bg: string;
+  shadow: string;
+  opacity: number;
+};
 
 // Full words, never mixed with abbreviations, so the chip row reads as one set.
 const GEAR_FILTER_LABEL: Record<GearFilter, string> = {
@@ -418,18 +737,15 @@ const BTN_GOLD = {
     '0 -4px 0 0 #FF961D inset, 0 4px 0 0 #FFF inset, 0 2px 0 0 rgba(0,0,0,.25)',
 };
 
-export const buildView = (app: GearLinkApp): View => {
+export const buildView = (app: ViewApp): View => {
   /** A card as it fights at the profile's level for it. */
   const lv = (g: Gear): Gear => atLevel(g, app.gearLevel(g.id));
   /* This function indexes the engine's tables by values the UI computes at
-     runtime (an orb's effect, a rider's kind, the current hero). Widened
-     aliases keep that honest in one place instead of a cast per lookup. */
-  const PERKS = HERO_PERKS as Record<
-    string,
-    NonNullable<(typeof HERO_PERKS)['Hero']>
-  >;
-  const RID = RIDERS as Record<string, NonNullable<(typeof RIDERS)['burn']>>;
-  const st = app.state as any;
+     runtime (an orb's effect, a rider's kind, the current hero). A widened
+     alias keeps that honest in one place instead of a check per lookup. */
+  const PERKS: Record<string, HeroPerk> = HERO_PERKS;
+  const RID = RIDERS;
+  const st = app.state;
   /** An opponent's face: their snoovatar, Reddit's plain snoo when they have
    *  none, and class art only for a house bot, which has no account. */
   const faceOf = (f: { kind: string; avatar: string; cls: string }) =>
@@ -476,9 +792,8 @@ export const buildView = (app: GearLinkApp): View => {
   );
   const questBoard = st.quests;
   const questClaimable = questBoard
-    ? [...questBoard.daily, ...questBoard.weekly].filter(
-        (q: any) => q.claimable
-      ).length
+    ? [...questBoard.daily, ...questBoard.weekly].filter((q) => q.claimable)
+        .length
     : 0;
 
   /** Five read-only gear tiles, for the screens that SHOW a loadout rather
@@ -510,7 +825,7 @@ export const buildView = (app: GearLinkApp): View => {
      side by side. The duel flow borrows these cards but fights at a fixed
      duel HP, so the upgrade row stays hidden there. */
   const pieces = st.profile.heartPieces;
-  const heroCards = Object.keys(HERO_PERKS).map((k: any, hi: number) => {
+  const heroCards = HERO_CLASSES.map((k, hi) => {
     const p = PERKS[k]!;
     const on = st.heroClass === k;
     const containers = heartsFor(st.profile.hearts, k);
@@ -575,7 +890,7 @@ export const buildView = (app: GearLinkApp): View => {
 
   const counts: Record<string, number> = { attack: 0, block: 0, effect: 0 };
   st.picked.forEach((p: string) => {
-    const g = GEAR.find((x: any) => x.id === p);
+    const g = GEAR.find((x) => x.id === p);
     if (g) counts[g.effect] = (counts[g.effect] ?? 0) + 1;
   });
 
@@ -661,7 +976,7 @@ export const buildView = (app: GearLinkApp): View => {
       }
       const sameEffect = st.picked
         .map((p: string) => GEAR.find((x) => x.id === p))
-        .filter((x: any) => x && x.effect === g.effect).length;
+        .filter((x) => x && x.effect === g.effect).length;
       // Unowned gear stays on the shelf but cannot be equipped - the pack is the
       // only way in, which is what makes the collection matter.
       const locked = ownedN <= 0;
@@ -715,7 +1030,7 @@ export const buildView = (app: GearLinkApp): View => {
          from this one held wave, not from bs.wave. */
     const held =
       (st.monPhase === 'dying' || st.monPhase === 'combo') && !!st.dying;
-    const showWave = held ? Math.max(1, bs.wave - 1) : bs.wave;
+    const showWave = shownWave(st, bs);
     const enemy = app.enemyAt(null, showWave);
     const disp = app.waveDisplay(showWave);
     const sxNow = Object.assign({}, NO_STATUS, bs.stx || {});
@@ -733,99 +1048,11 @@ export const buildView = (app: GearLinkApp): View => {
               : '#213854',
       });
     }
-    const ftueHint = app.ftueHint();
-    const dragging = st.ftueStep === 'drag' && ftueHint !== null;
-    const pal3 = paletteFor(loadout);
     setCrispNotify(() =>
       app.setState((s) => ({ crispGen: (s.crispGen || 0) + 1 }))
     );
     preloadCrisp(loadoutIcons(loadout));
     const cell3 = snapPx(((st.boardW || 340) - 20) / 6);
-    const clearD = clearDelays(st.clearOrder || []);
-    const cells = bs.board.map((v: number, i: number) => {
-      const type = orbTypeOf(v);
-      const orb = (loadout[type] || loadout[0])!;
-      let ordinal = 0;
-      for (let k = 0; k < type; k++)
-        if (loadout[k] && loadout[k]!.effect === orb.effect) ordinal++;
-      const inChain = st.chain.indexOf(i);
-      const sup = isSuper(v);
-      const fell = st.drop ? st.drop.dist[i] || 0 : 0;
-      const suffix = st.drop && st.drop.gen % 2 === 0 ? 'B' : 'A';
-      let anim = 'none';
-      let ring = 'none';
-      if (st.clearing.indexOf(i) >= 0)
-        anim =
-          'glClearW 420ms ease-in ' + (clearD[i] ?? clearD.last) + 'ms both';
-      else if (st.arming.indexOf(i) >= 0) anim = 'glArm 360ms ease-in forwards';
-      else if (st.detonating.indexOf(i) >= 0) {
-        anim = 'glDetonate 460ms ease-out forwards';
-        ring = 'glShock 460ms ease-out forwards';
-      } else if (st.blasting.indexOf(i) >= 0)
-        anim = 'glBlast 460ms ease-in forwards';
-      else if (st.rejecting.indexOf(i) >= 0)
-        anim = 'glReject 300ms ease-in-out';
-      else if (st.drop && st.drop.spawn === i)
-        anim = 'glSpawn' + suffix + ' 520ms ease-out forwards';
-      else if (fell > 0)
-        anim =
-          'glDrop' +
-          suffix +
-          Math.min(fell, 5) +
-          ' ' +
-          (150 + fell * 55) +
-          'ms linear ' +
-          colOf(i) * 18 +
-          'ms both';
-      else if (sup) anim = 'glSuper 1.4s ease-in-out infinite';
-      // The newest link pops; alternating the name restarts the animation.
-      if (
-        anim === 'none' &&
-        inChain >= 0 &&
-        inChain === st.chain.length - 1 &&
-        st.chain.length > 1
-      )
-        anim =
-          'glLinkPop' +
-          (st.chain.length % 2 ? 'A' : 'B') +
-          ' 200ms cubic-bezier(.3,1.6,.5,1)';
-      const isHint = dragging && ftueHint.indexOf(i) >= 0;
-      return {
-        i,
-        ...tileVars(sup ? BOMB_PAL : pal3[type] || EMPTY_PAL, inChain >= 0),
-        glowAnim: glowOf(anim),
-        icon: crisp(
-          tileIcon(
-            sup ? '' : getGearImageUrl(orb.id) || EFFECT_ICON[orb.effect] || '',
-            sup
-          )[0]
-        ),
-        bd: inChain >= 0 ? '#FFFFFF' : isHint ? '#FFF2B0' : 'rgba(0,0,0,.3)',
-        scale: inChain >= 0 ? liftT(i) : 'none',
-        order: inChain >= 0 ? String(inChain + 1) : '',
-        z:
-          st.detonating.indexOf(i) >= 0 || st.arming.indexOf(i) >= 0
-            ? 5
-            : st.clearing.indexOf(i) >= 0 || st.blasting.indexOf(i) >= 0
-              ? 3
-              : isHint
-                ? 4
-                : 1,
-        ring,
-        ringOpacity: ring === 'none' ? 0 : 1,
-        cellOpacity: dragging && !isHint ? 0.35 : 1,
-        hintAnim: isHint ? 'glHint 1.1s ease-in-out infinite' : 'none',
-        hintOpacity: isHint ? 1 : 0,
-        anim,
-      };
-    });
-    const pts = st.chain
-      .map((i: number) => {
-        const x = ((colOf(i) + 0.5) / GRID_COLS) * 100;
-        const y = ((rowOf(i) + 0.5) / GRID_ROWS) * 100;
-        return x + ',' + y;
-      })
-      .join(' ');
 
     battle = {
       waveNo: showWave,
@@ -1012,7 +1239,11 @@ export const buildView = (app: GearLinkApp): View => {
           blurb:
             "Soaks the enemy's next swing, then is spent on it. Block also resets when a wave dies.",
         };
-        const chip = (k: string, def: any, value: number) => ({
+        const chip = (
+          k: string,
+          def: { icon: string; label: string },
+          value: number
+        ) => ({
           icon: def.icon,
           value,
           name: def.label,
@@ -1022,15 +1253,15 @@ export const buildView = (app: GearLinkApp): View => {
           tap: app.toggleStatusTip(k),
         });
         const mon = MONSTER_STATUS.filter((k) => sxNow[k] > 0).map((k) =>
-          chip(k, RID[k], sxNow[k])
+          chip(k, RID[k]!, sxNow[k])
         );
         const hero = HERO_STATUS.filter((k) => sxNow[k] > 0).map((k) =>
-          chip(k, RID[k], sxNow[k])
+          chip(k, RID[k]!, sxNow[k])
         );
         hero.unshift(chip('block', BLOCK_STATUS, bs.block));
         const tip = st.hoverStatus;
         const def = tip === 'block' ? BLOCK_STATUS : tip ? RID[tip] : null;
-        const onMon = tip && MONSTER_STATUS.indexOf(tip) >= 0;
+        const onMon = tip && MONSTER_STATUS.some((k) => k === tip);
         return {
           monsterStatuses: mon,
           monsterStatusDisplay: mon.length ? 'flex' : 'none',
@@ -1051,34 +1282,13 @@ export const buildView = (app: GearLinkApp): View => {
           : perk.blockX100 !== 100
             ? ' +' + (perk.blockX100 - 100) + '% BLK'
             : ' +' + (perk.healX100 - 100) + '% HEAL'),
-      cells,
-      chainPoints: pts,
-      // The link line takes the chain's colour and thickens as it grows; at
-      // six (a bomb) it goes white-hot and dashed.
-      ...(() => {
-        const n = st.chain.length;
-        const h = n
-          ? pal3[orbTypeOf(bs.board[st.chain[0]!]!)] || EMPTY_PAL
-          : EMPTY_PAL;
-        const hot = n >= 6;
-        const w = 8 + Math.min(6, n);
-        return {
-          chainColor: hot ? '#FFFFFF' : h.rim,
-          chainW: String(w),
-          chainUnderW: String(w + 4),
-          chainGlow: hot
-            ? 'drop-shadow(0 0 6px ' + h.rim + ') drop-shadow(0 0 2px #FFFFFF)'
-            : 'none',
-          chainDash: hot ? '6 4' : '10 6',
-        };
-      })(),
-      lineOpacity: st.chain.length >= 2 ? 1 : 0,
+      ...battleBoard(app, bs),
       boardWrapRef: app.boardWrapRef,
       // Snapped to whole pixels per cell so tile art lands on the pixel grid.
       boardW: cell3 * 6 + 20,
       boardH: snapPx(((st.boardH || 283) - 16) / 5) * 5 + 16,
       boardAnim: st.kick ? 'glKick 260ms ease-in-out' : 'none',
-      pops: (st.pops || []).map((p: any) => ({
+      pops: (st.pops || []).map((p) => ({
         text: p.text,
         color: p.color,
         top: p.top,
@@ -1092,66 +1302,6 @@ export const buildView = (app: GearLinkApp): View => {
           );
         })(),
       })),
-      /* One readout for the whole turn: what a link will do, or WHY the board
-           is not taking input. Silence during a resolve read as a dead board. */
-      ...(() => {
-        const sw = st.swing;
-        if (sw === 'attack' || sw === 'heavy') {
-          return {
-            previewText:
-              sw === 'heavy'
-                ? 'HEAVY BLOW INCOMING'
-                : disp.name.toUpperCase() + ' IS STRIKING',
-            previewColor: sw === 'heavy' ? '#FFC24B' : '#FF9EA1',
-            boardOpacity: 0.45,
-          };
-        }
-        if (sw === 'landed') {
-          const dmg: any = st.lastSwing || {};
-          return {
-            previewText:
-              dmg.damage > 0
-                ? 'YOU TOOK ' +
-                  dmg.damage +
-                  (dmg.blocked > 0 ? '  (' + dmg.blocked + ' BLOCKED)' : '')
-                : 'YOUR BLOCK HELD',
-            previewColor: dmg.damage > 0 ? '#FF9EA1' : '#89BCFF',
-            boardOpacity: 0.45,
-          };
-        }
-        if (st.preview)
-          return {
-            previewText: st.preview.text,
-            previewColor: st.preview.color,
-            boardOpacity: 1,
-          };
-        // The three death beats read as one sentence: the kill, then the wait.
-        if (st.monPhase === 'dying')
-          return {
-            previewText: 'WAVE CLEARED',
-            previewColor: '#AEE45D',
-            boardOpacity: 0.45,
-          };
-        if (st.monPhase === 'empty' || st.monPhase === 'spawning') {
-          return {
-            previewText: 'WAVE ' + bs.wave + ' INCOMING...',
-            previewColor: '#FFC24B',
-            boardOpacity: 0.45,
-          };
-        }
-        if (st.busy)
-          return {
-            previewText: 'RESOLVING...',
-            previewColor: '#9DB4D4',
-            boardOpacity: 0.55,
-          };
-        return {
-          previewText: 'DRAG TO LINK 3+',
-          previewColor: '#9DB4D4',
-          boardOpacity: 1,
-        };
-      })(),
-      ...chipsFor(st),
       boardHint:
         enemy.affix === 'none'
           ? 'Link 6+ to forge a bomb. Tap a bomb to detonate a 3x3.'
@@ -1228,11 +1378,11 @@ export const buildView = (app: GearLinkApp): View => {
   };
 
   let modalTitle = '',
-    modalRows: any[] = [],
-    modalSliders: any[] = [],
-    modalBar: any = null,
-    modalChips: any[] = [],
-    modalSkins: any[] = [],
+    modalRows: ModalRow[] = [],
+    modalSliders: ModalSlider[] = [],
+    modalBar: ModalBar | null = null,
+    modalChips: ModalChip[] = [],
+    modalSkins: ReturnType<typeof skinTile>[] = [],
     modalFooter = '',
     modalClose = app.closeModal,
     modalActions = [
@@ -1537,7 +1687,7 @@ export const buildView = (app: GearLinkApp): View => {
 
   /* A Daily Battle's end screen reports the day's fight - its ladder, its
      crown - rather than what the run did to the map. */
-  const daily = st.daily as { day: number; locationId: string } | null;
+  const daily = st.daily;
   const dailyRun = !!daily && st.locationId === daily.locationId;
   const dailyName = daily ? 'DAILY BATTLE #' + daily.day : '';
   const dailyOutcome =
@@ -1585,7 +1735,7 @@ export const buildView = (app: GearLinkApp): View => {
   });
   const waves = app.rollUp(endBs.wavesCleared);
   const link = app.rollUp(endBs.maxChain);
-  const score = app.rollUp(app.scoreOf(endBs)).toLocaleString();
+  const score = app.rollUp(bs ? app.scoreOf(bs) : 0).toLocaleString();
   const runStats = [
     stat('WAVES CLEARED', waves, '#3C63FF', 0),
     stat('BEST LINK', link, '#1D2956', 1),
@@ -1605,6 +1755,9 @@ export const buildView = (app: GearLinkApp): View => {
     stat('BEST LINK', link, '#1D2956', 3),
   ];
 
+  /** The coaching step the player completes by acting: no scrim, no NEXT. */
+  const ftueDoing = st.ftueStep !== null && !!FTUE_DOING[st.ftueStep];
+
   return {
     /* Wallet figures the shop header and the duel lobby read straight off the
        profile the server sent. */
@@ -1613,8 +1766,8 @@ export const buildView = (app: GearLinkApp): View => {
 
     /* ---------- FTUE ---------- */
     ftueOn: st.ftueStep !== null,
-    ftueInteractive: !!FTUE_DOING[st.ftueStep],
-    ftueScrimOpacity: st.ftueStep !== null && !FTUE_DOING[st.ftueStep] ? 1 : 0,
+    ftueInteractive: ftueDoing,
+    ftueScrimOpacity: st.ftueStep !== null && !ftueDoing ? 1 : 0,
     ftueTitle: st.ftueStep ? FTUE_COPY[st.ftueStep]!.title : '',
     ftueBody:
       st.ftueStep === 'damage'
@@ -1649,7 +1802,7 @@ export const buildView = (app: GearLinkApp): View => {
     })),
     ftueNextLabel:
       st.ftueStep === FTUE_FIGHT[FTUE_FIGHT.length - 1] ? 'FIGHT!' : 'NEXT',
-    ftueNextDisplay: FTUE_DOING[st.ftueStep] ? 'none' : 'flex',
+    ftueNextDisplay: ftueDoing ? 'none' : 'flex',
     // Hidden until measured, so it never flashes at the wrong offset.
     ftueCardVis: st.ftuePlace ? 'visible' : 'hidden',
     ftueCardTop:
@@ -1665,7 +1818,7 @@ export const buildView = (app: GearLinkApp): View => {
     // Scrim as four panels around the spotlit element, so the target stays
     // bright without fighting the arena's nested stacking contexts.
     ftueScrim:
-      st.ftuePlace && !FTUE_DOING[st.ftueStep]
+      st.ftuePlace && !ftueDoing
         ? (() => {
             const h = st.ftuePlace.hole,
               pad = 6;
@@ -1712,7 +1865,7 @@ export const buildView = (app: GearLinkApp): View => {
     ftueRingH: st.ftuePlace ? st.ftuePlace.hole.h + 12 + 'px' : '0px',
     ftueRingOpacity:
       st.ftuePlace && st.ftueStep && st.ftueStep !== 'drag' ? 1 : 0,
-    ftueRingColor: FTUE_DOING[st.ftueStep] ? '#AEE45D' : '#FFF2B0',
+    ftueRingColor: ftueDoing ? '#AEE45D' : '#FFF2B0',
     setFtueRoot: app.setFtueRoot,
     setFtueBoard: app.setFtueBoard,
     setFtueEnemy: app.setFtueEnemy,
@@ -2112,9 +2265,16 @@ export const buildView = (app: GearLinkApp): View => {
       const fname = ((st.duelFoe || {}).name || 'Foe').toUpperCase();
       const stat = (side: 'me' | 'foe') => {
         const sx = Object.assign({}, NO_STATUS, d[side].stx);
-        return ['burn', 'mark', 'frost', 'strength', 'grit']
+        const kinds: RiderKind[] = [
+          'burn',
+          'mark',
+          'frost',
+          'strength',
+          'grit',
+        ];
+        return kinds
           .filter((k) => sx[k] > 0)
-          .map((k: string) => ({
+          .map((k) => ({
             icon: RID[k]!.icon,
             value: sx[k],
             color: RID[k]!.color,
@@ -2123,64 +2283,17 @@ export const buildView = (app: GearLinkApp): View => {
       const junkCount = (b: number[]) => b.filter(isJunk).length;
       const mine = d.me.board,
         theirs = d.foe.board;
-      const clearDd = clearDelays(st.clearOrder || []);
-      const cellFor = (
-        v: number,
-        i: number,
-        loadout: any[],
-        chainIdx: number
-      ) => {
-        const junk = isJunk(v);
-        const sup = isSuper(v);
-        const type = orbTypeOf(v);
-        const orb = (loadout[type] || loadout[0])!;
-        let ord = 0;
-        for (let k = 0; k < type; k++)
-          if (loadout[k] && loadout[k]!.effect === orb.effect) ord++;
-        const jd = junk ? junkDamage(v) : 0;
-        return {
-          i,
-          ...tileVars(
-            junk
-              ? jd > 0
-                ? JUNK_CRACKED
-                : JUNK_PAL
-              : sup
-                ? BOMB_PAL
-                : paletteFor(loadout)[type] || EMPTY_PAL,
-            chainIdx >= 0
-          ),
-          crackDisplay: jd > 0 ? 'block' : 'none',
-          icon: crisp(
-            tileIcon(
-              junk
-                ? JUNK_ICON
-                : sup
-                  ? ''
-                  : getGearImageUrl(orb.id) || EFFECT_ICON[orb.effect] || '',
-              sup && !junk
-            )[0]
-          ),
-          bd: chainIdx >= 0 ? '#FFFFFF' : junk ? '#20262F' : 'rgba(0,0,0,.3)',
-          scale: chainIdx >= 0 ? liftT(i) : 'none',
-          order: chainIdx >= 0 ? String(chainIdx + 1) : '',
-          opacity: junk ? (jd > 0 ? 0.7 : 0.85) : 1,
-          glowAnim: 'none',
-        };
-      };
-      const drop = st.drop;
-      const suffix = drop && drop.gen % 2 === 0 ? 'B' : 'A';
       const fDrop = st.foeDrop;
       const fSuffix = fDrop && fDrop.gen % 2 === 0 ? 'B' : 'A';
       const fChain = st.foeChain || [],
         fClear = st.foeClearing || [];
       /* Their grid animates like yours - drop, clear, spawn - so a move you
            are not making is still legible as a move. */
-      const foeCell = (v: number, i: number): any => {
+      const foeCell = (v: number, i: number) => {
         const idx = fChain.indexOf(i);
-        const c: any = cellFor(v, i, d.foe.loadout, idx);
+        const c = duelCell(v, i, d.foe.loadout, idx);
         const fell = fDrop ? fDrop.dist[i] || 0 : 0;
-        c.anim =
+        const anim =
           fClear.indexOf(i) >= 0
             ? 'glClearW 460ms ease-in forwards'
             : fDrop && fDrop.spawn === i
@@ -2199,8 +2312,7 @@ export const buildView = (app: GearLinkApp): View => {
                   : isSuper(v)
                     ? 'glSuper 1.4s ease-in-out infinite'
                     : 'none';
-        c.glowAnim = glowOf(c.anim);
-        return c;
+        return { ...c, anim, glowAnim: glowOf(anim) };
       };
       setCrispNotify(() =>
         app.setState((s) => ({ crispGen: (s.crispGen || 0) + 1 }))
@@ -2208,41 +2320,6 @@ export const buildView = (app: GearLinkApp): View => {
       preloadCrisp(
         loadoutIcons(d.me.loadout).concat(loadoutIcons(d.foe.loadout))
       );
-      const duelCells = mine.map((v: number, i: number) => {
-        const idx = st.chain.indexOf(i);
-        const c: any = cellFor(v, i, d.me.loadout, idx);
-        const fell = drop ? drop.dist[i] || 0 : 0;
-        c.anim =
-          st.clearing.indexOf(i) >= 0
-            ? 'glClearW 420ms ease-in ' +
-              (clearDd[i] ?? clearDd.last) +
-              'ms both'
-            : st.rejecting.indexOf(i) >= 0
-              ? 'glReject 300ms ease-in-out'
-              : drop && drop.spawn === i
-                ? 'glSpawn' + suffix + ' 520ms ease-out forwards'
-                : fell > 0
-                  ? 'glDrop' +
-                    suffix +
-                    Math.min(fell, 5) +
-                    ' ' +
-                    (150 + fell * 55) +
-                    'ms linear ' +
-                    colOf(i) * 18 +
-                    'ms both'
-                  : isSuper(v)
-                    ? 'glSuper 1.4s ease-in-out infinite'
-                    : 'none';
-        c.glowAnim = glowOf(c.anim);
-        return c;
-      });
-      const pts = st.chain
-        .map((i: number) => {
-          const x = ((colOf(i) + 0.5) / GRID_COLS) * 100;
-          const y = ((rowOf(i) + 0.5) / GRID_ROWS) * 100;
-          return x + ',' + y;
-        })
-        .join(' ');
       const out = st.duelOutcome;
       return {
         duelFoeName: (st.duelFoe || {}).name || '',
@@ -2350,20 +2427,8 @@ export const buildView = (app: GearLinkApp): View => {
         duelLogTop: (st.duelLog || [])
           .slice(0, 1)
           .map((t: string) => ({ text: t })),
-        duelCells,
         duelFoeCells: theirs.map(foeCell),
-        duelChainPoints: pts,
-        duelLineOpacity: st.chain.length >= 2 ? 1 : 0,
-        duelPreview: st.preview
-          ? st.preview.text
-          : st.busy
-            ? 'RESOLVING...'
-            : 'DRAG TO LINK 3+  -  NO TURNS, LINK ANY TIME',
-        duelPreviewColor: st.preview
-          ? st.preview.color
-          : st.busy
-            ? '#FFC24B'
-            : '#9DB4D4',
+        ...duelBoard(app, d),
         pops: st.pops || [],
         duelFoePops: st.foePops || [],
         // Both bars on ONE row at every size, opponent left. Equal halves, so
@@ -2430,7 +2495,7 @@ export const buildView = (app: GearLinkApp): View => {
     isQuests: st.phase === 'quests',
     ...(() => {
       const tab = st.questTab || 'daily';
-      const list: any[] = questBoard ? questBoard[tab] : [];
+      const list = questBoard ? questBoard[tab] : [];
       const pad = (n: number) => (n < 10 ? '0' + n : String(n));
       const until = (at: number) => {
         const ms = Math.max(0, at - Date.now());
@@ -2441,7 +2506,7 @@ export const buildView = (app: GearLinkApp): View => {
           : h + 'H ' + pad(m) + 'M';
       };
       const count = (p: 'daily' | 'weekly') =>
-        questBoard ? questBoard[p].filter((q: any) => q.claimable).length : 0;
+        questBoard ? questBoard[p].filter((q) => q.claimable).length : 0;
       const goFor = (metric: string) =>
         metric === 'duels' || metric === 'duelWins'
           ? app.goDuelLobby
@@ -2480,7 +2545,7 @@ export const buildView = (app: GearLinkApp): View => {
                 : questBoard.weeklyResetAt
             )
           : '',
-        questRows: list.map((q: any) => {
+        questRows: list.map((q) => {
           const go = goFor(metricOf(q.id));
           const busy = st.questClaiming === q.id;
           const r = q.reward;
@@ -2560,9 +2625,9 @@ export const buildView = (app: GearLinkApp): View => {
     gems: st.profile.gems,
     // Wallet readouts roll toward the new balance instead of jumping.
     ...(() => {
-      fx.setRollNotify(() =>
-        app.setState((s) => ({ fxGen: (s.fxGen || 0) + 1 }))
-      );
+      const bump = () => app.setState((s) => ({ fxGen: (s.fxGen || 0) + 1 }));
+      fx.setRollNotify(bump);
+      setScenesNotify(bump);
       syncPackStage(app, fxHelpers());
       syncVictory(app, { ...fxHelpers(), heartIcon: HEART_PIECE_ICON });
       const c = fx.rolled('coins', st.profile.coins);
@@ -2580,7 +2645,7 @@ export const buildView = (app: GearLinkApp): View => {
     shopMsg: st.shopMsg || '',
     ...(() => {
       const tab = st.shopTab || 'packs';
-      const mk = (id: any, label: string, icon?: string) => ({
+      const mk = (id: ShopTab, label: string, icon?: string) => ({
         label,
         run: app.pickShopTab(id),
         bg: tab === id ? '#428FFB' : 'transparent',
@@ -2866,7 +2931,7 @@ export const buildView = (app: GearLinkApp): View => {
               ? 'Tap to reveal - ' + left + ' left'
               : 'Tap to reveal'
             : app.packSummary(op),
-        openCards: op.cards.map((c: any, i: number) => {
+        openCards: op.cards.map((c, i) => {
           const shown = i < op.shown;
           const col = RARITY_OUTLINE[c.gear.rarity] || '#9FB3D1';
           return {
@@ -3773,4 +3838,68 @@ export const buildView = (app: GearLinkApp): View => {
     resetVolumes: app.resetVolumes,
     openPause: app.openPause,
   };
+};
+
+/** Every key a drag step can change. A Record, so the compiler holds it to
+ *  exactly what the board functions return, plus the inline post's layout. */
+type DragKey =
+  | keyof ReturnType<typeof battleBoard>
+  | keyof ReturnType<typeof duelBoard>
+  | 'post';
+const DRAG_KEY_MAP: Record<DragKey, true> = {
+  cells: true,
+  chainPoints: true,
+  chainColor: true,
+  chainW: true,
+  chainUnderW: true,
+  chainGlow: true,
+  chainDash: true,
+  lineOpacity: true,
+  previewText: true,
+  previewColor: true,
+  boardOpacity: true,
+  chipsDisplay: true,
+  previewDisplay: true,
+  chipPower: true,
+  chipMult: true,
+  chipRest: true,
+  chipExtra: true,
+  chipExtraDisplay: true,
+  chipBombDisplay: true,
+  chipPowerAnim: true,
+  chipMultAnim: true,
+  duelCells: true,
+  duelChainPoints: true,
+  duelLineOpacity: true,
+  duelPreview: true,
+  duelPreviewColor: true,
+  post: true,
+};
+/** `Screen` reads these through its live context, so it can skip the rest of
+ *  its tree when nothing else moved. */
+export const DRAG_KEYS: ReadonlySet<string> = new Set(
+  Object.keys(DRAG_KEY_MAP)
+);
+
+/** True when `next` differs from `prev` in nothing but what a drag step
+ *  writes: the chain and its preview. */
+export const dragOnly = (prev: AppState, next: AppState): boolean => {
+  const a: Record<string, unknown> = prev;
+  const b: Record<string, unknown> = next;
+  for (const k in b)
+    if (a[k] !== b[k] && k !== 'chain' && k !== 'preview') return false;
+  return true;
+};
+
+/** The view after a drag step: the last full view with only the board and its
+ *  readouts rebuilt. Equal to a full `buildView` whenever `dragOnly` holds
+ *  between the state `last` was built from and this one, at a fraction of the
+ *  cost - and a drag writes state once per cell it crosses. */
+export const dragView = (app: ViewApp, last: View): View => {
+  const st = app.state;
+  const next: View = { ...last };
+  if (st.bs) Object.assign(next, battleBoard(app, st.bs));
+  if (st.duel) Object.assign(next, duelBoard(app, st.duel));
+  next.post = postVm(app, st, st.bs ? next : {}).post;
+  return next;
 };

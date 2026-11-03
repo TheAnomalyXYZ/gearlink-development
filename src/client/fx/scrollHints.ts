@@ -71,7 +71,7 @@ const place = (
   x: number,
   y: number
 ): void => {
-  // Only touch what changed: every write is a mutation the observer hears.
+  // Only touch what changed: an unchanged write still dirties style.
   const left = `${x - SIZE / 2}px`;
   const top = `${y - SIZE / 2}px`;
   if (el.style.left !== left) el.style.left = left;
@@ -79,19 +79,57 @@ const place = (
   if (el.classList.contains('is-on') !== show) el.classList.toggle('is-on', show);
 };
 
-let installed = false;
+let uninstall: (() => void) | null = null;
 
-/** Start watching for scroll panes. Idempotent; call once after mount. */
-export const installScrollHints = (): void => {
-  if (installed || typeof document === 'undefined') return;
-  installed = true;
+/** Start watching for scroll panes. Idempotent: a second call returns the
+ *  first install's teardown. The teardown removes the layer and every
+ *  listener, so a remount starts clean. */
+export const installScrollHints = (): (() => void) => {
+  if (uninstall) return uninstall;
+  if (typeof document === 'undefined') return () => {};
 
   const layer = document.createElement('div');
   layer.setAttribute('data-scroll-hints', '');
   document.body.appendChild(layer);
 
   const pairs = new Map<Element, Pair>();
+  /** What the ResizeObserver watches per pane: the pane, and its children,
+   *  whose growth changes scrollHeight without resizing the pane itself. */
+  const watched = new Map<Element, Set<Element>>();
   let frame = 0;
+
+  // Every trigger lands here, so a burst of scrolls, resizes and mutations in
+  // one frame costs a single measure.
+  const schedule = (): void => {
+    if (!frame) frame = requestAnimationFrame(update);
+  };
+  const ro = new ResizeObserver(schedule);
+
+  /** Keep the observer on `pane` and its current children, and only those:
+   *  re-observing a target re-fires it, which would schedule forever. */
+  const watch = (pane: Element): void => {
+    let set = watched.get(pane);
+    if (!set) {
+      set = new Set([pane]);
+      watched.set(pane, set);
+      ro.observe(pane);
+    }
+    const kids = new Set(Array.from(pane.children));
+    for (const el of set)
+      if (el !== pane && !kids.has(el)) {
+        ro.unobserve(el);
+        set.delete(el);
+      }
+    for (const el of kids)
+      if (!set.has(el)) {
+        ro.observe(el);
+        set.add(el);
+      }
+  };
+  const unwatch = (pane: Element): void => {
+    for (const el of watched.get(pane) ?? []) ro.unobserve(el);
+    watched.delete(pane);
+  };
 
   const update = (): void => {
     frame = 0;
@@ -103,6 +141,7 @@ export const installScrollHints = (): void => {
     for (const pane of Array.from(document.querySelectorAll(PANE_SELECTOR))) {
       if (layer.contains(pane) || !isPane(pane)) continue;
       seen.add(pane);
+      watch(pane);
       let pair = pairs.get(pane);
       if (!pair) {
         pair = { up: makeArrow('up'), down: makeArrow('down') };
@@ -128,28 +167,45 @@ export const installScrollHints = (): void => {
       pair.up.remove();
       pair.down.remove();
       pairs.delete(pane);
+      unwatch(pane);
     }
   };
 
-  const schedule = (): void => {
-    if (!frame) frame = requestAnimationFrame(update);
-  };
-
   // Scroll does not bubble, so listen in the capture phase to hear every pane.
-  document.addEventListener('scroll', schedule, { capture: true, passive: true });
+  const capture = { capture: true, passive: true };
+  document.addEventListener('scroll', schedule, capture);
   window.addEventListener('resize', schedule);
   document.addEventListener('transitionend', schedule, true);
   document.addEventListener('animationend', schedule, true);
-  // Ignore the layer's own writes, or each update would schedule the next.
-  new MutationObserver((records) => {
+  // Nodes coming and going: a screen or phase change, a modal, a list
+  // growing. Attributes are deliberately not watched - screen shake and card
+  // tilt write style.transform every frame - and a pane that changes size is
+  // heard by the ResizeObserver instead. The layer's own writes are ignored,
+  // or each update would schedule the next.
+  const mo = new MutationObserver((records) => {
     if (records.some((m) => !layer.contains(m.target))) schedule();
-  }).observe(document.body, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ['style', 'class'],
   });
-  // Images loading or fonts settling can grow a pane without any of the above.
-  setInterval(schedule, 500);
+  mo.observe(document.body, { childList: true, subtree: true });
+  // Images loading, fonts settling or a class flipping a pane's overflow can
+  // change things none of the above hears.
+  const poll = setInterval(schedule, 500);
   schedule();
+
+  const off = (): void => {
+    uninstall = null;
+    document.removeEventListener('scroll', schedule, capture);
+    window.removeEventListener('resize', schedule);
+    document.removeEventListener('transitionend', schedule, true);
+    document.removeEventListener('animationend', schedule, true);
+    mo.disconnect();
+    ro.disconnect();
+    clearInterval(poll);
+    cancelAnimationFrame(frame);
+    frame = 0;
+    pairs.clear();
+    watched.clear();
+    layer.remove();
+  };
+  uninstall = off;
+  return off;
 };

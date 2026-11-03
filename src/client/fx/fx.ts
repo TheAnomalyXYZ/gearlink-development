@@ -115,6 +115,35 @@ export const skip = (): void => {
 };
 export const resetSpeed = (): number => (speed = 1);
 
+/* ---------- teardown ---------- */
+
+const pending = new Set<ReturnType<typeof setTimeout>>();
+const enders = new Set<() => void>();
+/** setTimeout for an effect's later beat. teardown() cancels it, so a beat
+ *  that reads the app or the page never lands after the app has unmounted. */
+export const later = (fn: () => void, delay: number): void => {
+  const id = setTimeout(() => {
+    pending.delete(id);
+    fn();
+  }, delay);
+  pending.add(id);
+};
+/** Something that outlives one call (a pack stage, say) asks to be torn down
+ *  with the app. Returns the unregister. */
+export const onTeardown = (fn: () => void): (() => void) => {
+  enders.add(fn);
+  return () => enders.delete(fn);
+};
+/** The app is unmounting: drop every pending beat, run every registered
+ *  teardown and take the tilt listeners off the document. A remount starts
+ *  clean; registrations stay, since they belong to modules, not mounts. */
+export const teardown = (): void => {
+  for (const id of pending) clearTimeout(id);
+  pending.clear();
+  for (const fn of [...enders]) fn();
+  tiltOff?.();
+};
+
 /* ---------- particles ---------- */
 
 type Part = {
@@ -573,7 +602,7 @@ type Tilt = {
   on: number;
 };
 
-let tiltOn = false;
+let tiltOff: (() => void) | null = null;
 const tilts = new Map<HTMLElement, Tilt>();
 const tiltHostOf = (t: EventTarget | null): HTMLElement | null => {
   if (!(t instanceof Element)) return null;
@@ -582,10 +611,12 @@ const tiltHostOf = (t: EventTarget | null): HTMLElement | null => {
 };
 /** Any [data-tilt] host tilts toward the pointer (perspective 600px, +-12deg),
  *  springs back on release, and exposes --tilt-x / --tilt-y / --tilt-on for
- *  specular and foil layers. [data-tilt-inner] is the element that rotates. */
-export const initTilt = (): void => {
-  if (tiltOn || typeof document === 'undefined') return;
-  tiltOn = true;
+ *  specular and foil layers. [data-tilt-inner] is the element that rotates.
+ *  Idempotent: a second call returns the first install's uninstall, which
+ *  teardown() also calls, so a remounted app does not stack listeners. */
+export const initTilt = (): (() => void) => {
+  if (tiltOff) return tiltOff;
+  if (typeof document === 'undefined') return () => {};
   const aim = (host: HTMLElement, e: PointerEvent): void => {
     const r = host.getBoundingClientRect();
     let s = tilts.get(host);
@@ -598,29 +629,21 @@ export const initTilt = (): void => {
     s.on = 1;
     loop();
   };
-  document.addEventListener(
-    'pointermove',
-    (e) => {
-      const host = tiltHostOf(e.target);
-      for (const [h, s] of tilts)
-        if (h !== host) {
-          s.on = 0;
-          s.tx = 0;
-          s.ty = 0;
-        }
-      if (host) aim(host, e);
-      else loop();
-    },
-    { passive: true }
-  );
-  document.addEventListener(
-    'pointerdown',
-    (e) => {
-      const host = tiltHostOf(e.target);
-      if (host) aim(host, e);
-    },
-    { passive: true }
-  );
+  const move = (e: PointerEvent): void => {
+    const host = tiltHostOf(e.target);
+    for (const [h, s] of tilts)
+      if (h !== host) {
+        s.on = 0;
+        s.tx = 0;
+        s.ty = 0;
+      }
+    if (host) aim(host, e);
+    else loop();
+  };
+  const down = (e: PointerEvent): void => {
+    const host = tiltHostOf(e.target);
+    if (host) aim(host, e);
+  };
   const release = (): void => {
     for (const s of tilts.values()) {
       s.on = 0;
@@ -629,14 +652,26 @@ export const initTilt = (): void => {
     }
     loop();
   };
-  document.addEventListener(
-    'pointerup',
-    (e) => {
-      if (e.pointerType !== 'mouse') release();
-    },
-    { passive: true }
-  );
-  document.addEventListener('pointercancel', release, { passive: true });
+  const up = (e: PointerEvent): void => {
+    if (e.pointerType !== 'mouse') release();
+  };
+  const opts = { passive: true };
+  document.addEventListener('pointermove', move, opts);
+  document.addEventListener('pointerdown', down, opts);
+  document.addEventListener('pointerup', up, opts);
+  document.addEventListener('pointercancel', release, opts);
+  const off = (): void => {
+    tiltOff = null;
+    document.removeEventListener('pointermove', move);
+    document.removeEventListener('pointerdown', down);
+    document.removeEventListener('pointerup', up);
+    document.removeEventListener('pointercancel', release);
+    cancelAnimationFrame(tiltRaf);
+    tiltRaf = 0;
+    tilts.clear();
+  };
+  tiltOff = off;
+  return off;
 };
 let tiltRaf = 0;
 const loop = (): void => {

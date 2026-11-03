@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { buildView } from './buildView.js';
-import { Screen } from './Screen.js';
+import { DRAG_KEYS, buildView, dragOnly, dragView } from './buildView.js';
+import { Screen, ScreenStale } from './Screen.js';
 import {
   DUEL_HP,
   GEAR,
@@ -12,6 +12,7 @@ import {
   makeDuelSide,
 } from '../../shared/engine/index.js';
 import type { QuestBoard } from '../../shared/api.js';
+import type { AppState } from '../state/appState.js';
 
 import {
   bs,
@@ -466,4 +467,85 @@ void test('the knights page lays out outfits and the shop sells the exclusives',
 
   const home = buildView(fakeApp({ phase: 'home' }));
   assert.equal(typeof home.heroChip.run, 'function');
+});
+
+/* ---------- the drag fast path ----------
+   A drag step rebuilds only the board on top of the last view (`dragView`),
+   and Screen skips its body when nothing else moved. Both are only sound if
+   they draw exactly what a full rebuild would. */
+
+const dragDuel = {
+  me: makeDuelSide('Hero', run.loadout, 1, rng),
+  foe: makeDuelSide('Mage', foeLoadout('Mage', []), 0.9, rng),
+};
+const linkPreview = (n: number) => ({
+  text: 'ATK ' + n,
+  color: '#E75757',
+  mult: 100 + n * 25,
+  power: n,
+  val: n * 3,
+  label: 'DMG',
+  extra: n > 4 ? 'BURN 2' : '',
+  bomb: n >= 6,
+});
+/** Before and after one drag step, on each kind of board. */
+const boards: { base: Partial<AppState>; post?: boolean }[] = [
+  { base: { phase: 'battle', bs } },
+  { base: { phase: 'battle', bs, ftueStep: 'drag' } },
+  { base: { phase: 'battle', bs, busy: true } },
+  { base: { phase: 'battle', bs }, post: true },
+  { base: { phase: 'duel', duel: dragDuel } },
+];
+const dragSteps = boards.flatMap(({ base, post }) =>
+  [[0], [0, 1, 2], [0, 1, 2, 3, 4, 5]].map((chain) => {
+    const before = {
+      ...fakeApp({ ...base, chain: [], preview: null }),
+      postMode: !!post,
+      // Holds the post layout off its resize frame, which a test has no use for.
+      postSizing: true,
+    };
+    // What one setState from the move handler leaves behind.
+    const state = {
+      ...before.state,
+      chain,
+      preview: linkPreview(chain.length),
+    };
+    return { before, after: { ...before, state } };
+  })
+);
+const plain = (x: unknown) =>
+  JSON.stringify(x, (_k, v: unknown) => (typeof v === 'function' ? 'fn' : v));
+
+void test('a drag step rebuilds the board exactly as a full rebuild would', () => {
+  const moved = new Set<string>();
+  for (const { before, after } of dragSteps) {
+    assert.ok(dragOnly(before.state, after.state));
+    const last = buildView(before);
+    const full = buildView(after);
+    const fast = dragView(after, last);
+    for (const k of new Set([...Object.keys(full), ...Object.keys(fast)]))
+      assert.equal(plain(fast[k]), plain(full[k]), k);
+    for (const k of Object.keys(full))
+      if (plain(full[k]) !== plain(last[k])) {
+        assert.ok(DRAG_KEYS.has(k), k + ' moved on a drag but is no drag key');
+        moved.add(k);
+      }
+  }
+  // Every drag key is exercised, so the render check below covers it too.
+  assert.deepEqual([...moved].sort(), [...DRAG_KEYS].sort());
+  const st = dragSteps[0]!.before.state;
+  assert.ok(!dragOnly(st, { ...st, busy: !st.busy }));
+});
+
+void test('a skipped screen body still draws the board off the live view', () => {
+  for (const { before, after } of dragSteps)
+    assert.equal(
+      renderToStaticMarkup(
+        <ScreenStale
+          body={buildView(before)}
+          live={dragView(after, buildView(before))}
+        />
+      ),
+      renderToStaticMarkup(<Screen v={buildView(after)} />)
+    );
 });

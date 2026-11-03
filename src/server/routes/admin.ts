@@ -26,6 +26,7 @@ import type { ErrorResponse } from '../../shared/api.js';
 import { packById } from '../../shared/engine/economy.js';
 import { isModerator } from '../core/mods.js';
 import { loadProfile, profileKey, saveProfile } from '../core/profile.js';
+import { BusyError, withProfileLock } from '../core/lock.js';
 import { removeFromPool, isInPool } from '../core/duelpool.js';
 import { resetQuests } from '../core/quests.js';
 import { resetStreak } from '../core/streak.js';
@@ -42,8 +43,11 @@ import {
 
 export const admin = new Hono();
 
-const fail = (c: HonoContext, message: string, status: 400 | 401 | 404 | 500) =>
-  c.json<ErrorResponse>({ status: 'error', message }, status);
+const fail = (
+  c: HonoContext,
+  message: string,
+  status: 400 | 401 | 404 | 409 | 500
+) => c.json<ErrorResponse>({ status: 'error', message }, status);
 
 admin.use('*', async (c, next) => {
   try {
@@ -56,6 +60,7 @@ admin.use('*', async (c, next) => {
 
 /** Any thrown error becomes a JSON 500 the panel can show. */
 admin.onError((err, c) => {
+  if (err instanceof BusyError) return fail(c, err.message, 409);
   console.error('admin route failed: ' + String(err));
   return fail(c, err instanceof Error ? err.message : String(err), 500);
 });
@@ -232,15 +237,19 @@ admin.post('/user/:userId/gift', async (c) => {
   const user = await userJson(userId);
   if (!user) return fail(c, 'No such player.', 404);
 
-  const profile = await loadProfile(userId, user.user.username);
-  const nextPacks = { ...profile.packs };
-  for (const [id, n] of Object.entries(packs))
-    nextPacks[id] = (nextPacks[id] ?? 0) + n;
-  await saveProfile(userId, {
-    coins: profile.coins + amounts.coins,
-    gems: profile.gems + amounts.gems,
-    heartPieces: profile.heartPieces + amounts.heartPieces,
-    packs: nextPacks,
+  // Under the player's lock, like every other wallet write, so a gift landing
+  // mid-purchase is neither lost nor written over.
+  await withProfileLock(userId, async () => {
+    const profile = await loadProfile(userId, user.user.username);
+    const nextPacks = { ...profile.packs };
+    for (const [id, n] of Object.entries(packs))
+      nextPacks[id] = (nextPacks[id] ?? 0) + n;
+    await saveProfile(userId, {
+      coins: profile.coins + amounts.coins,
+      gems: profile.gems + amounts.gems,
+      heartPieces: profile.heartPieces + amounts.heartPieces,
+      packs: nextPacks,
+    });
   });
 
   const parts = [
@@ -273,12 +282,18 @@ admin.post('/user/:userId/gift', async (c) => {
  * profile going takes `seenFtue` and the primers with it, so the next open
  * plays the first-run coaching from the top.
  */
-const wipePlayer = async (userId: string): Promise<void> => {
-  await redis.del(profileKey(userId), `open:${userId}`);
-  await resetQuests(userId);
-  await resetStreak(userId);
-  await removeFromPool(userId);
-};
+const wipePlayer = (userId: string): Promise<void> =>
+  withProfileLock(userId, async () => {
+    await redis.del(
+      profileKey(userId),
+      `open:${userId}`,
+      `runseed:${userId}`,
+      `duel:${userId}`
+    );
+    await resetQuests(userId);
+    await resetStreak(userId);
+    await removeFromPool(userId);
+  });
 
 admin.post('/user/:userId/reset', async (c) => {
   const userId = c.req.param('userId');
