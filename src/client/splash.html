@@ -7,6 +7,22 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
     <title>Gearlink</title>
+    <!-- Every feed card draws in these faces: fetch them with the script, not
+         after the stylesheet has been parsed and the card laid out. -->
+    <link
+      rel="preload"
+      href="/art/NeuraKnights/Fonts/Volter__28Goldfish_29.ttf"
+      as="font"
+      type="font/ttf"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/art/NeuraKnights/Fonts/yosterislandreg.ttf"
+      as="font"
+      type="font/ttf"
+      crossorigin
+    />
   </head>
   <body class="h-full">
     <div id="root" class="h-full"></div>

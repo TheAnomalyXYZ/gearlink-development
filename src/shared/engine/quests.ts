@@ -10,6 +10,7 @@
  * already verified (a replayed run, a bounded duel result, a collected pack),
  * so a quest can never be advanced by anything the client merely claims.
  */
+import { DUEL_ENABLED } from './duel.js';
 import { packById } from './economy.js';
 
 export type QuestPeriod = 'daily' | 'weekly';
@@ -51,6 +52,9 @@ export type QuestDef = {
   metric: QuestMetric;
   target: number;
   reward: QuestReward;
+  /** 'duels' quests only run while duels are on; 'noDuels' ones stand in for
+   *  them, at the same reward, while duels are off. */
+  gate?: 'duels' | 'noDuels';
 };
 
 /** Neura Knights' two gameplay groups. Ids are stored against claims, so a
@@ -100,6 +104,17 @@ export const QUESTS: QuestDef[] = [
     metric: 'duels',
     target: 2,
     reward: { kind: 'coins', amount: 80 },
+    gate: 'duels',
+  },
+  {
+    id: 'd_coins',
+    period: 'daily',
+    title: 'Spoils',
+    blurb: 'Bank 150 coins from battles.',
+    metric: 'coins',
+    target: 150,
+    reward: { kind: 'coins', amount: 80 },
+    gate: 'noDuels',
   },
   {
     id: 'd_packs',
@@ -145,6 +160,17 @@ export const QUESTS: QuestDef[] = [
     metric: 'duelWins',
     target: 10,
     reward: { kind: 'gems', amount: 25 },
+    gate: 'duels',
+  },
+  {
+    id: 'w_waves',
+    period: 'weekly',
+    title: 'Tide Turner',
+    blurb: 'Clear 80 waves.',
+    metric: 'waves',
+    target: 80,
+    reward: { kind: 'gems', amount: 25 },
+    gate: 'noDuels',
   },
   {
     id: 'w_packs',
@@ -166,8 +192,17 @@ export const QUESTS: QuestDef[] = [
   },
 ];
 
+/** Whether a quest is on the board, given whether duels are switched on. */
+export const questLive = (q: QuestDef, duels = DUEL_ENABLED): boolean =>
+  q.gate === undefined || (q.gate === 'duels') === duels;
+
+/** The quests on the board right now. A duel quest while duels are off can
+ *  never be finished, so it is swapped for its campaign stand-in. */
+export const LIVE_QUESTS: QuestDef[] = QUESTS.filter((q) => questLive(q));
+
+/** A quest on the board: one that is off cannot be claimed. */
 export const questById = (id: string): QuestDef | null =>
-  QUESTS.find((q) => q.id === id) ?? null;
+  LIVE_QUESTS.find((q) => q.id === id) ?? null;
 
 /** "+60 coins", "+5 gems", "BRONZE PACK". */
 export const rewardLabel = (r: QuestReward): string =>

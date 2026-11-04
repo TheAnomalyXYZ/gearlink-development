@@ -85,6 +85,8 @@ export type VictoryApp = {
   replayDaily: () => void;
   /** Set on a Daily Battle post: back to its poster and ladder. */
   dailyDone: (() => void) | null;
+  /** Set when the tutorial ran in place of a live Daily Battle: into it. */
+  dailyNext: (() => void) | null;
   openBooks: (ids: string[], from: 'victory') => void;
   openFullGame: (e: MouseEvent, go?: string) => void;
   afterBooks: (() => void) | null;
@@ -1283,8 +1285,23 @@ class Victory {
       list.push(button('PLAY AGAIN', BTN.home, () => A.replayDaily()));
     } else if (!this.won) {
       list.push(button('TRY AGAIN', BTN.primary, () => A.retryRun(), true));
+      if (A.dailyNext)
+        list.push(button("PLAY TODAY'S BATTLE", BTN.quiet, A.dailyNext));
       list.push(button('BACK TO THE MAP', BTN.quiet, () => A.goMap()));
       if (n) list.unshift(button(label, BTN.primary, openBooks, true, true));
+    } else if (A.dailyNext) {
+      // The tutorial stood in for a Daily Battle post: on into the day's
+      // battle, which is what the player opened the post for.
+      if (n) list.push(button(label, BTN.primary, openBooks, true, true));
+      list.push(
+        button(
+          "PLAY TODAY'S BATTLE",
+          n ? BTN.quiet : BTN.primary,
+          A.dailyNext,
+          !n
+        )
+      );
+      list.push(button('BACK TO THE MAP', BTN.quiet, () => A.goMap()));
     } else {
       if (n) list.push(button(label, BTN.primary, openBooks, true, true));
       list.push(

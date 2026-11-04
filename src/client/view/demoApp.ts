@@ -405,6 +405,7 @@ export const demoApp = (over: Partial<AppState>): ViewApp => {
     setPostRoot: noop,
     clearChain: noop,
     dailyDone: null,
+    dailyNext: null,
     openBooks: noop,
     afterBooks: null,
   };

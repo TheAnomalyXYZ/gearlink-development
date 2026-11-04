@@ -301,6 +301,9 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
   /** A new player's tutorial fight has been started this session - once, so
    *  quitting out of it does not throw them straight back in. */
   private tutorialStarted = false;
+  /** The tutorial fight ran in place of this post's live Daily Battle, which
+   *  is owed once it ends. */
+  private dailyAfterTutorial = false;
   /** The login reward has been put up once this session; after that it waits
    *  to be opened from the quests screen. */
   private streakOffered = false;
@@ -466,7 +469,13 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
             // The post plays it inline, straight into the battle; the full
             // game picks up a battle the post handed it, else the build.
             if (Date.now() < res.daily.endsAt) {
-              if (this.postMode) this.startDailyPost();
+              // A new player meets the tutorial fight first, not today's
+              // location with starter gear; its end screen offers the daily.
+              if (!res.profile.seenFtueFight) {
+                this.dailyAfterTutorial = true;
+                if (!(takeGoTo() === 'resume' && this.resumeLiveRun()))
+                  this.startTutorialFight();
+              } else if (this.postMode) this.startDailyPost();
               else if (!(takeGoTo() === 'resume' && this.resumeLiveRun()))
                 this.pickLocation(res.daily.locationId)();
             }
@@ -1035,6 +1044,22 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
       (this.postMode && this.isDailyRun() && this.props.onDailyDone) || null
     );
   }
+
+  /** Set while the tutorial stands in for this post's Daily Battle: the end
+   *  screen's way on into the day's battle. */
+  get dailyNext(): (() => void) | null {
+    const daily = this.state.daily;
+    if (!this.dailyAfterTutorial || !daily || this.isDailyRun()) return null;
+    return Date.now() < daily.endsAt ? this.playDailyAfterTutorial : null;
+  }
+
+  private playDailyAfterTutorial = (): void => {
+    const daily = this.state.daily;
+    this.dailyAfterTutorial = false;
+    if (!daily) return;
+    if (this.postMode) this.startDailyPost();
+    else this.pickLocation(daily.locationId)();
+  };
 
   /** Whether the run on screen is this post's Daily Battle. */
   isDailyRun = (): boolean =>

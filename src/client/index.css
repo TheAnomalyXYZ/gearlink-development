@@ -1,1 +1,24 @@
 @import 'tailwindcss';
+
+/* The pixel faces, here rather than in game.css because the feed cards
+   (splash.html) draw in them too and only load this sheet. */
+@font-face {
+  font-family: 'Yoster Island';
+  src: url('/art/NeuraKnights/Fonts/yosterislandreg.ttf') format('truetype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Volter';
+  src: url('/art/NeuraKnights/Fonts/Volter__28Goldfish_29.ttf')
+    format('truetype');
+  font-display: swap;
+}
+/* Volter at 92%: it runs ~8% wider than Yoster Island, so title text laid
+   out for Yoster still fits. */
+@font-face {
+  font-family: VolterTitle;
+  src: url('/art/NeuraKnights/Fonts/Volter__28Goldfish_29.ttf')
+    format('truetype');
+  size-adjust: 92%;
+  font-display: swap;
+}

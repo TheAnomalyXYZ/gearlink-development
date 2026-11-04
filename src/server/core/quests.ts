@@ -11,7 +11,7 @@ import { redis } from '@devvit/web/server';
 import type { QuestBoard, QuestView } from '../../shared/api.js';
 import {
   BEST_METRICS,
-  QUESTS,
+  LIVE_QUESTS,
   questById,
   questPeriodKey,
   questResetAt,
@@ -117,7 +117,9 @@ export const loadQuestBoard = async (
   );
   const views = (period: QuestPeriod, p: QuestProgress): QuestView[] =>
     sortQuestStatuses(
-      QUESTS.filter((q) => q.period === period).map((q) => questStatus(q, p))
+      LIVE_QUESTS.filter((q) => q.period === period).map((q) =>
+        questStatus(q, p)
+      )
     ).map((s) => ({
       id: s.def.id,
       period: s.def.period,

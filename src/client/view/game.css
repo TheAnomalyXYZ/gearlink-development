@@ -10,26 +10,7 @@ body {
 * {
   box-sizing: border-box;
 }
-@font-face {
-  font-family: 'Yoster Island';
-  src: url('/art/NeuraKnights/Fonts/yosterislandreg.ttf') format('truetype');
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Volter';
-  src: url('/art/NeuraKnights/Fonts/Volter__28Goldfish_29.ttf')
-    format('truetype');
-  font-display: swap;
-}
-/* Volter at 92%: it runs ~8% wider than Yoster Island, so title text laid
-   out for Yoster still fits. */
-@font-face {
-  font-family: VolterTitle;
-  src: url('/art/NeuraKnights/Fonts/Volter__28Goldfish_29.ttf')
-    format('truetype');
-  size-adjust: 92%;
-  font-display: swap;
-}
+/* The pixel faces are declared in index.css, which the feed cards share. */
 /* Pixel title face for code that sets fonts outside React (World Map). */
 body {
   --gl-pixel: VolterTitle;

@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  LIVE_QUESTS,
   QUESTS,
   questById,
+  questLive,
   questPeriodKey,
   questResetAt,
   questStatus,
@@ -26,11 +28,35 @@ void test('quest ids are unique and every reward resolves', () => {
 });
 
 void test('the daily capstone asks for fewer dailies than exist to claim', () => {
-  const cap = QUESTS.find((q) => q.metric === 'dailies')!;
-  const others = QUESTS.filter(
+  const cap = LIVE_QUESTS.find((q) => q.metric === 'dailies')!;
+  const others = LIVE_QUESTS.filter(
     (q) => q.period === 'daily' && q.metric !== 'dailies'
   ).length;
   assert.ok(cap.target <= others);
+});
+
+void test('duel quests and their stand-ins swap with the duel switch', () => {
+  const duelMetric = (q: (typeof QUESTS)[number]) =>
+    q.metric === 'duels' || q.metric === 'duelWins';
+  for (const duels of [true, false]) {
+    const live = QUESTS.filter((q) => questLive(q, duels));
+    assert.equal(live.some(duelMetric), duels);
+    // Each period pays the same either way: a stand-in matches what it hides.
+    for (const period of ['daily', 'weekly'] as const) {
+      const all = QUESTS.filter((q) => q.period === period);
+      assert.equal(
+        live.filter((q) => q.period === period).length,
+        all.filter((q) => questLive(q, !duels)).length
+      );
+    }
+  }
+  for (const q of QUESTS.filter((q) => q.gate === 'noDuels'))
+    assert.ok(!duelMetric(q), q.id + ' stands in with a duel metric');
+});
+
+void test('a quest that is off the board cannot be claimed', () => {
+  for (const q of QUESTS)
+    assert.equal(questById(q.id) !== null, questLive(q), q.id);
 });
 
 void test('days roll at UTC midnight and weeks on Monday', () => {
