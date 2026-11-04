@@ -20,23 +20,22 @@ Packs are rolled on the server, so the odds shown are the real odds.
 | **Silver Pack** | 100 gems | 1 | **Silver** | Epic or better | – | – | 97% | 3% |
 | **Gold Pack** | 150 gems | 2 | **Gold** | Epic or better | – | – | 85% | 15% |
 
-Each card picks its rarity first, then a random piece of that rarity from any hero. Legendaries are weapons only, so a Legendary pull is one of the three heroes' Legendary weapons.
+Each card picks its rarity first, then a piece of that rarity. The odds above are untouched by the next part: **60%** of picks come from the hero you're playing, and the rest from any hero. That makes about three pulls in four for your own hero. Legendaries are weapons only, so a Legendary pull is one of the Legendary weapons.
 
 Packs only give **base pieces**, never [variants](heroes-and-gear.md#variants).
 
 ### Pack tiers
 
-A pack's tier decides what [gear tier](heroes-and-gear.md#gear-levels) its cards land at:
+A pack's tier decides what [gear tier](heroes-and-gear.md#gear-levels) a **new** card lands at:
 
 | You pull... | Bronze tier (Base, Bronze Packs) | Silver tier (Silver Pack) | Gold tier (Gold Pack) |
 | --- | --- | --- | --- |
 | **A card you don't own** | New card at Bronze LV 1 | New card at **Silver LV 1** | New card at **Gold LV 1** |
-| **A card you own, below the pack's tier** | – | **Promoted** to Silver LV 1, +1 spare copy | **Promoted** to Gold LV 1, +1 spare copy |
-| **A card you own, at or above the pack's tier** | +1 spare copy | +1 spare copy, level kept | +1 spare copy, level kept |
+| **A card you own** | +1 spare copy | +1 spare copy, level kept | +1 spare copy, level kept |
 
-Example: your Blessed Hammer (Epic) is at Bronze LV 7. A Silver Pack pulls it again, so it jumps to **Silver LV 1** and gains a spare copy. If it had already been at Silver LV 4, it would stay at Silver LV 4 and just gain the copy.
+Example: your Blessed Hammer (Epic) is at Bronze LV 7. A Silver Pack pulls it again: it stays at Bronze LV 7 and gains a spare copy toward its next level. A card you're levelling is only ever moved up by levelling it.
 
-Silver and Gold cards show their tier on the reveal. A pull that promotes a card gets a **SILVER!** or **GOLD!** stamp instead of the usual duplicate crack.
+New Silver and Gold cards show their tier on the reveal.
 
 ### Duplicates
 
@@ -105,7 +104,7 @@ Reset every day at **00:00 UTC**.
 | **Hold the Line** | Win 2 battles | 100 coins |
 | **Wave Breaker** | Clear 12 waves | 80 coins |
 | **Long Link** | Link a chain of 8 in one battle | 5 gems |
-| **Sparring Partner** | Play 2 duels | 80 coins |
+| **Spoils** | Bank 150 coins from battles | 80 coins |
 | **Fresh Steel** | Open a pack | 60 coins |
 | **Daily Duties** | Claim 4 other daily quests | Base Pack |
 
@@ -117,6 +116,8 @@ Reset every **Monday at 00:00 UTC**.
 | --- | --- | --- |
 | **Campaigner** | Win 15 battles | Bronze Pack |
 | **War Chest** | Bank 2,000 coins from battles | Silver Pack |
-| **Duellist** | Win 10 duels | 25 gems |
+| **Tide Turner** | Clear 80 waves | 25 gems |
 | **Collector** | Open 6 packs | 20 gems |
 | **Regicide** | Defeat The King | Gold Pack |
+
+While duels are switched off, **Spoils** and **Tide Turner** stand in for the duel quests (**Sparring Partner**: play 2 duels, 80 coins; **Duellist**: win 10 duels, 25 gems), at the same rewards.

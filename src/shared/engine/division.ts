@@ -107,6 +107,9 @@ export type GroupBand = CutTier & {
   color: string;
   /** Bronze's payout; a division scales it by its payScale. */
   coins: number;
+  /** A pack on top, the same in every division: coins alone were too little
+   *  to play the week for. */
+  pack?: string;
 };
 
 /** Best band first. Every qualified finish fits one. */
@@ -118,6 +121,7 @@ export const GROUP_BANDS: GroupBand[] = [
     minPlayers: 3,
     color: '#FFC24B',
     coins: 200,
+    pack: 'silver',
   },
   {
     id: 'top25',
@@ -126,6 +130,7 @@ export const GROUP_BANDS: GroupBand[] = [
     minPlayers: 8,
     color: '#7FD3FF',
     coins: 120,
+    pack: 'bronze',
   },
   {
     id: 'top50',
@@ -134,6 +139,7 @@ export const GROUP_BANDS: GroupBand[] = [
     minPlayers: 4,
     color: '#9DB4D4',
     coins: 80,
+    pack: 'base',
   },
   {
     id: 'finisher',
@@ -163,12 +169,14 @@ export const nextGroupBand = (
 ): { tier: GroupBand; rank: number } | null =>
   nextTier(GROUP_BANDS, rank, size, runs);
 
-/** What a band pays in a division: its coins, scaled, to the nearest 5. */
+/** What a band pays in a division: its coins, scaled, to the nearest 5, and
+ *  its pack if it has one. */
 export const bandRewards = (band: GroupBand, div: number): QuestReward[] => [
   {
     kind: 'coins',
     amount: Math.round((band.coins * divisionAt(div).payScale) / 5) * 5,
   },
+  ...(band.pack ? [{ kind: 'pack' as const, packId: band.pack }] : []),
 ];
 
 /** How many of a group go up: a quarter, at least one, at most MOVE_MAX. */

@@ -6,7 +6,8 @@ import {
   defaultLoadout,
   resolveLoadout,
 } from './gear.js';
-import { rollPack, packById } from './economy.js';
+import { rollCard, rollPack, packById } from './economy.js';
+import { mulberry32 } from './rng.js';
 import { Run } from './run.js';
 import { verifyRun } from './replay.js';
 import {
@@ -22,8 +23,11 @@ import {
   leveledPower,
   spareCopies,
   tierLevelOf,
+  SALVAGE_COPIES_PER_SHARD,
+  canSalvage,
   upgradeBlock,
   upgradeCost,
+  upgradeSpend,
 } from './upgrade.js';
 import type { Rarity } from './types.js';
 
@@ -81,7 +85,7 @@ void test('a duplicate pull stacks instead of refunding', () => {
   const pack = packById('base')!;
   const [first] = rollPack(pack, {}, () => 0);
   const [again] = rollPack(pack, { [first!.id]: 2 }, () => 0);
-  const base = { tier: 'Bronze', promoted: false };
+  const base = { tier: 'Bronze' };
   assert.deepEqual(first, { id: first!.id, isNew: true, owned: 1, ...base });
   assert.deepEqual(again, { id: first!.id, isNew: false, owned: 3, ...base });
 });
@@ -164,35 +168,70 @@ void test('a pack lands its cards at its own tier', () => {
   assert.equal(packById('bronze')!.tier, 'Bronze');
   assert.equal(packById('silver')!.tier, 'Silver');
   assert.equal(packById('gold')!.tier, 'Gold');
-  // Below the tier jumps to its level 1; at or past it keeps its level.
-  assert.equal(levelAfterPull(1, 'Bronze'), 1);
-  assert.equal(levelAfterPull(7, 'Silver'), TIER_LEVELS + 1);
-  assert.equal(levelAfterPull(TIER_LEVELS + 4, 'Silver'), TIER_LEVELS + 4);
-  assert.equal(levelAfterPull(TIER_LEVELS + 4, 'Gold'), TIER_LEVELS * 2 + 1);
-  assert.equal(
-    levelAfterPull(TIER_LEVELS * 2 + 9, 'Silver'),
-    TIER_LEVELS * 2 + 9
-  );
+  // A new card arrives at the tier's level 1.
+  assert.equal(levelAfterPull(1, 'Bronze', true), 1);
+  assert.equal(levelAfterPull(1, 'Silver', true), TIER_LEVELS + 1);
+  assert.equal(levelAfterPull(1, 'Gold', true), TIER_LEVELS * 2 + 1);
+  // A duplicate is a spare copy only: the pack's tier never lifts it.
+  assert.equal(levelAfterPull(7, 'Silver', false), 7);
+  assert.equal(levelAfterPull(TIER_LEVELS + 4, 'Gold', false), TIER_LEVELS + 4);
 });
 
-void test('a pull only reads as promoted when it lifts a card it already had', () => {
+void test('a gem pack tiers a new card and only stacks a duplicate', () => {
   const gold = packById('gold')!;
   const [fresh] = rollPack(gold, {}, () => 0);
   assert.equal(fresh!.tier, 'Gold');
-  assert.equal(fresh!.promoted, false);
+  assert.equal(fresh!.isNew, true);
   const id = fresh!.id;
-  const [lifted] = rollPack(gold, { [id]: 1 }, () => 0, { [id]: 5 });
-  assert.equal(lifted!.promoted, true);
-  const [kept] = rollPack(gold, { [id]: 1 }, () => 0, {
-    [id]: TIER_LEVELS * 2 + 3,
+  const [dupe] = rollPack(gold, { [id]: 1 }, () => 0);
+  assert.equal(dupe!.isNew, false);
+  assert.equal(dupe!.owned, 2);
+});
+
+void test('a pack leans toward the hero in use without moving the odds', () => {
+  const seq = mulberry32(11);
+  const n = 3000;
+  let mine = 0;
+  for (let i = 0; i < n; i++)
+    if (
+      GEAR_BY_ID[rollCard(packById('base')!.odds, null, seq, 'Archer').id]!
+        .cls === 'Archer'
+    )
+      mine++;
+  // 60% from the hero's own cards plus a third of the open draw: ~73%.
+  const share = mine / n;
+  assert.ok(share > 0.68 && share < 0.78, 'archer share ' + share);
+  // No hero: an even three-way split.
+  let even = 0;
+  for (let i = 0; i < n; i++)
+    if (
+      GEAR_BY_ID[rollCard(packById('base')!.odds, null, seq).id]!.cls ===
+      'Archer'
+    )
+      even++;
+  assert.ok(Math.abs(even / n - 1 / 3) < 0.04, 'even share ' + even / n);
+});
+
+void test('shards cover the copies a card is short of, spares first', () => {
+  const cost = upgradeCost('Epic', 1)!;
+  // One copy owned (no spares): short without shards, fine with enough.
+  assert.equal(upgradeBlock('Epic', 1, 1, 1e9), 'copies');
+  assert.equal(upgradeBlock('Epic', 1, 1, 1e9, cost.copies), null);
+  assert.equal(upgradeBlock('Epic', 1, 1, 1e9, cost.copies - 1), 'copies');
+  // Spares are spent before shards.
+  const later = upgradeCost('Common', 5)!;
+  assert.deepEqual(upgradeSpend(later, 1 + later.copies + 3), {
+    copies: later.copies,
+    shards: 0,
   });
-  assert.equal(kept!.promoted, false);
-  // Two copies in one pack: only the first can promote.
-  const both = rollPack({ ...gold, cards: 2 }, { [id]: 1 }, () => 0, {
-    [id]: 5,
+  assert.deepEqual(upgradeSpend(later, 2), {
+    copies: 1,
+    shards: later.copies - 1,
   });
-  assert.deepEqual(
-    both.map((c) => c.promoted),
-    [true, false]
-  );
+});
+
+void test('salvage needs its copies spare, never the card itself', () => {
+  assert.equal(canSalvage(SALVAGE_COPIES_PER_SHARD), false);
+  assert.equal(canSalvage(SALVAGE_COPIES_PER_SHARD + 1), true);
+  assert.equal(canSalvage(0), false);
 });

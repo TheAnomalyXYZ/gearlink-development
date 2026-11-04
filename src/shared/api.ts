@@ -1,4 +1,5 @@
 import type { HeroClass } from './engine/types.js';
+import type { Shards } from './engine/upgrade.js';
 import type { Hearts } from './engine/hearts.js';
 import type { PulledCard } from './engine/economy.js';
 import type { DuelFoe } from './engine/duel.js';
@@ -21,6 +22,9 @@ export type Profile = {
   gear: Record<string, number>;
   /** cardId -> gear level. A card missing here is level 1. */
   gearLevels: Record<string, number>;
+  /** Salvaged copies, by rarity: each stands in for a missing copy when any
+   *  card of that rarity levels up. */
+  shards: Shards;
   /** packId -> unopened count. */
   packs: Record<string, number>;
   best: BestRun | null;
@@ -290,8 +294,12 @@ export type ApplyHeartRequest = { cls: HeroClass };
 
 export type UpgradeGearRequest = { id: string };
 
+/** Salvage SALVAGE_COPIES_PER_SHARD spare copies of a card into one shard. */
+export type SalvageGearRequest = { id: string };
+
 export type BuyPackRequest = { packId: string };
-export type OpenPackRequest = { packId: string };
+/** `heroClass` is the hero the player is on: the pack leans toward its cards. */
+export type OpenPackRequest = { packId: string; heroClass?: HeroClass };
 
 export type OpenPackResponse = {
   type: 'openPack';

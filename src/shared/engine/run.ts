@@ -77,6 +77,7 @@ import {
 } from './gear.js';
 import { clampContainers, maxHpFor } from './hearts.js';
 import { MONSTER_BASE_HP } from './monsters.js';
+import { reviveHp } from './revive.js';
 import { hash32, mulberry32 } from './rng.js';
 import type {
   DetonationStage,
@@ -367,7 +368,7 @@ export class Run {
    *  charge reset so the first beat is yours. The board, the wave and the
    *  score so far stand. Draws nothing off the RNG stream. */
   revive(bs: RunState): RunState {
-    return { ...bs, playerHp: this.maxHp(), block: 0, meter: 0 };
+    return { ...bs, playerHp: reviveHp(this.maxHp()), block: 0, meter: 0 };
   }
 
   /** One turn. `move` is either a drawn link of >= MIN_LINK cells, or a single

@@ -9,6 +9,7 @@ import {
   DUEL_MATCH_SECONDS,
   FIRST_LOCATION,
   NO_HEARTS,
+  NO_SHARDS,
 } from '../../shared/engine/index.js';
 import type {
   DuelFoe,
@@ -73,7 +74,6 @@ export type OpenCard = {
   isNew: boolean;
   owned: number;
   tier: GearTier;
-  promoted: boolean;
 };
 export type OpenState = {
   id: string;
@@ -319,6 +319,7 @@ export const EMPTY_PROFILE: Profile = {
   trophies: 0,
   gear: {},
   gearLevels: {},
+  shards: { ...NO_SHARDS },
   packs: {},
   best: null,
   ascension: 0,

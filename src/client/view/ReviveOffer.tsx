@@ -65,8 +65,8 @@ export const ReviveOffer = ({
             textAlign: 'center',
           }}
         >
-          Get back up at full HP against the same monster. Your board and score
-          stay.
+          Get back up at half HP against the same monster. Your board stays, but
+          each revive costs a quarter of this battle's ladder score.
         </div>
         <div
           style={{ fontSize: '8px', letterSpacing: '.12em', color: '#C79AA6' }}

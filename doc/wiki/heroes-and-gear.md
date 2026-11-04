@@ -58,6 +58,12 @@ Pulling a card you already own adds a **spare copy** to it. Spare copies plus co
 - Every level up costs **both** spare copies and coins. Both climb with the level.
 - To level up, open a gear card's details and tap **LEVEL UP**. The panel shows your tier and level (e.g. *SILVER LV 3 / 10*), spare copies against what's needed (e.g. *2/3 copies*) and the coin cost. Anything you're short on shows in red. At level 10 of Bronze or Silver the button reads **PROMOTE TO SILVER** / **PROMOTE TO GOLD**. At Gold 99 it reads **MAX LEVEL**.
 
+### Shards
+
+Spare copies of a card you'll never level (another hero's piece, a heal piece you don't equip) can be **salvaged**: open the card's details and tap **SALVAGE 2 SPARES > 1 SHARD**. Two spare copies become **one shard** of the card's rarity. The card itself and its level are never touched.
+
+A shard stands in for a missing copy when you level up **any card of the same rarity**. A level-up spends the card's own spare copies first, then shards. The copy count on the panel counts both.
+
 The tables below are for Bronze. Silver levels need the **same copies** and **3× the coins**.
 
 ### Spare copies per level

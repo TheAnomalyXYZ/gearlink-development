@@ -10,6 +10,7 @@ import {
   bandRewards,
   demoteCount,
   divisionIndex,
+  groupBandById,
   groupBandFor,
   groupOutcome,
   groupZones,
@@ -17,6 +18,7 @@ import {
   promoteCount,
   stepDivision,
 } from './division.js';
+import { packById } from './economy.js';
 import { SOLO_MIN_RUNS } from './solo.js';
 
 const runs = SOLO_MIN_RUNS;
@@ -43,6 +45,21 @@ void test('a better band pays more, and a higher division more again', () => {
   };
   for (let d = 1; d < DIVISIONS.length; d++) assert.ok(coins(d) > coins(d - 1));
   assert.equal(coins(0), 200);
+});
+
+void test('the top three bands add a pack that exists', () => {
+  const packOf = (id: string) =>
+    bandRewards(groupBandById(id)!, 0).find((r) => r.kind === 'pack');
+  for (const [id, pack] of [
+    ['first', 'silver'],
+    ['top25', 'bronze'],
+    ['top50', 'base'],
+  ] as const) {
+    const r = packOf(id);
+    assert.ok(r && r.kind === 'pack' && r.packId === pack, id);
+    assert.ok(packById(pack), pack + ' is not a pack');
+  }
+  assert.equal(packOf('finisher'), undefined);
 });
 
 void test('group prizes and first-reach bonuses never pay gems', () => {

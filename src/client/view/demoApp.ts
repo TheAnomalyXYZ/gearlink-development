@@ -26,6 +26,7 @@ export const profile: Profile = {
     HERO_CLASSES.flatMap((c) => defaultLoadout(c).map((id) => [id, 1]))
   ),
   gearLevels: {},
+  shards: { Common: 0, Rare: 1, Epic: 0, Legendary: 0 },
   packs: { base: 2, gold: 1 },
   best: { score: 4210, waves: 7, chain: 6, hero: 'Hero' },
   ascension: 1,
@@ -262,6 +263,7 @@ export const demoApp = (over: Partial<AppState>): ViewApp => {
     gearLevel: () => 1,
     canUpgradeGear: () => false,
     upgradeGear: curried,
+    salvageGear: curried,
     ftueHint: () => null,
     rollUp: (v: number) => v,
     packSummary: () => 'New gear - Rare',

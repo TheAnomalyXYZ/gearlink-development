@@ -115,19 +115,17 @@ const card = (gear: Gear, isNew: boolean, owned: number): OpenCard => ({
   isNew,
   owned,
   tier: 'Bronze',
-  promoted: false,
 });
 
 void test('pack cards drop unknown pulls and the summary names the best one', () => {
   const [a, b] = [GEAR[0]!, GEAR[1]!];
   const cards = toOpenCards([
-    { id: a.id, isNew: true, owned: 1, tier: 'Bronze', promoted: false },
+    { id: a.id, isNew: true, owned: 1, tier: 'Bronze' },
     {
       id: 'no-such-gear',
       isNew: true,
       owned: 1,
       tier: 'Bronze',
-      promoted: false,
     },
   ]);
   assert.equal(cards.length, 1);

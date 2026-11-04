@@ -17,7 +17,7 @@ import { CELLS, MIN_LINK } from './constants.js';
 import { MAX_HEART_CONTAINERS } from './hearts.js';
 import { loadoutIsLegal } from './gear.js';
 import { GEAR_MAX_LEVEL } from './upgrade.js';
-import { REVIVE_COSTS, isReviveMove } from './revive.js';
+import { REVIVE_COSTS, isReviveMove, scoreAfterRevives } from './revive.js';
 import { Run, battleScore, scoreOf } from './run.js';
 import type { HeroClass, RunState } from './types.js';
 
@@ -47,8 +47,10 @@ export type ReplayResult =
   | {
       ok: true;
       /** The score the ladder records: raw play, scaled by map depth and
-       *  ascension. */
+       *  ascension, less the cut each revive takes. */
       score: number;
+      /** The same before the revive cut: what the battle's coins pay on. */
+      payScore: number;
       /** The unscaled figure, for the end screen's own readout. */
       rawScore: number;
       state: RunState;
@@ -141,9 +143,11 @@ export const verifyRun = (sub: RunSubmission): ReplayResult => {
   }
 
   const rawScore = scoreOf(state);
+  const payScore = battleScore(state, locationIndex(locationId), ascension);
   return {
     ok: true,
-    score: battleScore(state, locationIndex(locationId), ascension),
+    score: scoreAfterRevives(payScore, revives),
+    payScore,
     rawScore,
     state,
     ended,

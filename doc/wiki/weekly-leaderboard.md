@@ -34,14 +34,14 @@ Your group's table shows a green line for the promotion zone and a red line for 
 
 Everyone in a group who plays **3 or more battles** gets paid at the reset, based on where they finished in the group. Higher divisions pay more for the same place.
 
-| Group finish | Bronze | Silver | Gold | Platinum | Diamond | Needs               |
-| ------------ | ------ | ------ | ---- | -------- | ------- | ------------------- |
-| #1           | 200    | 250    | 300  | 400      | 500     | 3+ players in group |
-| Top 25%      | 120    | 150    | 180  | 240      | 300     | 8+ players          |
-| Top 50%      | 80     | 100    | 120  | 160      | 200     | 4+ players          |
-| Everyone     | 50     | 65     | 75   | 100      | 125     | -                   |
+| Group finish | Bronze | Silver | Gold | Platinum | Diamond | Plus        | Needs               |
+| ------------ | ------ | ------ | ---- | -------- | ------- | ----------- | ------------------- |
+| #1           | 200    | 250    | 300  | 400      | 500     | Silver Pack | 3+ players in group |
+| Top 25%      | 120    | 150    | 180  | 240      | 300     | Bronze Pack | 8+ players          |
+| Top 50%      | 80     | 100    | 120  | 160      | 200     | Base Pack   | 4+ players          |
+| Everyone     | 50     | 65     | 75   | 100      | 125     | -           | -                   |
 
-All amounts are coins. If your group is too small for a tier, you drop to the next one down.
+Division columns are coins; the pack is the same in every division. If your group is too small for a tier, you drop to the next one down.
 
 The **first time** you reach a division you also get a one-off bonus:
 

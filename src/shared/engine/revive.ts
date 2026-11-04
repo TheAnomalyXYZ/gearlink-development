@@ -11,6 +11,23 @@
 /** What each revive in one battle costs, in order. Its length is the cap. */
 export const REVIVE_COSTS = [50, 100, 200];
 
+/** A revive gets the hero back up at this share of max HP, not all of it:
+ *  coins buy another go at the monster, not a wall the location put up. */
+export const REVIVE_HP_PCT = 50;
+
+/** Each revive takes this share off the battle's ladder score (coins are paid
+ *  on the full score - the revive was already paid for). Three revives keep
+ *  a quarter, so a bought run never outranks the same play done clean. */
+export const REVIVE_SCORE_CUT_PCT = 25;
+
+/** HP after a revive, never below 1. */
+export const reviveHp = (maxHp: number): number =>
+  Math.max(1, Math.floor((maxHp * REVIVE_HP_PCT) / 100));
+
+/** The ladder score once `revives` have been spent. */
+export const scoreAfterRevives = (score: number, revives: number): number =>
+  Math.round((score * Math.max(0, 100 - REVIVE_SCORE_CUT_PCT * revives)) / 100);
+
 /** The transcript entry that stands for a revive. */
 export const REVIVE_MOVE: number[] = [];
 

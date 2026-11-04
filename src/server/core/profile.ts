@@ -7,7 +7,11 @@
  */
 import { redis } from '@devvit/web/server';
 import type { BestRun, Profile } from '../../shared/api.js';
-import { STARTER_GEAR, loadoutIsLegal } from '../../shared/engine/gear.js';
+import {
+  RARITY_ORDER,
+  STARTER_GEAR,
+  loadoutIsLegal,
+} from '../../shared/engine/gear.js';
 import { PACKS } from '../../shared/engine/economy.js';
 import {
   TROPHY_FLOOR,
@@ -38,6 +42,8 @@ import { normaliseHearts } from '../../shared/engine/hearts.js';
 import { LEVEL_CONFIG } from '../../shared/engine/level.js';
 import type { Hearts } from '../../shared/engine/hearts.js';
 import type { HeroClass } from '../../shared/engine/types.js';
+import { NO_SHARDS } from '../../shared/engine/upgrade.js';
+import type { Shards } from '../../shared/engine/upgrade.js';
 
 export const profileKey = (userId: string) => `profile:${userId}`;
 
@@ -66,6 +72,14 @@ const num = (raw: string | undefined, fallback: number): number => {
 
 const clamp = (n: number, lo: number, hi: number): number =>
   Math.max(lo, Math.min(hi, Math.floor(n)));
+
+/** Shards by rarity; anything missing or junk reads as none. */
+const parseShards = (raw: string | undefined): Shards => {
+  const o = obj(raw);
+  const out = { ...NO_SHARDS };
+  for (const r of RARITY_ORDER) out[r] = Math.max(0, Math.floor(o[r] ?? 0));
+  return out;
+};
 
 const obj = (raw: string | undefined): Record<string, number> => {
   if (!raw) return {};
@@ -446,6 +460,7 @@ export const loadProfile = async (
     trophies,
     gear,
     gearLevels: obj(h['gearLevels']),
+    shards: parseShards(h['shards']),
     packs,
     best: parseBest(h['best']),
     ascension: clamp(num(h['ascension'], 0), 0, MAX_ASCENSION),
@@ -525,6 +540,7 @@ export type ProfilePatch = Partial<
     | 'trophies'
     | 'gear'
     | 'gearLevels'
+    | 'shards'
     | 'packs'
     | 'best'
     | 'ascension'
@@ -561,6 +577,8 @@ export const saveProfile = async (
   if (patch.gear !== undefined) fields['gear'] = JSON.stringify(patch.gear);
   if (patch.gearLevels !== undefined)
     fields['gearLevels'] = JSON.stringify(patch.gearLevels);
+  if (patch.shards !== undefined)
+    fields['shards'] = JSON.stringify(patch.shards);
   if (patch.packs !== undefined) fields['packs'] = JSON.stringify(patch.packs);
   if (patch.best !== undefined) fields['best'] = JSON.stringify(patch.best);
   if (patch.ascension !== undefined)

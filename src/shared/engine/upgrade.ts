@@ -106,10 +106,18 @@ export const gearLevelOf = (
 export const tierStartLevel = (tier: GearTier): number =>
   GEAR_TIERS.indexOf(tier) * TIER_LEVELS + 1;
 
-/** A card's level once a pull of the given tier lands on it: raised to the
- *  tier's level 1 if it sits below, otherwise left alone. */
-export const levelAfterPull = (level: number, tier: GearTier): number =>
-  Math.max(clampGearLevel(level), tierStartLevel(tier));
+/** A card's level once a pull of the given tier lands on it. A card new to
+ *  the collection arrives at the tier's level 1; a duplicate is a spare copy
+ *  and nothing more, so a gem pack never skips the climb of a card already
+ *  being levelled. */
+export const levelAfterPull = (
+  level: number,
+  tier: GearTier,
+  isNew: boolean
+): number =>
+  isNew
+    ? Math.max(clampGearLevel(level), tierStartLevel(tier))
+    : clampGearLevel(level);
 
 /** The tier a level sits in. */
 export const gearTierOf = (level: number): GearTier =>
@@ -194,19 +202,48 @@ export const upgradeCost = (
   };
 };
 
+/**
+ * SHARDS. A spare copy of a card nobody will level - another hero's, a heal
+ * piece that never gets equipped - can be salvaged into shards of its rarity,
+ * and a shard stands in for a missing copy on ANY card of that rarity. Two
+ * copies make one shard, so a matching duplicate is still worth more than a
+ * stray one, but no pull is wasted.
+ */
+export const SALVAGE_COPIES_PER_SHARD = 2;
+
+export type Shards = Record<Rarity, number>;
+
+export const NO_SHARDS: Shards = { Common: 0, Rare: 0, Epic: 0, Legendary: 0 };
+
+/** True when a card has the spare copies to salvage into one shard. */
+export const canSalvage = (owned: number): boolean =>
+  spareCopies(owned) >= SALVAGE_COPIES_PER_SHARD;
+
+/** How a level's copies are paid: the card's own spare copies first, shards
+ *  of its rarity for the rest. */
+export const upgradeSpend = (
+  cost: UpgradeCost,
+  owned: number
+): { copies: number; shards: number } => {
+  const copies = Math.min(spareCopies(owned), cost.copies);
+  return { copies, shards: cost.copies - copies };
+};
+
 export type UpgradeBlock = 'unowned' | 'maxed' | 'copies' | 'coins';
 
-/** Why the next level cannot be bought right now, or null when it can. */
+/** Why the next level cannot be bought right now, or null when it can.
+ *  `shards` are the player's shards of this card's rarity. */
 export const upgradeBlock = (
   rarity: Rarity,
   owned: number,
   level: number,
-  coins: number
+  coins: number,
+  shards = 0
 ): UpgradeBlock | null => {
   if (owned <= 0) return 'unowned';
   const cost = upgradeCost(rarity, level);
   if (!cost) return 'maxed';
-  if (spareCopies(owned) < cost.copies) return 'copies';
+  if (spareCopies(owned) + Math.max(0, shards) < cost.copies) return 'copies';
   if (coins < cost.coins) return 'coins';
   return null;
 };

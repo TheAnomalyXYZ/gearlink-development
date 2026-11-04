@@ -85,6 +85,7 @@ import {
   revivesIn,
   scoreOf,
   upgradeBlock,
+  canSalvage,
 } from '../shared/engine/index.js';
 import type {
   DuelFoe,
@@ -301,6 +302,8 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
   /** A new player's tutorial fight has been started this session - once, so
    *  quitting out of it does not throw them straight back in. */
   private tutorialStarted = false;
+  /** A salvage is on the wire: a second tap must not send another. */
+  private salvaging = false;
   /** The tutorial fight ran in place of this post's live Daily Battle, which
    *  is owed once it ends. */
   private dailyAfterTutorial = false;
@@ -613,10 +616,29 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
     const p = this.state.profile;
     return (
       !!g &&
-      upgradeBlock(g.rarity, p.gear[id] ?? 0, this.gearLevel(id), p.coins) ===
-        null
+      upgradeBlock(
+        g.rarity,
+        p.gear[id] ?? 0,
+        this.gearLevel(id),
+        p.coins,
+        p.shards[g.rarity]
+      ) === null
     );
   }
+  /** Turn two spare copies of a card into a shard of its rarity. */
+  salvageGear = (id: string) => (): void => {
+    const g = GEAR_BY_ID[id];
+    if (this.salvaging || !g || !canSalvage(this.state.profile.gear[id] ?? 0))
+      return;
+    this.salvaging = true;
+    void api
+      .salvageGear({ id })
+      .then((r) => this.adopt(r.profile, r.message))
+      .catch(this.fail)
+      .finally(() => {
+        this.salvaging = false;
+      });
+  };
   /** Spend copies and coins on a card's next level. As with hearts, the
    *  server owns the wallet and the profile that comes back is adopted whole. */
   upgradeGear = (id: string, fxh?: GearUpFx) => (): void => {
@@ -3039,7 +3061,7 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
     fromRect: FxRect | null = null
   ): void {
     void api
-      .openPack(id)
+      .openPack(id, this.state.heroClass)
       .then((r) =>
         this.setState({
           phase: 'opening',
@@ -3135,7 +3157,6 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
             isNew: !dupe,
             owned: dupe ? 2 : 1,
             tier: 'Bronze',
-            promoted: false,
           },
         ],
         shown: 0,

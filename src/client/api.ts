@@ -8,6 +8,7 @@
 import type {
   ApplyHeartRequest,
   UpgradeGearRequest,
+  SalvageGearRequest,
   ChallengeResponse,
   ClaimQuestResponse,
   CollectPackRequest,
@@ -39,6 +40,7 @@ import type {
   AdminUserResponse,
   AdminUsersResponse,
 } from '../shared/admin.js';
+import type { HeroClass } from '../shared/engine/types.js';
 
 class ApiError extends Error {
   /** Set when a run was refused for its seed: the one to fight on next. */
@@ -132,9 +134,14 @@ export const api = {
   applyHeart: (req: ApplyHeartRequest) => call('/hearts/apply', isProfile, req),
   upgradeGear: (req: UpgradeGearRequest) =>
     call('/gear/upgrade', isProfile, req),
+  salvageGear: (req: SalvageGearRequest) =>
+    call('/gear/salvage', isProfile, req),
   buyCoins: (bundleId: string) => call('/shop/coins', isProfile, { bundleId }),
-  openPack: (packId: string) =>
-    call('/shop/open', tagged<OpenPackResponse>('openPack'), { packId }),
+  openPack: (packId: string, heroClass: HeroClass) =>
+    call('/shop/open', tagged<OpenPackResponse>('openPack'), {
+      packId,
+      heroClass,
+    }),
   collectPack: (req: CollectPackRequest) =>
     call('/shop/collect', isProfile, req),
   duelStart: () =>

@@ -36,6 +36,7 @@ import type {
   SubmitRunRequest,
   SubmitRunResponse,
   UpgradeGearRequest,
+  SalvageGearRequest,
   WarChestResponse,
 } from '../../shared/api.js';
 import {
@@ -146,10 +147,14 @@ import {
   applyXp,
   xpLines,
   GEAR_BY_ID,
+  HERO_CLASSES,
   gearLevelOf,
   levelAfterPull,
   upgradeBlock,
   upgradeCost,
+  upgradeSpend,
+  canSalvage,
+  SALVAGE_COPIES_PER_SHARD,
 } from '../../shared/engine/index.js';
 import type { PulledCard } from '../../shared/engine/economy.js';
 
@@ -431,11 +436,12 @@ api.post('/run', locked, async (c) => {
     return staleSeed(c, me.userId);
   await clearPaidRevives(me.userId, body.seed);
 
-  const { score, state, won, waveCount } = replay;
+  const { score, payScore, state, won, waveCount } = replay;
   // The subreddit's war chest pays every battle a share more while it is full.
   const chestBonusPct = await liveChestBonusPct().catch(() => 0);
+  // Coins pay on the score before the revive cut: a revive is paid for once.
   const coinsEarned = boostedCoins(
-    Math.floor(score / COINS_PER_SCORE),
+    Math.floor(payScore / COINS_PER_SCORE),
     chestBonusPct
   );
   const isNewBest = !profile.best || score > profile.best.score;
@@ -682,7 +688,8 @@ api.post('/gear/upgrade', locked, async (c) => {
   const owned = profile.gear[g.id] ?? 0;
   const level = gearLevelOf(profile.gearLevels, g.id);
   const cost = upgradeCost(g.rarity, level);
-  const block = upgradeBlock(g.rarity, owned, level, profile.coins);
+  const shards = profile.shards[g.rarity];
+  const block = upgradeBlock(g.rarity, owned, level, profile.coins, shards);
   if (block || !cost)
     return c.json<ErrorResponse>(
       {
@@ -691,7 +698,7 @@ api.post('/gear/upgrade', locked, async (c) => {
           block === 'unowned'
             ? 'You do not own that gear yet.'
             : block === 'copies'
-              ? 'You need ' + cost!.copies + ' spare copies.'
+              ? 'You need ' + cost!.copies + ' spare copies or shards.'
               : block === 'coins'
                 ? 'You need ' + cost!.coins + ' coins.'
                 : 'That gear is already at max level.',
@@ -699,9 +706,12 @@ api.post('/gear/upgrade', locked, async (c) => {
       400
     );
 
+  // The card's own spares pay first; shards of its rarity cover the rest.
+  const spend = upgradeSpend(cost, owned);
   await saveProfile(me.userId, {
-    gear: { ...profile.gear, [g.id]: owned - cost.copies },
+    gear: { ...profile.gear, [g.id]: owned - spend.copies },
     gearLevels: { ...profile.gearLevels, [g.id]: level + 1 },
+    shards: { ...profile.shards, [g.rarity]: shards - spend.shards },
     coins: profile.coins - cost.coins,
   });
   await recordSpend(
@@ -720,6 +730,49 @@ api.post('/gear/upgrade', locked, async (c) => {
         ' reached level ' +
         (level + 1) +
         '.'
+    )
+  );
+});
+
+/** Turn spare copies of a card into a shard of its rarity. The card itself is
+ *  never salvaged: it keeps at least one copy, and its level. */
+api.post('/gear/salvage', locked, async (c) => {
+  const me = who();
+  if (!me) return unauthorised(c);
+
+  const body = (await c.req
+    .json()
+    .catch(() => null)) as SalvageGearRequest | null;
+  const g = GEAR_BY_ID[body?.id ?? ''];
+  if (!g)
+    return c.json<ErrorResponse>(
+      { status: 'error', message: 'unknown gear' },
+      400
+    );
+
+  const profile = await loadProfile(me.userId, me.username);
+  const owned = profile.gear[g.id] ?? 0;
+  if (!canSalvage(owned))
+    return c.json<ErrorResponse>(
+      {
+        status: 'error',
+        message:
+          'You need ' + SALVAGE_COPIES_PER_SHARD + ' spare copies to salvage.',
+      },
+      400
+    );
+
+  await saveProfile(me.userId, {
+    gear: { ...profile.gear, [g.id]: owned - SALVAGE_COPIES_PER_SHARD },
+    shards: {
+      ...profile.shards,
+      [g.rarity]: profile.shards[g.rarity] + 1,
+    },
+  });
+  return c.json(
+    profileJson(
+      await loadProfile(me.userId, me.username),
+      '+1 ' + g.rarity + ' shard.'
     )
   );
 });
@@ -877,7 +930,10 @@ api.post('/shop/open', locked, async (c) => {
       400
     );
 
-  const cards = rollPack(pack, profile.gear, Math.random, profile.gearLevels);
+  // Which hero the pull leans toward is the player's to say: naming another
+  // only leans it elsewhere.
+  const hero = HERO_CLASSES.find((h) => h === body?.heroClass) ?? null;
+  const cards = rollPack(pack, profile.gear, Math.random, hero);
   const token = `${Date.now().toString(36)}-${Math.floor(Math.random() * 0xffffffff).toString(36)}`;
   const held: HeldOpen = { token, packId: pack.id, cards };
   await redis.set(openKey(me.userId), JSON.stringify(held));
@@ -919,14 +975,19 @@ api.post('/shop/collect', locked, async (c) => {
     );
 
   // A duplicate stacks on the card as a spare copy - that is what levels it.
-  // The pack's tier lifts a card below it to that tier's level 1. The tier
-  // comes from the pack table, not from the held cards.
+  // A card new to the collection arrives at the pack's tier. Both are read off
+  // the profile and the pack table now, not off the held cards.
   const tier = packById(held.packId)?.tier ?? 'Bronze';
   const gear = { ...profile.gear };
   const gearLevels = { ...profile.gearLevels };
   for (const card of held.cards) {
+    const isNew = (gear[card.id] ?? 0) <= 0;
     gear[card.id] = (gear[card.id] ?? 0) + 1;
-    const lifted = levelAfterPull(gearLevelOf(gearLevels, card.id), tier);
+    const lifted = levelAfterPull(
+      gearLevelOf(gearLevels, card.id),
+      tier,
+      isNew
+    );
     if (lifted > 1) gearLevels[card.id] = lifted;
   }
   const packs = {

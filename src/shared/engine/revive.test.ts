@@ -5,7 +5,14 @@ import { areAdjacent, hasAnyMove, isSuper, orbTypeOf } from './board.js';
 import { LOCATIONS } from './campaign.js';
 import { defaultLoadout } from './gear.js';
 import { verifyRun } from './replay.js';
-import { REVIVE_COSTS, REVIVE_MOVE, reviveCost, revivesIn } from './revive.js';
+import {
+  REVIVE_COSTS,
+  REVIVE_MOVE,
+  reviveCost,
+  reviveHp,
+  revivesIn,
+  scoreAfterRevives,
+} from './revive.js';
 import { Run } from './run.js';
 import type { RunState } from './types.js';
 
@@ -69,11 +76,11 @@ void test('revives get dearer and run out', () => {
   assert.equal(revivesIn([[1, 2, 3], REVIVE_MOVE, [4], REVIVE_MOVE]), 2);
 });
 
-void test('a revive restores full HP and keeps the board and wave', () => {
+void test('a revive restores half HP and keeps the board and wave', () => {
   const { run, state } = findSeed(0);
   assert.equal(state.playerHp, 0);
   const up = run.revive(state);
-  assert.equal(up.playerHp, run.maxHp());
+  assert.equal(up.playerHp, Math.floor(run.maxHp() / 2));
   assert.equal(up.meter, 0);
   assert.deepEqual(up.board, state.board);
   assert.equal(up.wave, state.wave);
@@ -92,8 +99,19 @@ void test('a revived run replays to the same state and counts its revives', () =
   assert.ok(replay.ok, replay.ok ? '' : replay.reason);
   assert.equal(replay.revives, 1);
   assert.equal(replay.ended, 'dead');
+  // The ladder takes the revive's cut; coins pay on the full score.
+  assert.equal(replay.score, scoreAfterRevives(replay.payScore, 1));
+  assert.ok(replay.score < replay.payScore);
   assert.deepEqual(replay.state.board, state.board);
   assert.equal(replay.state.damageDealt, state.damageDealt);
+});
+
+void test('each revive cuts a quarter of the ladder score, never below 0', () => {
+  assert.equal(scoreAfterRevives(1000, 0), 1000);
+  assert.equal(scoreAfterRevives(1000, 1), 750);
+  assert.equal(scoreAfterRevives(1000, REVIVE_COSTS.length), 250);
+  assert.equal(scoreAfterRevives(1000, 9), 0);
+  assert.equal(reviveHp(1), 1);
 });
 
 void test('a revive while alive, or past the cap, is refused', () => {

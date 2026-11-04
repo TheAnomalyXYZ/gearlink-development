@@ -110,6 +110,8 @@ import {
   tierMaxOf,
   upgradeBlock,
   upgradeCost,
+  canSalvage,
+  SALVAGE_COPIES_PER_SHARD,
   GEAR_BY_ID,
   TIER_COLOR,
   TIER_LEVELS,
@@ -2950,12 +2952,12 @@ export const buildView = (app: ViewApp): View => {
             newDisplay: shown && c.isNew ? 'flex' : 'none',
             dupeDisplay: shown && !c.isNew ? 'flex' : 'none',
             owned: 'x' + c.owned,
+            // Only a new card takes on the pack's tier, so only it wears it.
             tierDisplay:
-              shown && (c.tier === 'Silver' || c.tier === 'Gold')
+              shown && c.isNew && (c.tier === 'Silver' || c.tier === 'Gold')
                 ? 'flex'
                 : 'none',
-            tierLabel:
-              String(c.tier || '').toUpperCase() + (c.promoted ? '!' : ''),
+            tierLabel: String(c.tier || '').toUpperCase(),
             tierColor: c.tier === 'Gold' ? TIER_COLOR.Gold : TIER_COLOR.Silver,
           };
         }),
@@ -3021,6 +3023,12 @@ export const buildView = (app: ViewApp): View => {
           cardInfoPips: [],
           cardInfoBarPct: '0%',
           cardInfoBarBg: '#4F92F0',
+          cardInfoSalvageDisplay: 'none',
+          cardInfoShards: '',
+          cardInfoSalvageLabel: '',
+          cardInfoSalvageRun: null,
+          cardInfoSalvageOpacity: 1,
+          cardInfoSalvageCursor: 'default',
           cardInfoBarKey: '',
           cardInfoGearMini: '',
           cardInfoLvBadge: '',
@@ -3039,7 +3047,10 @@ export const buildView = (app: ViewApp): View => {
       const tierCol = TIER_COLOR[tier];
       const base = g.variantOf ? GEAR_BY_ID[g.variantOf] : null;
       const spare = spareCopies(n);
-      const block = upgradeBlock(g.rarity, n, level, st.profile.coins);
+      // Shards of the card's rarity cover copies it is short of.
+      const shards = st.profile.shards[g.rarity];
+      const have = spare + shards;
+      const block = upgradeBlock(g.rarity, n, level, st.profile.coins, shards);
       const canUp = block === null && !st.gearUpgrading;
       // Fresh off a level-up: the new pip, the badge and the stats celebrate.
       const fresh = st.gearLeveled === g.id && !fx.reduced();
@@ -3154,10 +3165,22 @@ export const buildView = (app: ViewApp): View => {
               ? 'PROMOTE TO ' + gearTierOf(level + 1).toUpperCase()
               : 'LEVEL UP   LV ' + tierLv + ' > ' + (tierLv + 1),
         cardInfoUpCopies: cost
-          ? Math.min(spare, cost.copies) + '/' + cost.copies + ' copies'
+          ? Math.min(have, cost.copies) + '/' + cost.copies + ' copies'
           : '',
         cardInfoUpCopiesColor:
-          cost && spare >= cost.copies ? '#AEE45D' : '#FF8A94',
+          cost && have >= cost.copies ? '#AEE45D' : '#FF8A94',
+        // Salvage: two spares into a shard any card of this rarity can use.
+        cardInfoSalvageDisplay: n > 0 ? 'flex' : 'none',
+        cardInfoShards:
+          shards +
+          ' ' +
+          g.rarity.toUpperCase() +
+          (shards === 1 ? ' SHARD' : ' SHARDS'),
+        cardInfoSalvageLabel:
+          'SALVAGE ' + SALVAGE_COPIES_PER_SHARD + ' SPARES > 1 SHARD',
+        cardInfoSalvageRun: canSalvage(n) ? app.salvageGear(g.id) : null,
+        cardInfoSalvageOpacity: canSalvage(n) ? 1 : 0.45,
+        cardInfoSalvageCursor: canSalvage(n) ? 'pointer' : 'default',
         cardInfoUpCoins: cost ? String(cost.coins) : '',
         cardInfoUpCoinsColor:
           cost && st.profile.coins >= cost.coins ? '#FCE370' : '#FF8A94',
@@ -3224,10 +3247,10 @@ export const buildView = (app: ViewApp): View => {
         }),
         cardInfoBarPct: !cost
           ? '100%'
-          : Math.min(100, Math.round((spare / cost.copies) * 100)) + '%',
+          : Math.min(100, Math.round((have / cost.copies) * 100)) + '%',
         cardInfoBarBg: !cost
           ? '#FCE370'
-          : spare >= cost.copies
+          : have >= cost.copies
             ? '#AEE45D'
             : '#4F92F0',
         // Keyed by level so the bar refills from empty after a level-up.

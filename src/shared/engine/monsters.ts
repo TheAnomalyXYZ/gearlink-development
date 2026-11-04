@@ -31,13 +31,15 @@ export const WAVE_ENEMIES: [string, string][] = [
 ];
 
 /** base_hp from pocket_knights_monster (Training Dummy's 10000 is a practice
- *  target and is excluded from the roster). */
+ *  target and is excluded from the roster), except the Caves mobs: at 100/120
+ *  each one out-pooled the Bridge's boss, a wall a fresh build met before its
+ *  first heart container. */
 export const MONSTER_BASE_HP: Record<string, number> = {
   'Bandit Scout': 30,
   'Bandit Leader': 40,
   'Bridge Troll': 80,
-  'Cave Bat': 100,
-  Slime: 120,
+  'Cave Bat': 80,
+  Slime: 95,
   'Cave Mother Slime': 140,
   'Wandering Spirit': 150,
   Poltergeist: 175,

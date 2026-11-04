@@ -7489,6 +7489,44 @@ const ScreenBody = ({ v }: { v: View }) => (
                             {v.cardInfoUpLabel}
                           </span>
                         </div>
+                        <div
+                          style={{
+                            display: v.cardInfoSalvageDisplay,
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '8px',
+                          }}
+                        >
+                          <span
+                            style={{
+                              flexShrink: '0',
+                              fontSize: '10px',
+                              color: '#CBD9EC',
+                            }}
+                          >
+                            {v.cardInfoShards}
+                          </span>
+                          <div
+                            className="glb-press"
+                            onClick={v.cardInfoSalvageRun || undefined}
+                            style={{
+                              cursor: v.cardInfoSalvageCursor,
+                              opacity: v.cardInfoSalvageOpacity,
+                              padding: '4px 8px',
+                              border: '2px solid #000000',
+                              borderRadius: '6px 2px 6px 2px',
+                              background: '#2B3A5C',
+                              boxShadow: '0 -2px 0 0 #1A2440 inset',
+                              color: '#E8F0FF',
+                              fontFamily: PIXEL,
+                              fontSize: '11px',
+                              lineHeight: '1.1',
+                              textAlign: 'center',
+                            }}
+                          >
+                            {v.cardInfoSalvageLabel}
+                          </div>
+                        </div>
                       </div>
                       <div className="glb-cta-in" style={{ width: '100%' }}>
                         <div

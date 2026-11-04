@@ -11,9 +11,8 @@
  * the server. A client-rolled pack is a client-chosen legendary.
  */
 import { GEAR, RARITY_ORDER } from './gear.js';
-import type { Gear, Rarity } from './types.js';
-import { gearLevelOf, gearTierOf, levelAfterPull } from './upgrade.js';
-import type { GearLevels, GearTier } from './upgrade.js';
+import type { Gear, HeroClass, Rarity } from './types.js';
+import type { GearTier } from './upgrade.js';
 
 /** Real pack art from utils/package.ts, so the shop sells the game's own tiers. */
 const PACK_ART = (n: string) => '/art/PocketKnights/Item/' + n + 'Pack_V2.png';
@@ -33,8 +32,8 @@ export type Pack = {
   price: number;
   tint: string;
   floor: Rarity | null;
-  /** The tier its cards land at. A card already at or past it keeps its
-   *  level; one below jumps to the tier's level 1. */
+  /** The tier a card NEW to the collection lands at. A duplicate is only a
+   *  spare copy, whatever the pack. */
   tier: GearTier;
   img: string;
   glow: string;
@@ -96,7 +95,7 @@ export const PACKS: Pack[] = [
       ['Epic', 97],
       ['Legendary', 3],
     ],
-    blurb: 'One Silver-tier gear card, guaranteed epic or better.',
+    blurb: 'One card, epic or better. A new one arrives at Silver.',
   },
   {
     id: 'gold',
@@ -113,7 +112,7 @@ export const PACKS: Pack[] = [
       ['Epic', 85],
       ['Legendary', 15],
     ],
-    blurb: 'Two Gold-tier gear cards, epic floor and the best legendary odds.',
+    blurb: 'Two epic-or-better cards. New ones arrive at Gold.',
   },
 ];
 
@@ -206,11 +205,19 @@ const rollRarity = (odds: [Rarity, number][], rand: () => number): Rarity => {
 const gearOfRarity = (r: Rarity): Gear[] =>
   GEAR.filter((g) => g.rarity === r && !g.variantOf);
 
-/** One card. `atLeast` enforces a pack's floor by re-rolling the tier upward. */
+/** The share of pulls drawn from the player's own hero's cards; the rest come
+ *  from every hero alike. A pull for a hero never played is mostly dead
+ *  weight, so a pack leans toward the one in use. */
+export const HERO_PULL_PCT = 60;
+
+/** One card. `atLeast` enforces a pack's floor by re-rolling the tier upward;
+ *  `hero` leans the pick toward that hero's cards (see HERO_PULL_PCT). The
+ *  rarity is rolled first and alone, so the odds the shop shows hold. */
 export const rollCard = (
   odds: [Rarity, number][],
   atLeast: Rarity | null,
-  rand: () => number
+  rand: () => number,
+  hero: HeroClass | null = null
 ): Gear => {
   let r = rollRarity(odds, rand);
   if (atLeast && RARITY_ORDER.indexOf(r) < RARITY_ORDER.indexOf(atLeast))
@@ -221,44 +228,41 @@ export const rollCard = (
     r = RARITY_ORDER[RARITY_ORDER.indexOf(r) - 1]!;
     pool = gearOfRarity(r);
   }
+  if (hero && rand() * 100 < HERO_PULL_PCT) {
+    const mine = pool.filter((g) => g.cls === hero);
+    if (mine.length) pool = mine;
+  }
   return pool[Math.floor(rand() * pool.length)]!;
 };
 
 /** `owned` is the copies held once this card lands, so a duplicate can show
- *  how far it moved the stack. `tier` is the pack's, and `promoted` is true
- *  when the pull lifted a card it already had into that tier. */
+ *  how far it moved the stack. `tier` is the pack's, which only a new card
+ *  takes on. */
 export type PulledCard = {
   id: string;
   isNew: boolean;
   owned: number;
   tier: GearTier;
-  promoted: boolean;
 };
 
 /** Roll a whole pack against a wallet snapshot, deciding new-vs-duplicate as it
- *  goes so two copies in one pack cannot both read as new, and the second of
- *  two copies cannot read as promoted too. */
+ *  goes so two copies in one pack cannot both read as new. */
 export const rollPack = (
   pack: Pack,
   owned: Record<string, number>,
   rand: () => number,
-  levels?: GearLevels
+  hero: HeroClass | null = null
 ): PulledCard[] => {
   const cards: PulledCard[] = [];
-  const level: GearLevels = { ...levels };
   for (let i = 0; i < pack.cards; i++) {
-    const g = rollCard(pack.odds, pack.floor, rand);
+    const g = rollCard(pack.odds, pack.floor, rand, hero);
     const already =
       (owned[g.id] ?? 0) + cards.filter((c) => c.id === g.id).length;
-    const before = gearLevelOf(level, g.id);
-    const after = levelAfterPull(before, pack.tier);
-    level[g.id] = after;
     cards.push({
       id: g.id,
       isNew: already === 0,
       owned: already + 1,
       tier: pack.tier,
-      promoted: already > 0 && gearTierOf(after) !== gearTierOf(before),
     });
   }
   return cards;

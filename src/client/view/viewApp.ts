@@ -68,6 +68,7 @@ export type ViewApp = Pick<
   | 'hoverStatus'
   | 'inspectCard'
   | 'inspectGear'
+  | 'salvageGear'
   | 'intentEnter'
   | 'intentFor'
   | 'intentLeave'

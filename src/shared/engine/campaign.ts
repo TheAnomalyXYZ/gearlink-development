@@ -152,7 +152,9 @@ export const MAP_LENGTH = LOCATIONS.length;
  * harder, and the score a battle is worth grows with them, so climbing again
  * is a bigger number rather than the same one twice.
  */
-export const ASCENSION_HP_X100 = 132;
+/** Pools grow slower than the score so the climb stays a climb: at 1.32 an A9
+ *  pool was x12, past what any gear reaches. */
+export const ASCENSION_HP_X100 = 120;
 export const ASCENSION_STR_X100 = 118;
 export const ASCENSION_SCORE_X100 = 125;
 /** Past this the numbers stop meaning anything, so the ladder stops here. */

@@ -14,10 +14,8 @@ export type StageCard = {
   gear: { id: string; rarity: string; name: string };
   isNew: boolean;
   owned: number;
-  /** The pack's tier: Bronze, Silver or Gold. */
+  /** The pack's tier: Bronze, Silver or Gold. Only a new card takes it on. */
   tier: string;
-  /** A duplicate that lifted the card into the pack's tier. */
-  promoted: boolean;
 };
 /** The app's open-pack state, as far as the stage reads it. `fromRect` is the
  *  shop card the pack was bought from (shared-element entry), when known. */
@@ -822,14 +820,13 @@ class Stage {
       rar = c.gear.rarity;
     if (ce.foil) void anim(ce.foil, [{ opacity: 0 }, { opacity: 0.25 }], 300);
     if (rar === 'Legendary') await this.legendary();
-    this.tierTag(ce);
-    // A promoting duplicate is good news, so it stamps rather than shatters.
-    if (c.isNew) await this.stamp(ce);
-    else if (c.promoted) await this.stamp(ce, c.tier.toUpperCase() + '!');
-    else await this.shatter(ce);
+    if (c.isNew) {
+      this.tierTag(ce);
+      await this.stamp(ce);
+    } else await this.shatter(ce);
   }
 
-  /** Silver and Gold pulls wear their tier along the card's foot. */
+  /** A new Silver or Gold pull wears its tier along the card's foot. */
   tierTag(ce: CardEl): void {
     const col = TIER_TAG[ce.c.tier];
     if (!col) return;
