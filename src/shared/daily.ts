@@ -8,6 +8,8 @@
 import type { DailyBattle, DailyPoster } from './api.js';
 import { FIRST_LOCATION, LOCATIONS } from './engine/campaign.js';
 import { GEAR_BY_ID, defaultLoadout, getGearImageUrl } from './engine/gear.js';
+import { mulberry32 } from './engine/rng.js';
+import { randomRunSeed } from './engine/run.js';
 import type { HeroClass } from './engine/types.js';
 import {
   WAVE_ENEMIES,
@@ -102,6 +104,16 @@ export const dailyBattleFor = (dayKey: string): DailyBattle => {
   return { day, locationId: dailyLocationId(day), endsAt: start + DAY_MS };
 };
 
+/**
+ * The seed of a player's `attempt`-th battle on a day's post (from 1). It
+ * depends on nothing but the day and the attempt, so everyone's first try is
+ * dealt from the same seed - the one fair comparison a shared ladder needs -
+ * while every retry still gets a seed of its own, and a banked transcript
+ * cannot be banked again.
+ */
+export const dailyRunSeed = (day: number, attempt: number): number =>
+  randomRunSeed(mulberry32((day * 0x9e3779b1) ^ (attempt * 0x85ebca6b)));
+
 const TILE_CLASSES: HeroClass[] = ['Hero', 'Archer', 'Mage'];
 
 /** The five tile kinds a day's poster board is laid from: one class's
@@ -134,3 +146,35 @@ export const posterFor = (
     tiles: dailyTiles(day),
   };
 };
+
+/** A battle on a Daily Battle post, as its SHARE comment tells it. */
+export type DailyRun = {
+  day: number;
+  score: number;
+  waves: number;
+  waveCount: number;
+  chain: number;
+  hero: HeroClass;
+  won: boolean;
+  rank: number | null;
+};
+
+/** The comment a battle reads as. */
+export const shareText = (r: DailyRun): string =>
+  'Daily Battle #' +
+  r.day +
+  ': ' +
+  r.score.toLocaleString('en-US') +
+  ' points as ' +
+  r.hero +
+  ' - ' +
+  (r.won
+    ? 'cleared all ' + r.waveCount + ' waves'
+    : 'fell on wave ' +
+      Math.min(r.waves + 1, r.waveCount) +
+      ' of ' +
+      r.waveCount) +
+  ', best chain ' +
+  r.chain +
+  '.' +
+  (r.rank ? ' #' + r.rank + " on today's ladder." : '');

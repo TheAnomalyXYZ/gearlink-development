@@ -87,6 +87,8 @@ export type VictoryApp = {
   dailyDone: (() => void) | null;
   /** Set when the tutorial ran in place of a live Daily Battle: into it. */
   dailyNext: (() => void) | null;
+  /** Set on a Daily Battle until used: comment the result on the post. */
+  shareDaily: (() => void) | null;
   openBooks: (ids: string[], from: 'victory') => void;
   openFullGame: (e: MouseEvent, go?: string) => void;
   afterBooks: (() => void) | null;
@@ -1313,6 +1315,20 @@ class Victory {
         )
       );
       list.push(button('HOME', BTN.home, () => A.goHome()));
+    }
+    const share = A.shareDaily;
+    if (share) {
+      const b = button(
+        'SHARE TO COMMENTS',
+        BTN.quiet,
+        () => {
+          b.style.display = 'none';
+          share();
+        },
+        false,
+        true
+      );
+      list.push(b);
     }
     const first = list[0];
     if (n && first)

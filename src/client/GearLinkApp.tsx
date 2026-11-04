@@ -304,6 +304,8 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
   private tutorialStarted = false;
   /** A salvage is on the wire: a second tap must not send another. */
   private salvaging = false;
+  /** This post's battle has been (or is being) shared to its comments. */
+  private dailyShared = false;
   /** The tutorial fight ran in place of this post's live Daily Battle, which
    *  is owed once it ends. */
   private dailyAfterTutorial = false;
@@ -380,6 +382,7 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
     audio.setVolumes(volumes);
     audio.attach();
     document.addEventListener('click', this.onUiClick);
+    document.addEventListener('keydown', this.onKey);
     this.syncMusic();
     window.addEventListener('resize', this.measureFtue);
     window.addEventListener('orientationchange', this.measureFtue);
@@ -425,11 +428,32 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
     teardownFx();
     audio.detach();
     document.removeEventListener('click', this.onUiClick);
+    document.removeEventListener('keydown', this.onKey);
     for (const o of [this.ro, this.fro, this.aro, this.cardObs, this.mro])
       o?.disconnect();
     window.removeEventListener('resize', this.measureFtue);
     window.removeEventListener('orientationchange', this.measureFtue);
   }
+
+  /** Escape backs out of whatever is on top - a card, a panel, a menu - and
+   *  mid-battle with nothing open, pauses. */
+  private onKey = (e: KeyboardEvent): void => {
+    if (e.key !== 'Escape' || e.repeat) return;
+    const t = e.target;
+    if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement)
+      return;
+    const st = this.state;
+    if (st.cardInfo) this.closeCardInfo();
+    else if (st.peek) this.closePeek();
+    else if (st.openLocation) this.closeLocation();
+    else if (st.homeMenu) this.setState({ homeMenu: false });
+    else if (st.modal === 'settings') this.closeSettings();
+    else if (st.modal === 'pause') this.resume();
+    else if (st.modal) this.closeModal();
+    else if (st.phase === 'battle' && st.bs && !st.ftueStep) this.openPause();
+    else return;
+    e.preventDefault();
+  };
 
   /** The profile and the quest board were requested before React mounted (see
    *  `state/boot.ts`); this only waits on them. */
@@ -1081,6 +1105,30 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
     if (!daily) return;
     if (this.postMode) this.startDailyPost();
     else this.pickLocation(daily.locationId)();
+  };
+
+  /** SHARE on a Daily Battle's end screen, until it has been used. */
+  get shareDaily(): (() => void) | null {
+    return this.isDailyRun() && !this.dailyShared ? this.postShare : null;
+  }
+
+  private postShare = (): void => {
+    if (this.dailyShared) return;
+    this.dailyShared = true;
+    void api
+      .shareDaily()
+      .then((r) =>
+        safeToast(
+          showToast,
+          r.ok
+            ? 'Shared to the comments!'
+            : 'You already shared a battle on this post.'
+        )
+      )
+      .catch((e: unknown) => {
+        this.dailyShared = false;
+        this.fail(e);
+      });
   };
 
   /** Whether the run on screen is this post's Daily Battle. */

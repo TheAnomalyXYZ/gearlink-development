@@ -408,6 +408,7 @@ export const demoApp = (over: Partial<AppState>): ViewApp => {
     clearChain: noop,
     dailyDone: null,
     dailyNext: null,
+    shareDaily: null,
     openBooks: noop,
     afterBooks: null,
   };

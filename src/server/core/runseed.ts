@@ -1,15 +1,22 @@
 /**
  * The seed of each player's next battle, owned by the server.
  *
- *   runseed:{userId}   the one seed this player may submit a run on
+ *   runseed:{userId}               the one seed this player may submit a run on,
+ *                                  stored as `seed` or `seed:tag`
+ *   dailytry:{userId}:{dayKey}     how many seeds a day's post has dealt them
  *
  * A seed is handed out ahead of time (with /init and with every run result) so
  * starting a battle needs no round trip. Asking again while one is pending
  * returns the same seed, so there is nothing to reroll; submitting a run takes
  * it, so the same transcript can never be banked twice.
+ *
+ * The tag says where a seed came from. A Daily Battle post deals the day's
+ * shared seeds, and swaps out a pending seed some other post dealt - the
+ * swap only ever lands on the day's fixed seed, so it rerolls nothing.
  */
 import { redis } from '@devvit/web/server';
-import type { Profile } from '../../shared/api.js';
+import type { DailyBattle, Profile } from '../../shared/api.js';
+import { dailyRunSeed, utcDayKey } from '../../shared/daily.js';
 import {
   isRunSeed,
   randomRunSeed,
@@ -20,31 +27,61 @@ import { takeOnce } from './lock.js';
 /** Long enough to outlast any battle left open in a tab overnight. */
 const SEED_TTL_MS = 24 * 60 * 60 * 1000;
 
-const seedKey = (userId: string) => `runseed:${userId}`;
+/** Outlives the day it counts, then cleans itself up. */
+const TRY_TTL_SECONDS = 48 * 60 * 60;
 
-const parse = (raw: string | undefined): number | null => {
-  const n = raw === undefined ? NaN : Number(raw);
-  return isRunSeed(n) ? n : null;
+const seedKey = (userId: string) => `runseed:${userId}`;
+const tryKey = (userId: string, dayKey: string) =>
+  `dailytry:${userId}:${dayKey}`;
+
+const split = (raw: string | undefined) => {
+  if (raw === undefined) return null;
+  const [n, tag = null] = raw.split(':');
+  const seed = Number(n);
+  return isRunSeed(seed) ? { seed, tag } : null;
+};
+
+const parse = (raw: string | undefined): number | null =>
+  split(raw)?.seed ?? null;
+
+/** How a player's next seed is dealt, and which pending seed it leaves be. */
+export type SeedIssuer = {
+  tag: string | null;
+  issue: (userId: string) => number | Promise<number>;
+  /** Keep a pending seed with this tag rather than deal over it. */
+  keeps: (tag: string | null) => boolean;
+};
+
+const RANDOM: SeedIssuer = {
+  tag: null,
+  issue: () => randomRunSeed(),
+  keeps: () => true,
 };
 
 /** The pending seed, without issuing one. */
 export const peekRunSeed = async (userId: string): Promise<number | null> =>
   parse(await redis.get(seedKey(userId)));
 
-/** The pending seed, issuing one if there is none. Two callers racing here
- *  both come back with whichever seed landed first. `issue` picks a new seed
- *  where a plain random one will not do (see `seedFor`). */
+/** The pending seed, issuing one if there is none (or the one there is the
+ *  issuer's to replace). Two callers racing here both come back with
+ *  whichever seed landed first. */
 export const pendingRunSeed = async (
   userId: string,
-  issue: () => number = randomRunSeed
+  issuer: SeedIssuer = RANDOM
 ): Promise<number> => {
   const key = seedKey(userId);
-  const have = parse(await redis.get(key));
-  if (have !== null) return have;
-  await redis.set(key, String(issue()), {
-    nx: true,
-    expiration: new Date(Date.now() + SEED_TTL_MS),
-  });
+  const have = split(await redis.get(key));
+  if (have && issuer.keeps(have.tag)) return have.seed;
+  const seed = await issuer.issue(userId);
+  await redis.set(
+    key,
+    issuer.tag === null ? String(seed) : seed + ':' + issuer.tag,
+    {
+      // Dealing over a seed means writing over it; a fresh one must not.
+      nx: !have,
+      expiration: new Date(Date.now() + SEED_TTL_MS),
+    }
+  );
   const now = parse(await redis.get(key));
   if (now === null) throw new Error('could not issue a battle seed');
   return now;
@@ -57,9 +94,35 @@ export const consumeRunSeed = async (
 ): Promise<boolean> =>
   (await takeOnce(seedKey(userId), (raw) => parse(raw) === seed)) !== undefined;
 
+/** A Daily Battle post's seeds: the day's shared first seed, then the day's
+ *  retries, counted per player. */
+const dailyIssuer = (daily: DailyBattle): SeedIssuer => {
+  const dayKey = utcDayKey(daily.endsAt - 1);
+  const tag = 'd' + dayKey;
+  return {
+    tag,
+    issue: async (userId) => {
+      const key = tryKey(userId, dayKey);
+      const attempt = await redis.incrBy(key, 1);
+      if (attempt === 1) await redis.expire(key, TRY_TTL_SECONDS);
+      return dailyRunSeed(daily.day, attempt);
+    },
+    keeps: (t) => t === tag,
+  };
+};
+
 /** How to issue this player's next seed: a teachable board while the
- *  tutorial fight is still ahead of them, a random one after. */
-export const seedFor = (profile: Profile): (() => number) =>
-  profile.seenFtueFight
-    ? randomRunSeed
-    : () => teachableSeed(profile.gear, profile.progress);
+ *  tutorial fight is still ahead of them, the day's seeds on a Daily Battle
+ *  post, a random one anywhere else. */
+export const seedFor = (
+  profile: Profile,
+  daily: DailyBattle | null = null
+): SeedIssuer => {
+  if (!profile.seenFtueFight)
+    return {
+      tag: null,
+      issue: () => teachableSeed(profile.gear, profile.progress),
+      keeps: () => true,
+    };
+  return daily ? dailyIssuer(daily) : RANDOM;
+};

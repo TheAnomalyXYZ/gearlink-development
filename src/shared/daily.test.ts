@@ -9,12 +9,16 @@ import {
   dailyLocationId,
   dateLabelFor,
   dailyNumber,
+  dailyRunSeed,
   nextDailyAt,
   posterFor,
+  shareText,
   utcDayKey,
+  type DailyRun,
 } from './daily.js';
 import { WAVE_ENEMIES } from './engine/monsters.js';
 import { locationById } from './engine/campaign.js';
+import { isRunSeed } from './engine/run.js';
 
 void test('the first Daily Battle is #1 and each UTC day adds one', () => {
   assert.equal(dailyNumber(DAILY_EPOCH), 1);
@@ -66,4 +70,37 @@ void test("a day is fought at the map location in its foe's region", () => {
     locationId: dailyLocationId(1),
     endsAt: Date.parse('2026-10-02T00:00:00Z'),
   });
+});
+
+void test('a day deals everyone the same seeds, a fresh one per attempt', () => {
+  assert.equal(dailyRunSeed(40, 1), dailyRunSeed(40, 1));
+  const seeds = new Set<number>();
+  for (let day = 1; day <= 30; day++)
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      const s = dailyRunSeed(day, attempt);
+      assert.ok(isRunSeed(s));
+      seeds.add(s);
+    }
+  assert.equal(seeds.size, 150);
+});
+
+void test('a shared battle reads as one line', () => {
+  const run: DailyRun = {
+    day: 34,
+    score: 4210,
+    waves: 7,
+    waveCount: 8,
+    chain: 6,
+    hero: 'Archer',
+    won: false,
+    rank: 3,
+  };
+  assert.equal(
+    shareText(run),
+    "Daily Battle #34: 4,210 points as Archer - fell on wave 8 of 8, best chain 6. #3 on today's ladder."
+  );
+  assert.equal(
+    shareText({ ...run, won: true, waves: 8, rank: null }),
+    'Daily Battle #34: 4,210 points as Archer - cleared all 8 waves, best chain 6.'
+  );
 });

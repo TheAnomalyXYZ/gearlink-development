@@ -93,6 +93,7 @@ import {
   readChallengeFoe,
 } from '../core/post.js';
 import { readDailyBattle, readPoster } from '../core/daily.js';
+import { recordDailyRun, shareDailyRun } from '../core/dailyshare.js';
 import {
   clearPaidRevives,
   notePaidRevive,
@@ -214,6 +215,8 @@ api.get('/init', async (c) => {
   const booted = loadProfile(me.userId, me.username).then((p) =>
     syncUnlocks(me.userId, p)
   );
+  // A failed read only means the post opens like any other.
+  const dailyRead = readDailyBattle(me.postId).catch(() => null);
   const [
     profile,
     leaderboard,
@@ -231,7 +234,7 @@ api.get('/init', async (c) => {
     getLeaderboard(me.postId, me.userId),
     // A failed read only means the post opens like any other.
     readChallengeFoe(me.postId, me.userId, me.username).catch(() => null),
-    readDailyBattle(me.postId).catch(() => null),
+    dailyRead,
     isModeratorSafe(me.userId),
     readWarChestWeek(me.postId).catch(() => null),
     // A short board: init only needs the viewer's row and the top few.
@@ -240,8 +243,11 @@ api.get('/init', async (c) => {
     // A failed read only means no "you were passed" notice this visit.
     getSoloAlert(soloWeekNow(), me.userId).catch(() => null),
     loadStreak(me.userId),
-    // A new player's first seed has to deal a board the tutorial can teach.
-    booted.then((p) => pendingRunSeed(me.userId, seedFor(p))),
+    // A new player's first seed has to deal a board the tutorial can teach,
+    // and a Daily Battle post deals the day's shared seeds.
+    Promise.all([booted, dailyRead]).then(([p, d]) =>
+      pendingRunSeed(me.userId, seedFor(p, d))
+    ),
   ]);
   return c.json<InitResponse>({
     type: 'init',
@@ -260,6 +266,15 @@ api.get('/init', async (c) => {
   });
 });
 
+/** The pending battle seed, dealt the way this post deals them. */
+const nextSeedFor = async (me: Who) => {
+  const [profile, daily] = await Promise.all([
+    loadProfile(me.userId, me.username),
+    readDailyBattle(me.postId).catch(() => null),
+  ]);
+  return pendingRunSeed(me.userId, seedFor(profile, daily));
+};
+
 /** The pending battle seed, for a client that lost the one it was handed.
  *  The same seed comes back until a run is banked on it. */
 api.get('/run/seed', async (c) => {
@@ -267,7 +282,7 @@ api.get('/run/seed', async (c) => {
   if (!me) return unauthorised(c);
   return c.json<RunSeedResponse>({
     type: 'runSeed',
-    seed: await pendingRunSeed(me.userId),
+    seed: await nextSeedFor(me),
   });
 });
 
@@ -312,13 +327,13 @@ api.get('/leaderboard', async (c) => {
 
 /** A run on a seed that is not the pending one: answered with the seed the
  *  next battle should use, so the client can carry straight on. */
-const staleSeed = async (c: HonoContext, userId: string) =>
+const staleSeed = async (c: HonoContext, me: Who) =>
   c.json<RunSeedErrorResponse>(
     {
       status: 'error',
       message:
         'That battle was already banked or has expired, so it did not count.',
-      nextSeed: await pendingRunSeed(userId),
+      nextSeed: await nextSeedFor(me),
     },
     409
   );
@@ -343,8 +358,7 @@ api.post('/run', locked, async (c) => {
     return c.json<ErrorResponse>({ status: 'error', message: 'bad body' }, 400);
   // Checked first and cheaply; the burn itself comes after the replay, so a
   // transcript refused for some other reason leaves the battle open.
-  if ((await peekRunSeed(me.userId)) !== body.seed)
-    return staleSeed(c, me.userId);
+  if ((await peekRunSeed(me.userId)) !== body.seed) return staleSeed(c, me);
 
   const profile = await loadProfile(me.userId, me.username);
 
@@ -373,10 +387,8 @@ api.post('/run', locked, async (c) => {
      the coins, but never moves the climb: no unlock, no heart pieces, no
      ascension from a Castle the map has not reached. */
   const beyond = locIdx > profile.progress;
-  if (
-    beyond &&
-    locId !== (await readDailyBattle(me.postId).catch(() => null))?.locationId
-  )
+  const daily = await readDailyBattle(me.postId).catch(() => null);
+  if (beyond && locId !== daily?.locationId)
     return c.json<ErrorResponse>(
       { status: 'error', message: 'that location is still locked' },
       400
@@ -432,8 +444,7 @@ api.post('/run', locked, async (c) => {
       400
     );
   // The point of no return: only the request that burns the seed pays out.
-  if (!(await consumeRunSeed(me.userId, body.seed)))
-    return staleSeed(c, me.userId);
+  if (!(await consumeRunSeed(me.userId, body.seed))) return staleSeed(c, me);
   await clearPaidRevives(me.userId, body.seed);
 
   const { score, payScore, state, won, waveCount } = replay;
@@ -526,6 +537,18 @@ api.post('/run', locked, async (c) => {
     },
     score
   );
+  // A battle on a Daily Battle post is what its SHARE button comments.
+  if (daily && locId === daily.locationId)
+    await recordDailyRun(me.userId, me.postId, {
+      day: daily.day,
+      score,
+      waves: state.wavesCleared,
+      waveCount,
+      chain: state.maxChain,
+      hero: body.heroClass,
+      won,
+      rank,
+    }).catch(() => undefined);
   // Every campaign battle feeds the subreddit's weekly solo leaderboard.
   const solo = await recordSoloRun(me.userId, {
     username: me.username,
@@ -545,7 +568,7 @@ api.post('/run', locked, async (c) => {
       getLeaderboard(me.postId, me.userId),
       getSoloBoard(solo.week, me.userId, 10),
       getGroupBoard(solo.week, me.userId),
-      reloaded.then((p) => pendingRunSeed(me.userId, seedFor(p))),
+      reloaded.then((p) => pendingRunSeed(me.userId, seedFor(p, daily))),
     ]);
 
   return c.json<SubmitRunResponse>({
@@ -570,6 +593,21 @@ api.post('/run', locked, async (c) => {
     soloGroup,
     nextSeed,
   });
+});
+
+/** SHARE on a Daily Battle's end screen: the player's last battle on this
+ *  post, as a comment from their account. */
+api.post('/daily/share', async (c) => {
+  const me = who();
+  if (!me) return unauthorised(c);
+  const outcome = await shareDailyRun(me.userId, me.postId);
+  if (outcome === 'nothing')
+    return c.json<ErrorResponse>(
+      { status: 'error', message: 'No battle on this post to share yet.' },
+      400
+    );
+  // Shared before counts as done: the button just goes away.
+  return c.json({ ok: outcome === 'shared' });
 });
 
 /**
