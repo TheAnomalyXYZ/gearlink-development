@@ -1,15 +1,17 @@
 /**
- * SHARE on a Daily Battle's end screen: the player's last battle on the post,
+ * SHARE on a Daily Battle's end screen: the player's best battle on the post,
  * left as a comment from their own account, so the day's post fills with
  * results to compare.
  *
- *   dailyrun:{userId}:{postId}      the last battle banked on the post
- *   dailyshared:{userId}:{postId}   set once they have shared on it
+ *   dailyrun:{userId}:{postId}      the best battle banked on the post
+ *   dailyshared:{userId}:{postId}   set once they have shared on it, for good
  *
  * The comment is written from what the server banked, never from anything
- * the client sends, and goes up at most once per player per post.
+ * the client sends, and goes up at most once per player per post - the post
+ * stays playable after its day, so the marker must outlive it.
  */
 import { reddit, redis } from '@devvit/web/server';
+import type { ShareOutcome } from '../../shared/api.js';
 import { shareText, type DailyRun } from '../../shared/daily.js';
 
 /** Long enough to share yesterday's battle the morning after. */
@@ -22,14 +24,20 @@ const runKey = (userId: string, postId: string) =>
 const sharedKey = (userId: string, postId: string) =>
   `dailyshared:${userId}:${postId}`;
 
+/** Bank a battle for SHARE. Only a new best replaces the one kept, so the
+ *  score shared is the one its ladder rank belongs to; any other battle only
+ *  fills an empty slot, and without the rank it did not earn. */
 export const recordDailyRun = async (
   userId: string,
   postId: string,
-  run: DailyRun
+  run: DailyRun,
+  isBest: boolean
 ): Promise<void> => {
-  await redis.set(runKey(userId, postId), JSON.stringify(run), {
-    expiration: new Date(Date.now() + TTL_MS),
-  });
+  await redis.set(
+    runKey(userId, postId),
+    JSON.stringify(isBest ? run : { ...run, rank: null }),
+    { nx: !isBest, expiration: new Date(Date.now() + TTL_MS) }
+  );
 };
 
 const num = (o: object, k: string): number | null => {
@@ -73,9 +81,7 @@ const readRun = (raw: string | undefined): DailyRun | null => {
   };
 };
 
-export type ShareOutcome = 'shared' | 'nothing' | 'already';
-
-/** Comment the player's last battle on the post, once. */
+/** Comment the player's best battle on the post, once. */
 export const shareDailyRun = async (
   userId: string,
   postId: string
@@ -86,10 +92,7 @@ export const shareDailyRun = async (
   // here leave one comment.
   const key = sharedKey(userId, postId);
   const token = String(Math.random());
-  await redis.set(key, token, {
-    nx: true,
-    expiration: new Date(Date.now() + TTL_MS),
-  });
+  await redis.set(key, token, { nx: true });
   if ((await redis.get(key)) !== token) return 'already';
   try {
     await reddit.submitComment({

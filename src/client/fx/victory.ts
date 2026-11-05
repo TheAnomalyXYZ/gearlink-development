@@ -87,8 +87,9 @@ export type VictoryApp = {
   dailyDone: (() => void) | null;
   /** Set when the tutorial ran in place of a live Daily Battle: into it. */
   dailyNext: (() => void) | null;
-  /** Set on a Daily Battle until used: comment the result on the post. */
-  shareDaily: (() => void) | null;
+  /** Set on a Daily Battle until used: comment the result on the post.
+   *  Resolves false when it did not go up, to offer it again. */
+  shareDaily: (() => Promise<boolean>) | null;
   openBooks: (ids: string[], from: 'victory') => void;
   openFullGame: (e: MouseEvent, go?: string) => void;
   afterBooks: (() => void) | null;
@@ -1323,7 +1324,9 @@ class Victory {
         BTN.quiet,
         () => {
           b.style.display = 'none';
-          share();
+          void share().then((spent) => {
+            if (!spent) b.style.display = 'flex';
+          });
         },
         false,
         true

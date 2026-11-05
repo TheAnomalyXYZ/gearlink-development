@@ -100,6 +100,7 @@ import type {
 import type {
   DuelOpponentsResponse,
   Profile,
+  ShareOutcome,
   SubmitRunRequest,
 } from '../shared/api.js';
 import { ApiError, api } from './api.js';
@@ -272,6 +273,12 @@ const DUEL_TIMERS: TimerKey[] = [
 
 const SHOP_MSG_MS = 3200;
 const REJECT_MS = 300;
+
+const SHARE_TOAST: Record<ShareOutcome, string> = {
+  shared: 'Shared to the comments!',
+  already: 'You already shared a battle on this post.',
+  nothing: 'No battle on this post to share yet.',
+};
 
 type Stopper = { stopPropagation?: () => void };
 
@@ -1108,27 +1115,26 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
   };
 
   /** SHARE on a Daily Battle's end screen, until it has been used. */
-  get shareDaily(): (() => void) | null {
+  get shareDaily(): (() => Promise<boolean>) | null {
     return this.isDailyRun() && !this.dailyShared ? this.postShare : null;
   }
 
-  private postShare = (): void => {
-    if (this.dailyShared) return;
+  /** Resolves whether the button is spent: false leaves it to tap again.
+   *  With nothing banked to share it is spent here, but the next battle's
+   *  end screen offers it again. */
+  private postShare = async (): Promise<boolean> => {
+    if (this.dailyShared) return true;
     this.dailyShared = true;
-    void api
-      .shareDaily()
-      .then((r) =>
-        safeToast(
-          showToast,
-          r.ok
-            ? 'Shared to the comments!'
-            : 'You already shared a battle on this post.'
-        )
-      )
-      .catch((e: unknown) => {
-        this.dailyShared = false;
-        this.fail(e);
-      });
+    try {
+      const { outcome } = await api.shareDaily();
+      if (outcome === 'nothing') this.dailyShared = false;
+      safeToast(showToast, SHARE_TOAST[outcome]);
+      return true;
+    } catch (e: unknown) {
+      this.dailyShared = false;
+      this.fail(e);
+      return false;
+    }
   };
 
   /** Whether the run on screen is this post's Daily Battle. */

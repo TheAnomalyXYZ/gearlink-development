@@ -22,7 +22,7 @@ A daily fight past your own progress:
 
 ## Same seed for everyone
 
-Your **first battle** on a day's post is dealt from the same seed as everyone else's. Your board is still built from the gear you bring, but the luck behind it is shared, so first tries on the ladder are a fair comparison. Each retry gets a fresh seed of its own, and every player's second try shares a seed too, and so on.
+Your **first battle** on a day's post is dealt from the same seed as everyone else's. Your board is still built from the gear you bring, but the luck behind it is shared, so first tries on the ladder are a fair comparison. Each retry gets a fresh seed of its own, and every player's second try shares a seed too, and so on. A battle only counts as a try once it finishes, so leaving the post or opening another GearLink post doesn't use up your first try. Once the day is over, battles on its post get ordinary random seeds.
 
 ## Share your result
 
@@ -30,7 +30,7 @@ After a battle on the day's post, the end screen offers **SHARE TO COMMENTS**. I
 
 > Daily Battle #34: 4,210 points as Archer - fell on wave 8 of 8, best chain 6. #3 on today's ladder.
 
-The line is written from the battle the game recorded for you, and you can share once per post.
+The line is written from your **best** battle on the post, as the game recorded it, and you can share once per post.
 
 ## The crown
 

@@ -3,7 +3,7 @@
  *
  *   runseed:{userId}               the one seed this player may submit a run on,
  *                                  stored as `seed` or `seed:tag`
- *   dailytry:{userId}:{dayKey}     how many seeds a day's post has dealt them
+ *   dailytry:{userId}:{dayKey}     how many of a day's seeds they have banked
  *
  * A seed is handed out ahead of time (with /init and with every run result) so
  * starting a battle needs no round trip. Asking again while one is pending
@@ -12,7 +12,9 @@
  *
  * The tag says where a seed came from. A Daily Battle post deals the day's
  * shared seeds, and swaps out a pending seed some other post dealt - the
- * swap only ever lands on the day's fixed seed, so it rerolls nothing.
+ * swap only ever lands on the day's fixed seed, so it rerolls nothing. Any
+ * other post swaps a day's seed back out, so the day's first try is never
+ * spent away from its post.
  */
 import { redis } from '@devvit/web/server';
 import type { DailyBattle, Profile } from '../../shared/api.js';
@@ -33,6 +35,9 @@ const TRY_TTL_SECONDS = 48 * 60 * 60;
 const seedKey = (userId: string) => `runseed:${userId}`;
 const tryKey = (userId: string, dayKey: string) =>
   `dailytry:${userId}:${dayKey}`;
+
+/** Tags a seed a day's post dealt: `d` and the day. */
+const DAILY_TAG = 'd';
 
 const split = (raw: string | undefined) => {
   if (raw === undefined) return null;
@@ -55,7 +60,7 @@ export type SeedIssuer = {
 const RANDOM: SeedIssuer = {
   tag: null,
   issue: () => randomRunSeed(),
-  keeps: () => true,
+  keeps: (tag) => !tag?.startsWith(DAILY_TAG),
 };
 
 /** The pending seed, without issuing one. */
@@ -87,25 +92,34 @@ export const pendingRunSeed = async (
   return now;
 };
 
-/** Burn `seed` if it is the pending one. True for exactly one caller. */
+/** Burn `seed` if it is the pending one. True for exactly one caller. A
+ *  day's seed burnt is one of that day's tries used up. */
 export const consumeRunSeed = async (
   userId: string,
   seed: number
-): Promise<boolean> =>
-  (await takeOnce(seedKey(userId), (raw) => parse(raw) === seed)) !== undefined;
+): Promise<boolean> => {
+  const raw = await takeOnce(seedKey(userId), (r) => parse(r) === seed);
+  if (raw === undefined) return false;
+  const tag = split(raw)?.tag;
+  if (tag?.startsWith(DAILY_TAG)) {
+    const key = tryKey(userId, tag.slice(DAILY_TAG.length));
+    if ((await redis.incrBy(key, 1)) === 1)
+      await redis.expire(key, TRY_TTL_SECONDS);
+  }
+  return true;
+};
 
-/** A Daily Battle post's seeds: the day's shared first seed, then the day's
- *  retries, counted per player. */
+/** A Daily Battle post's seeds: the day's shared first seed, then one per
+ *  try banked. Counted on banking, not dealing, so deals that race - or a
+ *  seed swapped out unplayed - land on the same try rather than skip one. */
 const dailyIssuer = (daily: DailyBattle): SeedIssuer => {
   const dayKey = utcDayKey(daily.endsAt - 1);
-  const tag = 'd' + dayKey;
+  const tag = DAILY_TAG + dayKey;
   return {
     tag,
     issue: async (userId) => {
-      const key = tryKey(userId, dayKey);
-      const attempt = await redis.incrBy(key, 1);
-      if (attempt === 1) await redis.expire(key, TRY_TTL_SECONDS);
-      return dailyRunSeed(daily.day, attempt);
+      const banked = Number((await redis.get(tryKey(userId, dayKey))) ?? 0);
+      return dailyRunSeed(daily.day, banked + 1);
     },
     keeps: (t) => t === tag,
   };
@@ -113,7 +127,9 @@ const dailyIssuer = (daily: DailyBattle): SeedIssuer => {
 
 /** How to issue this player's next seed: a teachable board while the
  *  tutorial fight is still ahead of them, the day's seeds on a Daily Battle
- *  post, a random one anywhere else. */
+ *  post while its day lasts, a random one anywhere else. Once the day is
+ *  over its tries stop counting (and their count expires), so its seeds
+ *  stop too - dealt again, a banked transcript could be banked again. */
 export const seedFor = (
   profile: Profile,
   daily: DailyBattle | null = null
@@ -124,5 +140,5 @@ export const seedFor = (
       issue: () => teachableSeed(profile.gear, profile.progress),
       keeps: () => true,
     };
-  return daily ? dailyIssuer(daily) : RANDOM;
+  return daily && Date.now() < daily.endsAt ? dailyIssuer(daily) : RANDOM;
 };

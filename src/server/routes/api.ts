@@ -31,6 +31,7 @@ import type {
   ReviveRunRequest,
   RunSeedErrorResponse,
   RunSeedResponse,
+  ShareDailyResponse,
   SoloBoardsResponse,
   StreakClaimResponse,
   SubmitRunRequest,
@@ -539,16 +540,21 @@ api.post('/run', locked, async (c) => {
   );
   // A battle on a Daily Battle post is what its SHARE button comments.
   if (daily && locId === daily.locationId)
-    await recordDailyRun(me.userId, me.postId, {
-      day: daily.day,
-      score,
-      waves: state.wavesCleared,
-      waveCount,
-      chain: state.maxChain,
-      hero: body.heroClass,
-      won,
-      rank,
-    }).catch(() => undefined);
+    await recordDailyRun(
+      me.userId,
+      me.postId,
+      {
+        day: daily.day,
+        score,
+        waves: state.wavesCleared,
+        waveCount,
+        chain: state.maxChain,
+        hero: body.heroClass,
+        won,
+        rank,
+      },
+      isBest
+    ).catch(() => undefined);
   // Every campaign battle feeds the subreddit's weekly solo leaderboard.
   const solo = await recordSoloRun(me.userId, {
     username: me.username,
@@ -595,19 +601,16 @@ api.post('/run', locked, async (c) => {
   });
 });
 
-/** SHARE on a Daily Battle's end screen: the player's last battle on this
- *  post, as a comment from their account. */
+/** SHARE on a Daily Battle's end screen: the player's best battle on this
+ *  post, as a comment from their account. Every outcome but a failed comment
+ *  is an answer, not an error - the client says which. */
 api.post('/daily/share', async (c) => {
   const me = who();
   if (!me) return unauthorised(c);
-  const outcome = await shareDailyRun(me.userId, me.postId);
-  if (outcome === 'nothing')
-    return c.json<ErrorResponse>(
-      { status: 'error', message: 'No battle on this post to share yet.' },
-      400
-    );
-  // Shared before counts as done: the button just goes away.
-  return c.json({ ok: outcome === 'shared' });
+  return c.json<ShareDailyResponse>({
+    type: 'shareDaily',
+    outcome: await shareDailyRun(me.userId, me.postId),
+  });
 });
 
 /**

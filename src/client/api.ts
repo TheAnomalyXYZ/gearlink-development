@@ -27,6 +27,7 @@ import type {
   QuestsResponse,
   ReviveRunRequest,
   RunSeedResponse,
+  ShareDailyResponse,
   StreakClaimResponse,
   SubmitRunRequest,
   SubmitRunResponse,
@@ -136,8 +137,9 @@ export const api = {
     call('/gear/upgrade', isProfile, req),
   salvageGear: (req: SalvageGearRequest) =>
     call('/gear/salvage', isProfile, req),
-  /** Comment the last battle on this Daily Battle post, once. */
-  shareDaily: () => call('/daily/share', isOk, {}),
+  /** Comment the best battle on this Daily Battle post, once. */
+  shareDaily: () =>
+    call('/daily/share', tagged<ShareDailyResponse>('shareDaily'), {}),
   buyCoins: (bundleId: string) => call('/shop/coins', isProfile, { bundleId }),
   openPack: (packId: string, heroClass: HeroClass) =>
     call('/shop/open', tagged<OpenPackResponse>('openPack'), {

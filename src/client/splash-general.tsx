@@ -4,8 +4,8 @@
  *
  * It belongs to no day, no region and no foe, so it sells the game itself -
  * and the game is the puzzle: a live board fills the card, a link tracing
- * through it on a loop, under the title dropping in letter by letter. The
- * three heroes stand in a row beneath it as the ones the links fight for.
+ * through it on a loop, under the logo popping in. The three heroes stand in
+ * a row beneath it as the ones the links fight for.
  *
  * Its own module, like the other feed cards, so it renders in a test without
  * the stylesheet the feed entry point imports.
@@ -19,10 +19,10 @@ import {
   PIXEL,
 } from './splash-style.js';
 
-/** The two layers of light behind the card - white, and a warm gold that
- *  turns the other way so the two cross and overlap: broad beams that ramp up, hold,
- *  and ramp back down, so there is never a hard line - and dim, so they read
- *  as light in the sky rather than a pattern on top of it. */
+/** The two layers of light behind the card: white, and a warm gold turning
+ *  the other way so the two cross. Each beam ramps up, holds and ramps back
+ *  down, so there is never a hard line to blur away, and is dim enough to
+ *  read as light in the sky rather than a pattern on top of it. */
 const RAYS = [
   {
     cls: 'glk-drift',
@@ -141,12 +141,11 @@ export const General = ({ cta }: { cta?: ReactNode }) => (
     {RAYS.map((r) => (
       <div
         key={r.cls}
-        className={`${r.cls} pointer-events-none absolute top-1/2 left-1/2 aspect-square w-[max(220vw,220vh)]`}
+        className={`${r.cls} pointer-events-none absolute top-1/2 left-1/2 aspect-square w-[max(180vw,180vh)]`}
         style={{
           background: r.beams,
           maskImage: RAY_MASK,
           WebkitMaskImage: RAY_MASK,
-          filter: 'blur(6px)',
         }}
       />
     ))}

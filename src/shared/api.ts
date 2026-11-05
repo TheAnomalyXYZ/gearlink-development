@@ -225,6 +225,11 @@ export type InitResponse = {
 /** The pending battle seed, for a client that does not hold one. */
 export type RunSeedResponse = { type: 'runSeed'; seed: number };
 
+/** What SHARE did: commented, found it already done, or found no battle on
+ *  the post to tell of yet. */
+export type ShareOutcome = 'shared' | 'already' | 'nothing';
+export type ShareDailyResponse = { type: 'shareDaily'; outcome: ShareOutcome };
+
 /** A finished run, as the client played it. The server re-runs the moves; the
  *  client never reports its own score. */
 export type SubmitRunRequest = {
