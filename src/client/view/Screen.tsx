@@ -2734,6 +2734,143 @@ const ScreenBody = ({ v }: { v: View }) => (
                   </span>
                 </div>
               </div>
+
+              {/* NEXT BATTLE: the map's one call to action, mirroring the
+                  hero chip on the other corner. The boss looms out of the
+                  card and the FIGHT button pulses, so a returning player
+                  knows what to press without hunting for a pin. */}
+              {v.nextCta ? (
+                <div
+                  data-fx="next-battle"
+                  onClick={v.nextCta.run}
+                  role="button"
+                  aria-label={`${v.nextCta.label} ${v.nextCta.name}`}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    bottom: '116px',
+                    zIndex: '13',
+                    display: v.nextCtaDisplay,
+                    alignItems: 'flex-end',
+                    gap: '6px',
+                    maxWidth: 'calc(100% - 196px)',
+                    padding: '6px 8px 6px 4px',
+                    border: '2px solid #000000',
+                    borderRadius: '8px 2px 8px 2px',
+                    background:
+                      'linear-gradient(180deg,rgba(60,38,96,.95),rgba(29,41,86,.95))',
+                    boxShadow:
+                      '0 3px 0 rgba(0,0,0,.35),0 0 18px rgba(255,190,60,.35)',
+                    cursor: 'pointer',
+                    transform: v.nextCtaT,
+                    transition: v.wmChromeTr,
+                  }}
+                >
+                  <div
+                    style={{
+                      position: 'relative',
+                      width: '58px',
+                      height: '58px',
+                      flexShrink: '0',
+                      marginTop: '-22px',
+                    }}
+                  >
+                    <div
+                      style={{
+                        position: 'absolute',
+                        inset: '6px',
+                        pointerEvents: 'none',
+                        borderRadius: '50%',
+                        background: `radial-gradient(circle,${v.nextCta.glow},rgba(0,0,0,0) 70%)`,
+                      }}
+                    />
+                    <img
+                      data-idle
+                      src={v.nextCta.art}
+                      alt={v.nextCta.artAlt}
+                      style={{
+                        position: 'relative',
+                        display: 'block',
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain',
+                        imageRendering: 'pixelated',
+                        filter: 'drop-shadow(0 3px 0 rgba(0,0,0,.45))',
+                        animation: v.nextCta.artAnim,
+                      }}
+                    />
+                  </div>
+                  <div
+                    style={{
+                      minWidth: '0',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'stretch',
+                      gap: '4px',
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'baseline',
+                        justifyContent: 'space-between',
+                        gap: '6px',
+                        fontSize: '9px',
+                        lineHeight: '1',
+                        letterSpacing: '.06em',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      <span style={{ color: '#FFB84D' }}>
+                        {v.nextCta.kicker}
+                      </span>
+                      <span style={{ color: '#9DB4D4' }}>
+                        {v.nextCta.stage}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: 'VolterTitle,Volter,monospace',
+                        fontSize: '13px',
+                        lineHeight: '1',
+                        color: '#FFFFFF',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {v.nextCta.name}
+                    </div>
+                    <div className="gls-nudge" style={{ position: 'relative' }}>
+                      <div className="gls-halo" />
+                      <div
+                        className="gls-btn"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          minHeight: '34px',
+                          padding: '0 14px',
+                          border: '3px solid #000000',
+                          borderRadius: '8px 2px 8px 2px',
+                          background: v.nextCta.btnBg,
+                          boxShadow: v.nextCta.btnShadow,
+                          color: '#000000',
+                          fontFamily: 'VolterTitle,Volter,monospace',
+                          fontSize: '18px',
+                          lineHeight: '1',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        <span style={{ position: 'relative' }}>
+                          {v.nextCta.label} ›
+                        </span>
+                        <span className="gls-sheen" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </>
         ) : null}

@@ -119,7 +119,7 @@ import {
 } from '../../shared/engine/index.js';
 import { DEFAULT_SNOO, GEARLINK_ICON, NAV_ICON } from './assets.js';
 import { postVm } from './postLayout.js';
-import { leaderboardView } from './leaderboardView.js';
+import { leaderboardView, rewardIcon } from './leaderboardView.js';
 import { streakUi } from './streakView.js';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import {
@@ -1759,6 +1759,65 @@ export const buildView = (app: ViewApp): View => {
 
   /** The coaching step the player completes by acting: no scrim, no NEXT. */
   const ftueDoing = st.ftueStep !== null && !!FTUE_DOING[st.ftueStep];
+
+  /** ENTER on the diorama, and the map's NEXT BATTLE button: the same
+   *  pickLocation a pin panel did. */
+  const wmEnter = (id: string): void => {
+    const i = LOCATIONS.findIndex((loc) => loc.id === id);
+    const open =
+      i >= 0 && (i <= st.profile.progress || id === st.daily?.locationId);
+    app.setState({ wmFocused: false });
+    // The post's first ENTER is its intro battle (see enterPost).
+    if (app.postMode && !app.postIntroDone) app.enterPost(id);
+    else if (open) app.pickLocation(id)();
+  };
+
+  /** The map's one thing to press: the battle the climb is up to, its boss
+   *  and a FIGHT button that goes straight there. A returning player lands
+   *  on the map, and a map with only pins on it does not say what to do. */
+  const nextCta = (() => {
+    // Today's login reward comes first: it is free, it is gone at midnight,
+    // and claiming it is what brings a player back tomorrow. Once claimed the
+    // card turns back into the battle.
+    const sk = st.streak;
+    if (sk?.claimable) {
+      const today = sk.slots.find((x) => x.state === 'today');
+      const first = today?.rewards[0];
+      const day = today?.day ?? sk.count + 1;
+      return {
+        claim: true,
+        kicker: 'DAILY REWARD',
+        name: 'DAY ' + day + ' READY',
+        stage: sk.count > 0 && !sk.broken ? sk.count + ' DAY STREAK' : '',
+        art: first ? rewardIcon(first) : COIN_ICON,
+        artAlt: first ? rewardLabel(first) : 'Reward',
+        label: 'CLAIM',
+        run: app.openStreak,
+        glow: 'rgba(255,214,80,.85)',
+        btnBg: BTN.tertiary.bg,
+        btnShadow: BTN.tertiary.shadow,
+        artAnim: 'glBob 1.6s ease-in-out infinite',
+      };
+    }
+    const i = Math.min(st.profile.progress, LOCATIONS.length - 1);
+    const loc = LOCATIONS[i];
+    if (!loc) return null;
+    const cleared = st.profile.progress >= LOCATIONS.length;
+    return {
+      claim: false,
+      kicker: cleared ? 'FIGHT AGAIN' : 'NEXT BATTLE',
+      name: loc.name,
+      stage: 'STAGE ' + (i + 1) + '/' + LOCATIONS.length,
+      art: monsterUrlFor(loc.boss),
+      artAlt: loc.boss.toUpperCase(),
+      label: 'FIGHT',
+      run: () => wmEnter(loc.id),
+      glow: 'rgba(255,96,64,.7)',
+      btnBg: BTN.primary.bg,
+      btnShadow: BTN.primary.shadow,
+      artAnim: 'none',
+    };
+  })();
 
   return {
     /* Wallet figures the shop header and the duel lobby read straight off the
@@ -3460,16 +3519,12 @@ export const buildView = (app: ViewApp): View => {
       LOCATIONS[Math.min(st.profile.progress, LOCATIONS.length - 1)]?.id ??
       null,
     wmFocusReq: st.wmFocusReq,
-    // ENTER on the diorama runs the same pickLocation a pin panel did.
-    wmEnter: (id: string) => {
-      const i = LOCATIONS.findIndex((loc) => loc.id === id);
-      const open =
-        i >= 0 && (i <= st.profile.progress || id === st.daily?.locationId);
-      app.setState({ wmFocused: false });
-      // The post's first ENTER is its intro battle (see enterPost).
-      if (app.postMode && !app.postIntroDone) app.enterPost(id);
-      else if (open) app.pickLocation(id)();
-    },
+    wmEnter,
+    nextCta,
+    // Hidden while a location is focused (its own ENTER is up) and while the
+    // coaching is pointing somewhere else on the map.
+    nextCtaDisplay: nextCta && st.ftueStep === null ? 'flex' : 'none',
+    nextCtaT: st.wmFocused ? 'translate3d(140%,0,0)' : 'translate3d(0,0,0)',
     wmFocus: (on: boolean) => {
       if (st.wmFocused !== on) app.setState({ wmFocused: on });
     },
