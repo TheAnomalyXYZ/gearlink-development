@@ -22,7 +22,12 @@ type QuestTabKey = 'daily' | 'weekly';
 
 /** Hooks the shop / quest actions call back into. Each action returns the
  *  click handler, which is invoked straight away. */
-export type BuyPackHooks = { rect: () => FxRect | null; fail: () => void };
+export type BuyPackHooks = {
+  rect: () => FxRect | null;
+  fail: () => void;
+  /** Bought, but nothing opens from it: drop the lifted art back in place. */
+  settle?: () => void;
+};
 export type GainHooks = { gained: (n: number) => void };
 export type ClaimHooks = {
   before: () => void;
@@ -41,6 +46,7 @@ export type ScreensApp = {
     questClaiming: string | null;
   };
   buyPack: (id: string, fxh: BuyPackHooks) => () => void;
+  buyDeal: (id: string, fxh: BuyPackHooks) => () => void;
   buyCoins: (id: string, fxh: GainHooks) => () => void;
   buyGems: (id: string, fxh: GainHooks) => () => void;
   claimQuest: (id: string, fxh: ClaimHooks) => () => void;
@@ -106,7 +112,26 @@ export const buyPack = (
   e: FxEvent,
   can: boolean,
   h: FxHelpers
+): void => packFlight(p.cur, e, can, h, (hooks) => app.buyPack(p.id, hooks));
+
+/** A daily deal flies the same way: coins into the art, the art lifts. A pack
+ *  deal then opens from there; a card deal just settles back. */
+export const buyDeal = (
+  app: ScreensApp,
+  d: { id: string; cur: string },
+  e: FxEvent,
+  can: boolean,
+  h: FxHelpers
+): void => packFlight(d.cur, e, can, h, (hooks) => app.buyDeal(d.id, hooks));
+
+const packFlight = (
+  cur: string,
+  e: FxEvent,
+  can: boolean,
+  h: FxHelpers,
+  go: (hooks: BuyPackHooks) => () => void
 ): void => {
+  const p = { cur };
   const btn = btnOf(e);
   if (!can) return cantAfford(btn, p.cur);
   if (buyPackBusy) return;
@@ -139,8 +164,12 @@ export const buyPack = (
         }
       )
     );
-  app.buyPack(p.id, {
+  go({
     rect: () => (art ? art.getBoundingClientRect() : null),
+    settle: () => {
+      if (lift) lift.cancel();
+      buyPackBusy = false;
+    },
     fail: () => {
       if (lift) lift.cancel();
       if (art) art.animate(REJECT, { duration: 320 });

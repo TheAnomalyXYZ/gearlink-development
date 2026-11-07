@@ -23,6 +23,7 @@ import { AscensionIcon } from './AscensionIcon.js';
 import { StreakChip, StreakNotice, StreakStrip } from './DailyStreak.js';
 import { ReviveOffer } from './ReviveOffer.js';
 import { SkinTiles } from './SkinTiles.js';
+import { DailyDeals } from './DailyDeals.js';
 import {
   LeaderboardFab,
   LeaderboardSheet,
@@ -5560,6 +5561,8 @@ const ScreenBody = ({ v }: { v: View }) => (
                 </div>
                 <SkinTiles skins={v.shopSkins || []} cols={3} />
               </div>
+
+              {v.shopDeals ? <DailyDeals ui={v.shopDeals} /> : null}
 
               <div
                 style={{

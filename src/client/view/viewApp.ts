@@ -23,6 +23,7 @@ export type ViewApp = Pick<
   | 'advanceFtue'
   | 'backToLobby'
   | 'boardWrapRef'
+  | 'buyDeal'
   | 'buySkin'
   | 'canUpgradeGear'
   | 'cancelEnter'

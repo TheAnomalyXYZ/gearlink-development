@@ -9,7 +9,9 @@ import type {
   ApplyHeartRequest,
   UpgradeGearRequest,
   SalvageGearRequest,
+  BuyDealResponse,
   ChallengeResponse,
+  DealsResponse,
   ClaimQuestResponse,
   CollectPackRequest,
   DonateResponse,
@@ -141,6 +143,12 @@ export const api = {
   shareDaily: () =>
     call('/daily/share', tagged<ShareDailyResponse>('shareDaily'), {}),
   buyCoins: (bundleId: string) => call('/shop/coins', isProfile, { bundleId }),
+  deals: () => call('/shop/deals', tagged<DealsResponse>('deals')),
+  buyDeal: (dealId: string, dayKey: string) =>
+    call('/shop/deal', tagged<BuyDealResponse>('dealBuy'), {
+      dealId,
+      dayKey,
+    }),
   openPack: (packId: string, heroClass: HeroClass) =>
     call('/shop/open', tagged<OpenPackResponse>('openPack'), {
       packId,

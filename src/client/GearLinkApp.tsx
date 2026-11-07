@@ -3011,8 +3011,55 @@ export class GearLinkApp extends Component<GearLinkProps, AppState> {
 
   /* ---------- shop / bag / packs ---------- */
 
-  goShop = (): void =>
+  goShop = (): void => {
     this.setState({ phase: 'shop', shopMsg: null, homeMenu: false });
+    this.refreshDeals();
+  };
+
+  /** Re-read on every visit: a board left over from yesterday is wrong. */
+  private refreshDeals(): void {
+    void api
+      .deals()
+      .then((r) => this.setState({ deals: r.board }))
+      .catch(() => undefined);
+  }
+
+  /** A card deal lands in the collection at once; a pack deal goes into the
+   *  bag and opens straight away, exactly like a bought pack. */
+  buyDeal = (id: string, fxh?: PackFx) => (): void => {
+    const board = this.state.deals;
+    if (!board || this.state.dealBuying) {
+      fxh?.fail?.();
+      return;
+    }
+    this.setState({ dealBuying: id });
+    void api
+      .buyDeal(id, board.dayKey)
+      .then((r) => {
+        const sold = r.board.deals.find((d) => d.id === id)?.bought ?? false;
+        const wasSold = board.deals.find((d) => d.id === id)?.bought ?? false;
+        this.setState({ deals: r.board, dealBuying: null });
+        this.adopt(r.profile, r.message);
+        if (!sold || wasSold) {
+          fxh?.fail?.();
+          return;
+        }
+        audio.play('coins');
+        if (r.openPackId)
+          this.openPackFrom(r.openPackId, 'shop', fxh?.rect ? fxh.rect() : null);
+        else {
+          fxh?.settle?.();
+          if (r.message) safeToast(showToast, r.message);
+        }
+      })
+      .catch((e: unknown) => {
+        this.setState({ dealBuying: null });
+        fxh?.fail?.();
+        this.fail(e);
+        // Most likely the day turned over under an open board.
+        this.refreshDeals();
+      });
+  };
   goInventory = (): void =>
     this.setState({ phase: 'inventory', homeMenu: false });
   pickShopTab = (t: ShopTab) => (): void =>

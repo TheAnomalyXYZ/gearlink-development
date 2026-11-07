@@ -2,6 +2,7 @@ import type { HeroClass } from './engine/types.js';
 import type { Shards } from './engine/upgrade.js';
 import type { Hearts } from './engine/hearts.js';
 import type { PulledCard } from './engine/economy.js';
+import type { Deal } from './engine/deals.js';
 import type { DuelFoe } from './engine/duel.js';
 import type { SeasonPrize } from './engine/season.js';
 import type { SoloPrize, SoloTierId, SoloTitle } from './engine/solo.js';
@@ -317,6 +318,27 @@ export type OpenPackResponse = {
 export type CollectPackRequest = { token: string };
 
 export type BuyBundleRequest = { bundleId: string };
+
+/** A daily deal as the shop shows it: the offer, and whether it is gone. */
+export type DealView = Deal & { bought: boolean };
+
+/** Today's deals for the asking player, and when they turn over. */
+export type DealsBoard = { dayKey: string; resetAt: number; deals: DealView[] };
+
+export type DealsResponse = { type: 'deals'; board: DealsBoard };
+
+/** `dayKey` is the day the board on screen was drawn for. */
+export type BuyDealRequest = { dealId: string; dayKey?: string };
+
+/** A bought deal: the wallet after it, today's board with the slot sold, and
+ *  for a pack deal the pack id the client should open straight away. */
+export type BuyDealResponse = {
+  type: 'dealBuy';
+  profile: Profile;
+  board: DealsBoard;
+  message?: string;
+  openPackId?: string;
+};
 
 export type SaveDuelLoadoutRequest = {
   cls: HeroClass;

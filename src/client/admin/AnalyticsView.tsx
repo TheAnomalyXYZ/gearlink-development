@@ -305,7 +305,7 @@ const CURRENCY_LABEL: Record<SkuCurrency, string> = {
   coins: 'coins',
 };
 
-const skuName = (sku: string) => sku.replace(/^(pack|coins|gold):/, '$1 ');
+const skuName = (sku: string) => sku.replace(/^(pack|coins|gold|deal):/, '$1 ');
 
 export const EconomyView = ({ data }: { data: AdminDashboardResponse }) => {
   const [range, setRange] = useState<Range>(30);

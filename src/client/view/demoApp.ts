@@ -6,6 +6,7 @@
 import type { ViewApp } from './viewApp.js';
 import { INITIAL_STATE, type AppState } from '../state/appState.js';
 import {
+  dailyDeals,
   FIRST_LOCATION,
   enemyDisplayFor,
   Run,
@@ -177,6 +178,16 @@ export const demoApp = (over: Partial<AppState>): ViewApp => {
     gearFilter: 'all',
     shopMsg: null,
     openPack: null,
+    // A sample board, one slot already sold, so every state of a deal shows.
+    deals: {
+      dayKey: '2026-11-06',
+      resetAt: Date.UTC(2026, 10, 7),
+      deals: dailyDeals('demo', '2026-11-06').map((d, i) => ({
+        ...d,
+        bought: i === 0,
+      })),
+    },
+    dealBuying: null,
     quests: questBoard,
     questTab: 'daily',
     questClaiming: null,
@@ -293,6 +304,7 @@ export const demoApp = (over: Partial<AppState>): ViewApp => {
     buyCoins: curried,
     buyGems: curried,
     buyPack: curried,
+    buyDeal: curried,
     openPack: curried,
     closePeek: noop,
     closeCardInfo: noop,

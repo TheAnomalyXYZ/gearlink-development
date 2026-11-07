@@ -18,6 +18,7 @@ import type {
 import type { AppState, GearFilter, ShopTab } from '../state/appState.js';
 import type { WarChest } from '../../shared/api.js';
 import type { FxEvent } from '../fx/screens.js';
+import type { DealTileUi, DealsUi } from './DailyDeals.js';
 import {
   AFFIX_BLURB,
   AFFIX_TINT,
@@ -2776,6 +2777,61 @@ export const buildView = (app: ViewApp): View => {
             bonus(bundleBonusPct(GEM_BUNDLES, b))
           )
         ),
+      };
+    })(),
+    shopDeals: ((): DealsUi => {
+      const board = st.deals;
+      const tab = st.shopTab || 'packs';
+      if (!board || !board.deals.length)
+        return { display: 'none', resetLabel: '', tiles: [] };
+      const left = Math.max(0, board.resetAt - Date.now());
+      const h = Math.floor(left / 3_600_000);
+      const m = Math.floor((left % 3_600_000) / 60_000);
+      const tiles = board.deals.map((d, i): DealTileUi => {
+        const bal = d.cur === 'gems' ? st.profile.gems : st.profile.coins;
+        const can = !d.bought && bal >= d.price && !st.dealBuying;
+        const g = d.kind === 'gear' ? GEAR_BY_ID[d.itemId] : undefined;
+        const pk = d.kind === 'pack' ? packById(d.itemId) : null;
+        const owned = g ? st.profile.gear[g.id] || 0 : 0;
+        return {
+          name: g ? g.name : pk ? pk.name : '???',
+          kindLabel: g
+            ? g.rarity.toUpperCase() + (owned ? ' CARD' : ' - NEW!')
+            : 'PACK',
+          img: g ? getGearImageUrl(g.id) : pk ? pk.img : '',
+          isGear: !!g,
+          tint: g
+            ? RARITY_OUTLINE[g.rarity] || '#9FB3D1'
+            : pk
+              ? pk.tint
+              : '#9FB3D1',
+          curIcon: d.cur === 'gems' ? GEM_ICON : COIN_ICON,
+          price: String(d.price),
+          was: d.was > d.price ? String(d.was) : '',
+          offLabel: d.pctOff > 0 ? '-' + d.pctOff + '%' : '',
+          sold: d.bought,
+          buy: (e) =>
+            fxs.buyDeal(app, d, e, bal >= d.price && !d.bought, fxHelpers()),
+          cursor: d.bought ? 'default' : can ? 'pointer' : 'not-allowed',
+          opacity: can || d.bought ? 1 : 0.5,
+          btnBg: d.bought
+            ? BTN.disabled.bg
+            : can
+              ? BTN.primary.bg
+              : BTN.disabled.bg,
+          btnShadow: d.bought
+            ? BTN.disabled.shadow
+            : can
+              ? BTN.primary.shadow
+              : BTN.disabled.shadow,
+          btnLabel: d.bought ? 'SOLD' : String(d.price),
+          inAnim: fxs.listIn('shop', st.phase === 'shop' && tab, i * 40),
+        };
+      });
+      return {
+        display: tab === 'packs' ? 'flex' : 'none',
+        resetLabel: 'NEW IN ' + (h > 0 ? h + 'H ' : '') + m + 'M',
+        tiles,
       };
     })(),
     shopMsgDisplay: st.shopMsg ? 'block' : 'none',

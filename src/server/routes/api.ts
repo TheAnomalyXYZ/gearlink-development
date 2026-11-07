@@ -19,6 +19,9 @@ import type {
   EquipFlairRequest,
   EquipSkinRequest,
   BuySkinRequest,
+  BuyDealRequest,
+  BuyDealResponse,
+  DealsResponse,
   SaveDuelLoadoutRequest,
   ErrorResponse,
   InitResponse,
@@ -68,7 +71,13 @@ import {
   recordVisit,
 } from '../core/stats.js';
 import { claimDailyStreak, loadStreak } from '../core/streak.js';
-import { coinBundleSku, packSku, skinSku } from '../../shared/admin.js';
+import {
+  coinBundleSku,
+  dealSku,
+  packSku,
+  skinSku,
+} from '../../shared/admin.js';
+import { loadDealsBoard, markDealBought } from '../core/deals.js';
 import { getLeaderboard, recordScore } from '../core/leaderboard.js';
 import {
   dismissSoloAlert,
@@ -157,6 +166,7 @@ import {
   upgradeSpend,
   canSalvage,
   SALVAGE_COPIES_PER_SHARD,
+  dealById,
 } from '../../shared/engine/index.js';
 import type { PulledCard } from '../../shared/engine/economy.js';
 
@@ -901,6 +911,117 @@ api.post('/shop/coins', locked, async (c) => {
       '+' + b.amount + ' coins.'
     )
   );
+});
+
+/* ---------- daily deals ---------- */
+
+api.get('/shop/deals', async (c) => {
+  const me = who();
+  if (!me) return unauthorised(c);
+  return c.json<DealsResponse>({
+    type: 'deals',
+    board: await loadDealsBoard(me.userId),
+  });
+});
+
+/**
+ * Buy one of today's deals. The client names the slot AND the day it was
+ * looking at: a board left open past midnight must not buy whatever the new
+ * day put in that slot.
+ *
+ * A gear deal lands in the collection here and now - the card is named, so
+ * there is nothing to reveal. A pack deal goes into the bag like any bought
+ * pack, and the client opens it the same way.
+ */
+api.post('/shop/deal', locked, async (c) => {
+  const me = who();
+  if (!me) return unauthorised(c);
+  const body = (await c.req
+    .json()
+    .catch(() => null)) as BuyDealRequest | null;
+  const board = await loadDealsBoard(me.userId);
+  if (typeof body?.dayKey === 'string' && body.dayKey !== board.dayKey)
+    return c.json<ErrorResponse>(
+      { status: 'error', message: 'The deals have refreshed. Take a look!' },
+      409
+    );
+  const deal = dealById(board.deals, body?.dealId ?? '');
+  if (!deal)
+    return c.json<ErrorResponse>(
+      { status: 'error', message: 'no such deal' },
+      400
+    );
+  const profile = await loadProfile(me.userId, me.username);
+  const answer = (message: string, b = board, p = profile) =>
+    c.json<BuyDealResponse>({ type: 'dealBuy', profile: p, board: b, message });
+  if (board.deals.find((d) => d.id === deal.id)?.bought)
+    return answer('Already bought today. New deals at midnight UTC.');
+
+  const balance = deal.cur === 'gems' ? profile.gems : profile.coins;
+  if (balance < deal.price)
+    return answer('Not enough ' + deal.cur + ' for that deal.');
+  const spend =
+    deal.cur === 'gems'
+      ? { gems: profile.gems - deal.price }
+      : { coins: profile.coins - deal.price };
+
+  let message: string | undefined;
+  let openPackId: string | undefined;
+  if (deal.kind === 'gear') {
+    const g = GEAR_BY_ID[deal.itemId];
+    if (!g)
+      return c.json<ErrorResponse>(
+        { status: 'error', message: 'that card is no longer sold' },
+        400
+      );
+    const isNew = (profile.gear[g.id] ?? 0) <= 0;
+    const gearLevels = { ...profile.gearLevels };
+    const lifted = levelAfterPull(
+      gearLevelOf(gearLevels, g.id),
+      'Bronze',
+      isNew
+    );
+    if (lifted > 1) gearLevels[g.id] = lifted;
+    await saveProfile(me.userId, {
+      ...spend,
+      gear: { ...profile.gear, [g.id]: (profile.gear[g.id] ?? 0) + 1 },
+      gearLevels,
+    });
+    message = isNew
+      ? 'New gear: ' + g.name + '!'
+      : '+1 copy of ' + g.name + '.';
+  } else {
+    const pack = packById(deal.itemId);
+    if (!pack)
+      return c.json<ErrorResponse>(
+        { status: 'error', message: 'that pack is no longer sold' },
+        400
+      );
+    await saveProfile(me.userId, {
+      ...spend,
+      packs: { ...profile.packs, [pack.id]: (profile.packs[pack.id] ?? 0) + 1 },
+    });
+    openPackId = pack.id;
+  }
+  await markDealBought(me.userId, board.dayKey, deal.id);
+  await recordSpend(
+    me.userId,
+    me.username,
+    dealSku(deal.cur, deal.itemId),
+    deal.cur,
+    deal.price
+  );
+  const after = await loadProfile(me.userId, me.username).then((p) =>
+    syncUnlocks(me.userId, p)
+  );
+  const res: BuyDealResponse = {
+    type: 'dealBuy',
+    profile: after,
+    board: await loadDealsBoard(me.userId),
+  };
+  if (message !== undefined) res.message = message;
+  if (openPackId !== undefined) res.openPackId = openPackId;
+  return c.json(res);
 });
 
 /* Gems are NOT sold here. They come in only through Devvit payments, fulfilled

@@ -23,3 +23,4 @@ export * from './upgrade.js';
 export * from './streak.js';
 export * from './division.js';
 export * from './teach.js';
+export * from './deals.js';

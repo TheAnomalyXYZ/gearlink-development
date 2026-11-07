@@ -23,6 +23,7 @@ import type {
 } from '../../shared/engine/index.js';
 import type {
   ClaimQuestResponse,
+  DealsBoard,
   DailyBattle,
   LeaderboardEntry,
   Profile,
@@ -236,6 +237,10 @@ export type AppState = {
   gearFilter: GearFilter;
   shopMsg: string | null;
   openPack: OpenState | null;
+  /** Today's daily deals; null until the shop first reads them. */
+  deals: DealsBoard | null;
+  /** The deal whose buy is in flight, so a double tap cannot buy twice. */
+  dealBuying: string | null;
 
   /** Null until the first read lands; the nav dot and the tab both wait on it. */
   quests: QuestBoard | null;
@@ -460,6 +465,8 @@ export const INITIAL_STATE: AppState = {
   gearFilter: 'all',
   shopMsg: null,
   openPack: null,
+  deals: null,
+  dealBuying: null,
   quests: null,
   questTab: 'daily',
   questClaiming: null,
@@ -508,7 +515,11 @@ export type QuestFx = {
   fail?: () => void;
 };
 export type WalletFx = { gained?: (amount: number) => void };
-export type PackFx = { rect?: () => FxRect | null; fail?: () => void };
+export type PackFx = {
+  rect?: () => FxRect | null;
+  fail?: () => void;
+  settle?: () => void;
+};
 export type CollectFx = {
   before: (r: ProfileResponse) => void;
   after?: (r?: ProfileResponse) => void;
